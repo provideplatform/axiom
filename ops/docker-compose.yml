@@ -78,6 +78,8 @@ services:
     hostname: prvd-nats-streaming
     networks:
       - prvd
+    ports:
+      - 4222:4222
     restart: always
     volumes:
       - ./ops/await_tcp.sh:/usr/local/bin/await_tcp.sh:cached
