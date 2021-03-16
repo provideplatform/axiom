@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 
@@ -14,6 +15,7 @@ import (
 	provide "github.com/provideservices/provide-go/api"
 	"github.com/provideservices/provide-go/api/ident"
 	"github.com/provideservices/provide-go/api/privacy"
+	"github.com/provideservices/provide-go/api/vault"
 )
 
 const baselineWorkflowTypeProcureToPay = "purchase_order"
@@ -66,19 +68,67 @@ func lookupBaselineRecordByInternalID(id string) *BaselineRecord {
 	key := fmt.Sprintf("baseline.id.%s", id)
 	baselineID, err := redisutil.Get(key)
 	if err != nil {
-		common.Log.Debugf("failed to retrieve cached baseline id for internal id: %s; %s", key, err.Error())
+		common.Log.Warningf("failed to retrieve cached baseline id for internal id: %s; %s", key, err.Error())
 		return nil
 	}
 
 	return lookupBaselineRecord(*baselineID)
 }
 
+func lookupBaselineOrganization(address string) *Participant {
+	var org *Participant
+
+	key := fmt.Sprintf("baseline.organization.%s", address)
+	raw, err := redisutil.Get(key)
+	if err != nil {
+		common.Log.Warningf("failed to retrieve cached baseline organization: %s; %s", key, err.Error())
+		return nil
+	}
+
+	json.Unmarshal([]byte(*raw), &org)
+	return org
+}
+
+func lookupBaselineOrganizationIssuedVC(address string) *string {
+	key := fmt.Sprintf("baseline.organization.%s.credential", address)
+	secretID, err := redisutil.Get(key)
+	if err != nil {
+		common.Log.Warningf("failed to retrieve cached verifiable credential secret id for baseline organization: %s; %s", key, err.Error())
+		return nil
+	}
+
+	token, err := vendOrganizationAccessToken()
+	if err != nil {
+		common.Log.Warningf("failed to retrieve cached verifiable credential secret id for baseline organization: %s; %s", key, err.Error())
+		return nil
+	}
+
+	resp, err := vault.FetchSecret(*token, common.Vault.ID.String(), *secretID, map[string]interface{}{})
+	if err != nil {
+		common.Log.Warningf("failed to retrieve cached verifiable credential secret for baseline organization: %s; %s", key, err.Error())
+		return nil
+	}
+
+	return resp.Value
+}
+
+func lookupBaselineOrganizationMessagingEndpoint(recipient string) *string {
+	org := lookupBaselineOrganization(recipient)
+	if org == nil {
+		common.Log.Warningf("failed to retrieve cached messaging endpoint for baseline organization: %s", recipient)
+		return nil
+	}
+
+	return org.URL
+}
+
 func (m *ProtocolMessage) baselineInbound() bool {
 	baselineRecord := lookupBaselineRecord(m.BaselineID.String())
 	if baselineRecord == nil {
-		workflow, err := baselineWorkflowFactory(*m.Payload.Type)
-		if err != nil {
-			common.Log.Warning(err.Error())
+		workflow := lookupBaselineWorkflow(*m.Identifier)
+		// workflow, err := baselineWorkflowFactory(*m.Payload.Type)
+		if workflow == nil {
+			common.Log.Warningf("failed to retrieve cached baseline workflow: %s", *m.Identifier)
 			return false
 		}
 
@@ -87,7 +137,7 @@ func (m *ProtocolMessage) baselineInbound() bool {
 			Workflow:   workflow,
 		}
 
-		err = baselineRecord.cache()
+		err := baselineRecord.cache()
 		if err != nil {
 			common.Log.Warning(err.Error())
 			return false
@@ -103,8 +153,12 @@ func (m *ProtocolMessage) baselineInbound() bool {
 	sor := middleware.SORFactory(common.InternalSOR, nil)
 
 	if baselineRecord.ID == nil {
-		// TODO -- map baseline record id -> internal record id
-		resp, err := sor.CreateBusinessObject(m.Payload.Object)
+		// TODO -- map baseline record id -> internal record id (i.e, this is currently done but lazily on outbound message)
+		resp, err := sor.CreateBusinessObject(map[string]interface{}{
+			"baseline_id": baselineRecord.BaselineID.String(),
+			"payload":     m.Payload.Object,
+			"type":        m.Type,
+		})
 		if err != nil {
 			common.Log.Warningf("failed to create business object during inbound baseline; %s", err.Error())
 			return false
@@ -144,6 +198,11 @@ func (m *Message) baselineOutbound() bool {
 	sor := middleware.SORFactory(common.InternalSOR, nil)
 
 	baselineRecord := lookupBaselineRecordByInternalID(*m.ID)
+	if baselineRecord == nil && m.BaselineID != nil {
+		common.Log.Debugf("attempting to map outbound message to unmapped baseline record with baseline id: %s", m.BaselineID)
+		baselineRecord = lookupBaselineRecord(m.BaselineID.String())
+	}
+
 	if baselineRecord == nil {
 		workflow, err := baselineWorkflowFactory(*m.Type)
 		if err != nil {
@@ -229,12 +288,13 @@ func (m *Message) baselineOutbound() bool {
 		}
 	}
 
-	common.Log.Debugf("dispatching outbound protocol message intended for %d recipients", len(m.Recipients))
+	common.Log.Debugf("dispatching outbound protocol message intended for %d recipients", len(recipients))
 
 	for _, recipient := range recipients {
+		common.Log.Debugf("dispatching outbound protocol message to %s", *recipient.Address)
 		err := m.ProtocolMessage.broadcast(*recipient.Address)
 		if err != nil {
-			msg := fmt.Sprintf("failed to dispatch protocol message to recipient: %s; %s", recipient, err.Error())
+			msg := fmt.Sprintf("failed to dispatch protocol message to recipient: %s; %s", *recipient.Address, err.Error())
 			common.Log.Warning(msg)
 			m.Errors = append(m.Errors, &provide.Error{
 				Message: common.StringOrNil(msg),
@@ -250,73 +310,6 @@ func (m *Message) baselineOutbound() bool {
 	}
 
 	return true
-}
-
-func baselineWorkflowFactory(objectType string) (*Workflow, error) {
-	identifier, _ := uuid.NewV4()
-	workflow := &Workflow{
-		Circuits:     make([]*privacy.Circuit, 0),
-		Identifier:   common.StringOrNil(identifier.String()),
-		Participants: make([]*Participant, 0),
-		Shield:       nil,
-	}
-
-	token, err := vendOrganizationAccessToken()
-	if err != nil {
-		return nil, err
-	}
-
-	switch objectType {
-	case baselineWorkflowTypeProcureToPay:
-		circuit, err := privacy.CreateCircuit(*token, circuitParamsFactory("PO", "purchase_order", nil))
-		if err != nil {
-			common.Log.Debugf("failed to deploy circuit; %s", err.Error())
-			return nil, err
-		}
-		workflow.Circuits = append(workflow.Circuits, circuit)
-
-		circuit, err = privacy.CreateCircuit(*token, circuitParamsFactory("SO", "sales_order", common.StringOrNil(circuit.StoreID.String())))
-		if err != nil {
-			common.Log.Debugf("failed to deploy circuit; %s", err.Error())
-			return nil, err
-		}
-		workflow.Circuits = append(workflow.Circuits, circuit)
-
-		circuit, err = privacy.CreateCircuit(*token, circuitParamsFactory("SN", "shipment_notification", common.StringOrNil(circuit.StoreID.String())))
-		if err != nil {
-			common.Log.Debugf("failed to deploy circuit; %s", err.Error())
-			return nil, err
-		}
-		workflow.Circuits = append(workflow.Circuits, circuit)
-
-		circuit, err = privacy.CreateCircuit(*token, circuitParamsFactory("GR", "goods_receipt", common.StringOrNil(circuit.StoreID.String())))
-		if err != nil {
-			common.Log.Debugf("failed to deploy circuit; %s", err.Error())
-			return nil, err
-		}
-		workflow.Circuits = append(workflow.Circuits, circuit)
-
-		circuit, err = privacy.CreateCircuit(*token, circuitParamsFactory("Invoice", "invoice", common.StringOrNil(circuit.StoreID.String())))
-		if err != nil {
-			common.Log.Debugf("failed to deploy circuit; %s", err.Error())
-			return nil, err
-		}
-		workflow.Circuits = append(workflow.Circuits, circuit)
-		break
-
-	case baselineWorkflowTypeServiceNowIncident:
-		circuit, err := privacy.CreateCircuit(*token, circuitParamsFactory("PO", "purchase_order", nil))
-		if err != nil {
-			common.Log.Debugf("failed to deploy circuit; %s", err.Error())
-			return nil, err
-		}
-		workflow.Circuits = append(workflow.Circuits, circuit)
-		break
-	default:
-		return nil, fmt.Errorf("failed to create workflow for type: %s", objectType)
-	}
-
-	return workflow, nil
 }
 
 func (m *Message) prove() error {
@@ -402,6 +395,18 @@ func (m *ProtocolMessage) verify(store bool) error {
 	}
 
 	return nil
+}
+
+func (p *Participant) cache() error {
+	if p.Address == nil {
+		return errors.New("failed to cache participant with nil address")
+	}
+
+	key := fmt.Sprintf("baseline.organization.%s", *p.Address)
+	return redisutil.WithRedlock(key, func() error {
+		raw, _ := json.Marshal(p)
+		return redisutil.Set(key, raw, nil)
+	})
 }
 
 func vendOrganizationAccessToken() (*string, error) {

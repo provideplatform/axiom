@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"os"
 	"sync"
@@ -92,21 +93,40 @@ func createNatsDispatchProtocolMessageSubscriptions(wg *sync.WaitGroup) {
 }
 
 func consumeBaselineProxySubscriptionsMsg(msg *stan.Msg) {
-	common.Log.Debugf("consuming %d-byte NATS baseline inbound protocol message on subject: %s", msg.Size(), msg.Subject)
+	common.Log.Debugf("consuming %d-byte NATS inbound protocol message on subject: %s", msg.Size(), msg.Subject)
 
 	protomsg := &ProtocolMessage{}
 	err := json.Unmarshal(msg.Data, &protomsg)
 	if err != nil {
-		common.Log.Warningf("failed to umarshal baseline inbound protocol message; %s", err.Error())
+		common.Log.Warningf("failed to umarshal inbound protocol message; %s", err.Error())
 		natsutil.Nack(msg)
 		return
 	}
 
-	success := protomsg.baselineInbound()
+	if protomsg.Opcode == nil {
+		common.Log.Warningf("inbound protocol message specified invalid opcode; %s", err.Error())
+		natsutil.Nack(msg)
+		return
+	}
 
-	if !success {
-		common.Log.Warningf("failed to baseline inbound protocol message; %s")
-		natsutil.AttemptNack(msg, natsBaselineProxyTimeout)
+	switch *protomsg.Opcode {
+	case protocolMessageOpcodeBaseline:
+		success := protomsg.baselineInbound()
+		if !success {
+			common.Log.Warningf("failed to baseline inbound protocol message; %s")
+			natsutil.AttemptNack(msg, natsBaselineProxyTimeout)
+			return
+		}
+		break
+	case protocolMessageOpcodeJoin:
+		common.Log.Warningf("JOIN opcode not yet implemented")
+		break
+	case protocolMessageOpcodeSync:
+		common.Log.Warningf("SYNC opcode not yet implemented")
+		break
+	default:
+		common.Log.Warningf("inbound protocol message specified invalid opcode; %s", err.Error())
+		natsutil.Nack(msg)
 		return
 	}
 
@@ -148,47 +168,76 @@ func consumeDispatchProtocolMessageSubscriptionsMsg(msg *stan.Msg) {
 		return
 	}
 
-	resp, err := nchain.ExecuteContract(*token, *common.BaselineRegistryContractAddress, map[string]interface{}{
-		"method": "getOrg",
-		"params": []string{*protomsg.Recipient},
-		"value":  0,
-	})
+	url := lookupBaselineOrganizationMessagingEndpoint(*protomsg.Recipient)
+	if url == nil {
+		common.Log.Warningf("failed to lookup recipient endpoint: %s", *protomsg.Recipient)
 
-	if err != nil {
-		common.Log.Warningf("failed to read organization details for recipient: %s; %s", *protomsg.Recipient, err.Error())
+		// HACK! this account creation will go away with new nchain...
+		account, _ := nchain.CreateAccount(*token, map[string]interface{}{
+			"network_id": *common.NChainBaselineNetworkID,
+		})
+
+		resp, err := nchain.ExecuteContract(*token, *common.BaselineRegistryContractAddress, map[string]interface{}{
+			"account_id": account.ID.String(),
+			"method":     "getOrg",
+			"params":     []string{*protomsg.Recipient},
+			"value":      0,
+		})
+
+		if err != nil {
+			common.Log.Warningf("failed to dispatch protocol message to recipient: %s; no endpoint resolved", *protomsg.Recipient)
+			natsutil.AttemptNack(msg, natsDispatchProtocolMessageTimeout)
+			return
+		}
+
+		if endpoint, endpointOk := resp.Response.([]interface{})[2].(string); endpointOk {
+			endpoint, err := base64.StdEncoding.DecodeString(endpoint)
+			if err != nil {
+				common.Log.Warningf("failed to dispatch protocol message to recipient: %s; failed to base64 decode endpoint", *protomsg.Recipient)
+				natsutil.AttemptNack(msg, natsDispatchProtocolMessageTimeout)
+				return
+			}
+			org := &Participant{
+				Address: protomsg.Recipient,
+				URL:     common.StringOrNil(string(endpoint)),
+			}
+
+			err = org.cache()
+			if err != nil {
+				common.Log.Warningf("failed to dispatch protocol message to recipient: %s; failed to", *protomsg.Recipient)
+				natsutil.AttemptNack(msg, natsDispatchProtocolMessageTimeout)
+				return
+			}
+		}
+	}
+
+	jwt := lookupBaselineOrganizationMessagingEndpoint(*protomsg.Recipient)
+	if jwt == nil {
+		// TODO: request a VC from the counterparty
+
+		common.Log.Warningf("failed to dispatch protocol message to recipient: %s; no bearer token resolved", *protomsg.Recipient)
 		natsutil.AttemptNack(msg, natsDispatchProtocolMessageTimeout)
 		return
 	}
 
-	common.Log.Debugf("%v", resp)
+	conn, err := natsutil.GetNatsConnection(*url, time.Second*10, jwt)
+	if err != nil {
+		common.Log.Warningf("failed to establish NATS connection to recipient: %s; %s", *protomsg.Recipient, err.Error())
+		natsutil.AttemptNack(msg, natsDispatchProtocolMessageTimeout)
+		return
+	}
 
-	// lookup recipient by address in org registry contract
+	defer conn.Close()
 
-	// async fetchOrganization(address: string): Promise<Organization> {
-	// 	const orgRegistryContract = await this.requireWorkgroupContract('organization-registry');
+	err = conn.Publish(natsBaselineProxySubject, msg.Data)
+	if err != nil {
+		// TODO-- clear cached endpoint so it will be re-fetched...
 
-	// 	const nchain = nchainClientFactory(
-	// 	  this.workgroupToken,
-	// 	  this.baselineConfig?.nchainApiScheme,
-	// 	  this.baselineConfig?.nchainApiHost,
-	// 	);
+		common.Log.Warningf("failed to publish protocol message to recipient: %s; %s", *protomsg.Recipient, err.Error())
+		natsutil.AttemptNack(msg, natsDispatchProtocolMessageTimeout)
+		return
+	}
 
-	// 	const signerResp = (await nchain.createAccount({
-	// 	  network_id: this.baselineConfig?.networkId,
-	// 	}));
-
-	// 	if (resp && resp['response'] && resp['response'][0] !== '0x0000000000000000000000000000000000000000') {
-	// 	  const org = {} as Organization;
-	// 	  org.name = resp['response'][1].toString();
-	// 	  org['address'] = resp['response'][0];
-	// 	  org['config'] = JSON.parse(atob(resp['response'][5]));
-	// 	  org['config']['messaging_endpoint'] = atob(resp['response'][2]);
-	// 	  org['config']['zk_public_key'] = atob(resp['response'][4]);
-	// 	  return Promise.resolve(org);
-	// 	}
-
-	// 	return Promise.reject(`failed to fetch organization ${address}`);
-	//   }
-
+	common.Log.Debugf("broadcast %d-byte protocol message to recipient: %s", len(msg.Data), *protomsg.Recipient)
 	msg.Ack()
 }

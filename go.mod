@@ -13,7 +13,7 @@ require (
 	github.com/onsi/ginkgo v1.15.1
 	github.com/onsi/gomega v1.11.0
 	github.com/provideapp/ident v0.0.0-00010101000000-000000000000
-	github.com/provideservices/provide-go v0.0.0-20210314172318-063387f17030
+	github.com/provideservices/provide-go v0.0.0-20210316163711-c0cc755e2f96
 )
 
 replace github.com/provideapp/ident => ../ident

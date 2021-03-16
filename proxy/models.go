@@ -20,6 +20,7 @@ type BaselineRecord struct {
 
 // Message is a proxy-internal wrapper for protocol message handling
 type Message struct {
+	BaselineID      *uuid.UUID       `sql:"-" json:"baseline_id,omitempty"` // optional; when included, can be used to map outbound message just-in-time
 	Errors          []*provide.Error `sql:"-" json:"errors,omitempty"`
 	ID              *string          `sql:"-" json:"id,omitempty"`
 	MessageID       *string          `sql:"-" json:"message_id,omitempty"`
