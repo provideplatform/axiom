@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"encoding/json"
+	"os"
 	"sync"
 	"time"
 
@@ -21,18 +22,45 @@ const natsDispatchProtocolMessageMaxInFlight = 2048
 const dispatchProtocolMessageAckWait = time.Second * 30
 const natsDispatchProtocolMessageTimeout = int64(time.Minute * 5)
 
+const natsBaselineProxySubject = "baseline.proxy"
+const natsBaselineProxyMaxInFlight = 2048
+const baselineProxyAckWait = time.Second * 30
+const natsBaselineProxyTimeout = int64(time.Minute * 5)
+
 func init() {
 	if !common.ConsumeNATSStreamingSubscriptions {
 		common.Log.Debug("proxy package consumer configured to skip NATS streaming subscription setup")
 		return
 	}
 
-	natsutil.EstablishSharedNatsStreamingConnection(nil)
-
 	var waitGroup sync.WaitGroup
 
+	// requireExternalNats(&waitGroup)
+	natsutil.EstablishSharedNatsStreamingConnection(nil)
+
+	createNatsBaselineProxySubscriptions(&waitGroup)
 	createNatsDispatchInvitationSubscriptions(&waitGroup)
 	createNatsDispatchProtocolMessageSubscriptions(&waitGroup)
+}
+
+func requireExternalNats(wg *sync.WaitGroup) {
+	if os.Getenv("BASELINE_NATS_URL") == "" {
+		panic("BASELINE_NATS_URL not provided")
+	}
+}
+
+func createNatsBaselineProxySubscriptions(wg *sync.WaitGroup) {
+	for i := uint64(0); i < natsutil.GetNatsConsumerConcurrency(); i++ {
+		natsutil.RequireNatsStreamingSubscription(wg,
+			baselineProxyAckWait,
+			natsBaselineProxySubject,
+			natsBaselineProxySubject,
+			consumeBaselineProxySubscriptionsMsg,
+			baselineProxyAckWait,
+			natsBaselineProxyMaxInFlight,
+			nil,
+		)
+	}
 }
 
 func createNatsDispatchInvitationSubscriptions(wg *sync.WaitGroup) {
@@ -61,6 +89,28 @@ func createNatsDispatchProtocolMessageSubscriptions(wg *sync.WaitGroup) {
 			nil,
 		)
 	}
+}
+
+func consumeBaselineProxySubscriptionsMsg(msg *stan.Msg) {
+	common.Log.Debugf("consuming %d-byte NATS baseline inbound protocol message on subject: %s", msg.Size(), msg.Subject)
+
+	protomsg := &ProtocolMessage{}
+	err := json.Unmarshal(msg.Data, &protomsg)
+	if err != nil {
+		common.Log.Warningf("failed to umarshal baseline inbound protocol message; %s", err.Error())
+		natsutil.Nack(msg)
+		return
+	}
+
+	success := protomsg.baselineInbound()
+
+	if !success {
+		common.Log.Warningf("failed to baseline inbound protocol message; %s")
+		natsutil.AttemptNack(msg, natsBaselineProxyTimeout)
+		return
+	}
+
+	msg.Ack()
 }
 
 func consumeDispatchInvitationSubscriptionsMsg(msg *stan.Msg) {
