@@ -63,7 +63,7 @@ func updateBusinessObjectHandler(c *gin.Context) {
 		return
 	}
 
-	record := lookupBaselineRecord(c.Param("id"))
+	record := lookupBaselineRecordByInternalID(c.Param("id"))
 	if record == nil {
 		provide.RenderError(fmt.Sprintf("baseline record not found"), 404, c)
 		return
