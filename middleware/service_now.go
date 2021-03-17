@@ -84,12 +84,12 @@ func (s *ServiceNowService) CreateBusinessObject(params map[string]interface{}) 
 		return nil, err
 	}
 
-	status, resp, err := s.Post("incident", map[string]interface{}{})
+	status, resp, err := s.Post("incident", params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create business object; status: %v; %s", status, err.Error())
 	}
 
-	if status != 200 {
+	if status != 201 {
 		return nil, fmt.Errorf("failed to create business object; status: %v", status)
 	}
 
