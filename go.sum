@@ -478,8 +478,8 @@ github.com/prometheus/tsdb v0.6.2-0.20190402121629-4f204dcbc150/go.mod h1:qhTCs0
 github.com/prometheus/tsdb v0.7.1/go.mod h1:qhTCs0VvXwvX/y3TZrWD7rabWM+ijKTux40TwIPHuXU=
 github.com/prometheus/tsdb v0.10.0/go.mod h1:oi49uRhEe9dPUTlS3JRZOwJuVi6tmh10QSgwXEyGCt4=
 github.com/provideservices/provide-go v0.0.0-20201109202001-a527b36e6cf1/go.mod h1:yzwBDvZH0GKjbDeFFzAZ5EJlysxaSsWSM5AednUXHG8=
-github.com/provideservices/provide-go v0.0.0-20210316163711-c0cc755e2f96 h1:t8X6btV1tx1MYLF4Dj1gT9nCpvsNFjU2IsvnQisJwDM=
-github.com/provideservices/provide-go v0.0.0-20210316163711-c0cc755e2f96/go.mod h1:SoEOpJ9Y0EGBwsvVnjb+EM3aVKUaddLfDNXUXGQPdDc=
+github.com/provideservices/provide-go v0.0.0-20210317044346-cf3c64cb19c1 h1:1+Rh1+MSnOidAvhOyHPykLbCM4ywIDS4ax08A2ag2Xc=
+github.com/provideservices/provide-go v0.0.0-20210317044346-cf3c64cb19c1/go.mod h1:SoEOpJ9Y0EGBwsvVnjb+EM3aVKUaddLfDNXUXGQPdDc=
 github.com/rcrowley/go-metrics v0.0.0-20190826022208-cac0b30c2563/go.mod h1:bCqnVzQkZxMG4s8nGwiZ5l3QUCyqpo9Y+/ZMZ9VjZe4=
 github.com/rivo/uniseg v0.1.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
 github.com/rivo/uniseg v0.2.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
