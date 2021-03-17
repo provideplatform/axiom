@@ -56,9 +56,9 @@ type ProtocolMessage struct {
 
 // ProtocolMessagePayload is a baseline protocol message payload
 type ProtocolMessagePayload struct {
-	Object  map[string]interface{} `json:"-" json:"object,omitempty"`
+	Object  map[string]interface{} `sql:"-" json:"object,omitempty"`
 	Proof   *string                `sql:"-" json:"proof,omitempty"`
-	Type    *string                `json:"-" json:"type,omitempty"`
+	Type    *string                `sql:"-" json:"type,omitempty"`
 	Witness interface{}            `sql:"-" json:"witness,omitempty"`
 }
 
