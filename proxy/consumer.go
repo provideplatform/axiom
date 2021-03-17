@@ -156,6 +156,24 @@ func consumeBaselineProxySubscriptionsMsg(msg *nats.Msg) {
 				return
 			}
 			common.Log.Debugf("sync protocol message created circuit: %s", circuit.ID)
+		} else if protomsg.Payload.Type != nil && *protomsg.Payload.Type == "workflow" {
+			workflow := &Workflow{}
+			raw, _ := json.Marshal(protomsg.Payload.Object)
+			json.Unmarshal(raw, &workflow)
+
+			for _, circuit := range workflow.Circuits {
+				params := map[string]interface{}{}
+				rawcircuit, _ := json.Marshal(circuit)
+				json.Unmarshal(rawcircuit, &params)
+
+				circuit, err := privacy.CreateCircuit(*token, params)
+				if err != nil {
+					common.Log.Warningf("failed to handle inbound sync protocol message; failed to create circuit; %s", err.Error())
+					// natsutil.AttemptNack(msg, natsDispatchProtocolMessageTimeout)
+					return
+				}
+				common.Log.Debugf("sync protocol message created workflow: %s", circuit.ID)
+			}
 		}
 
 		break

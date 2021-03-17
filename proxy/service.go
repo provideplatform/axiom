@@ -328,6 +328,21 @@ func (m *Message) baselineOutbound() bool {
 			})
 			return false
 		}
+
+		// FIXME
+		_workflow := map[string]interface{}{}
+		raw, _ := json.Marshal(workflow)
+		json.Unmarshal(raw, &_workflow)
+		msg := &ProtocolMessage{
+			Opcode: common.StringOrNil(ProtocolMessageOpcodeSync),
+			Payload: &ProtocolMessagePayload{
+				Object: _workflow,
+				Type:   common.StringOrNil("workflow"),
+			},
+			Type: m.Type,
+		}
+		payload, _ := json.Marshal(msg)
+		natsutil.NatsStreamingPublish(natsDispatchProtocolMessageSubject, payload)
 	}
 
 	rawPayload, _ := json.Marshal(m.Payload)
