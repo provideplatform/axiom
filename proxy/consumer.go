@@ -175,7 +175,7 @@ func consumeBaselineProxySubscriptionsMsg(msg *nats.Msg) {
 				common.Log.Debugf("sync protocol message created workflow: %s", circuit.ID)
 			}
 
-			err := workflow.Cache()
+			err = workflow.Cache()
 			if err != nil {
 				common.Log.Warningf("failed to handle inbound sync protocol message; failed to cache workflow; %s", err.Error())
 				// natsutil.AttemptNack(msg, natsDispatchProtocolMessageTimeout)
