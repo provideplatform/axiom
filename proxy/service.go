@@ -330,17 +330,20 @@ func (m *Message) baselineOutbound() bool {
 		}
 
 		for _, recipient := range workflow.Participants {
-			// FIXME
-			_workflow := map[string]interface{}{}
-			raw, _ := json.Marshal(workflow)
-			json.Unmarshal(raw, &_workflow)
 			msg := &ProtocolMessage{
-				Opcode: common.StringOrNil(ProtocolMessageOpcodeSync),
+				BaselineID: baselineRecord.BaselineID,
+				Opcode:     common.StringOrNil(ProtocolMessageOpcodeSync),
+				Identifier: baselineRecord.WorkflowID,
 				Payload: &ProtocolMessagePayload{
-					Object: _workflow,
-					Type:   common.StringOrNil("workflow"),
+					Object: map[string]interface{}{
+						"circuits":   workflow.Circuits,
+						"identifier": workflow.Identifier,
+						"shield":     workflow.Shield,
+					},
+					Type: common.StringOrNil("workflow"),
 				},
 				Recipient: recipient.Address,
+				Sender:    nil, // FIXME
 				Type:      m.Type,
 			}
 			payload, _ := json.Marshal(msg)

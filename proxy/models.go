@@ -69,7 +69,7 @@ type Workgroup struct {
 
 // Workflow is a baseline workflow context
 type Workflow struct {
-	Circuits      []*privacy.Circuit `json:"circuit,omitempty"`
+	Circuits      []*privacy.Circuit `sql:"-" json:"circuits,omitempty"`
 	Identifier    *uuid.UUID         `sql:"-" json:"identifier,omitempty"`
 	Participants  []*Participant     `sql:"-" json:"participants"`
 	Shield        *string            `sql:"-" json:"shield,omitempty"`

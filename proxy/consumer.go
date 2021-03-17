@@ -158,7 +158,7 @@ func consumeBaselineProxySubscriptionsMsg(msg *nats.Msg) {
 			common.Log.Debugf("sync protocol message created circuit: %s", circuit.ID)
 		} else if protomsg.Payload.Type != nil && *protomsg.Payload.Type == "workflow" {
 			workflow := &Workflow{}
-			raw, _ := json.Marshal(protomsg.Payload.Object)
+			raw, err := json.Marshal(protomsg.Payload.Object)
 			json.Unmarshal(raw, &workflow)
 
 			for _, circuit := range workflow.Circuits {
