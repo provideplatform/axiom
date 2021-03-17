@@ -107,7 +107,7 @@ func consumeBaselineProxySubscriptionsMsg(msg *nats.Msg) {
 	case ProtocolMessageOpcodeBaseline:
 		success := protomsg.baselineInbound()
 		if !success {
-			common.Log.Warningf("failed to baseline inbound protocol message; %s")
+			common.Log.Warning("failed to baseline inbound protocol message")
 			// natsutil.AttemptNack(msg, natsBaselineProxyTimeout)
 			return
 		}

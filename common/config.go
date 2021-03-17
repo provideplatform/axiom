@@ -207,7 +207,7 @@ func requireVault() {
 func requireCounterparties() {
 	DefaultCounterparties = make([]map[string]string, 0)
 	DefaultCounterparties = append(DefaultCounterparties, map[string]string{
-		"address": "0x3E8E1a128190f9628f918Ef407389e656daB5530",
-		"url":     "nats://kt.local:4221",
+		"address": "0xde6ab5e055d34fc4f65c5850e23503d43d6958d4",
+		"url":     "nats://kt-mbp.local:4221",
 	})
 }

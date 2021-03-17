@@ -207,11 +207,18 @@ func lookupBaselineOrganizationMessagingEndpoint(recipient string) *string {
 func (m *ProtocolMessage) baselineInbound() bool {
 	baselineRecord := lookupBaselineRecord(m.BaselineID.String())
 	if baselineRecord == nil {
-		workflow := LookupBaselineWorkflow(m.Identifier.String())
-		// workflow, err := baselineWorkflowFactory(*m.Payload.Type)
+		var workflow *Workflow
+		var err error
+
+		workflow = LookupBaselineWorkflow(m.Identifier.String())
 		if workflow == nil {
-			common.Log.Warningf("failed to retrieve cached baseline workflow: %s", *m.Identifier)
-			return false
+			common.Log.Debugf("initializing baseline workflow: %s", *m.Identifier)
+
+			workflow, err = baselineWorkflowFactory(*m.Payload.Type)
+			if err != nil {
+				common.Log.Warningf("failed to initialize baseline workflow: %s", *m.Identifier)
+				return false
+			}
 		}
 
 		baselineRecord = &BaselineRecord{
@@ -220,7 +227,7 @@ func (m *ProtocolMessage) baselineInbound() bool {
 			WorkflowID: m.Identifier,
 		}
 
-		err := baselineRecord.cache()
+		err = baselineRecord.cache()
 		if err != nil {
 			common.Log.Warning(err.Error())
 			return false
