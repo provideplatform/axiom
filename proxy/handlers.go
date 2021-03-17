@@ -32,8 +32,6 @@ func createBusinessObjectHandler(c *gin.Context) {
 		return
 	}
 
-	common.Log.Debugf(string(buf))
-
 	message := &Message{}
 	err = json.Unmarshal(buf, message)
 	if err != nil {

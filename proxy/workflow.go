@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -11,11 +12,23 @@ import (
 	privacy "github.com/provideservices/provide-go/api/privacy"
 )
 
+func (w *Workflow) Cache() error {
+	if w.Identifier == nil {
+		return errors.New("failed to cache workflow with nil identifier")
+	}
+
+	key := fmt.Sprintf("baseline.workflow.%s", *w.Identifier)
+	return redisutil.WithRedlock(key, func() error {
+		raw, _ := json.Marshal(w)
+		return redisutil.Set(key, raw, nil)
+	})
+}
+
 func baselineWorkflowFactory(objectType string) (*Workflow, error) {
 	identifier, _ := uuid.NewV4()
 	workflow := &Workflow{
 		Circuits:     make([]*privacy.Circuit, 0),
-		Identifier:   common.StringOrNil(identifier.String()),
+		Identifier:   &identifier,
 		Participants: make([]*Participant, 0),
 		Shield:       nil,
 	}
@@ -91,15 +104,17 @@ func baselineWorkflowFactory(objectType string) (*Workflow, error) {
 				common.Log.Debugf("provisioned initial workflow circuit: %s", circuit.ID)
 				break
 			}
-		} else {
+
 			time.Sleep(time.Millisecond * 250)
+		} else {
+			break
 		}
 	}
 
 	return workflow, nil
 }
 
-func lookupBaselineWorkflow(identifier string) *Workflow {
+func LookupBaselineWorkflow(identifier string) *Workflow {
 	var workflow *Workflow
 
 	key := fmt.Sprintf("baseline.workflow.%s", identifier)

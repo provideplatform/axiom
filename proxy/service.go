@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,6 +15,7 @@ import (
 	"github.com/provideapp/providibright/middleware"
 	provide "github.com/provideservices/provide-go/api"
 	"github.com/provideservices/provide-go/api/ident"
+	"github.com/provideservices/provide-go/api/nchain"
 	"github.com/provideservices/provide-go/api/privacy"
 	"github.com/provideservices/provide-go/api/vault"
 )
@@ -43,6 +45,14 @@ func (r *BaselineRecord) cache() error {
 			}
 		}
 
+		if r.Workflow != nil {
+			err := r.Workflow.Cache()
+			if err != nil {
+				common.Log.Warningf("failed to cache baseline record id; failed to cache associated workflow; %s", err.Error())
+				return err
+			}
+		}
+
 		raw, _ := json.Marshal(r)
 		common.Log.Debugf("mapping baseline id to baseline record: %s", baselineRecordKey)
 		return redisutil.Set(baselineRecordKey, raw, nil)
@@ -60,6 +70,11 @@ func lookupBaselineRecord(baselineID string) *BaselineRecord {
 	}
 
 	json.Unmarshal([]byte(*raw), &baselineRecord)
+
+	if baselineRecord != nil && baselineRecord.BaselineID != nil && baselineRecord.BaselineID.String() == baselineID && baselineRecord.WorkflowID != nil {
+		baselineRecord.Workflow = LookupBaselineWorkflow(baselineRecord.WorkflowID.String())
+	}
+
 	return baselineRecord
 }
 
@@ -93,23 +108,47 @@ func lookupBaselineOrganizationIssuedVC(address string) *string {
 	key := fmt.Sprintf("baseline.organization.%s.credential", address)
 	secretID, err := redisutil.Get(key)
 	if err != nil {
-		common.Log.Warningf("failed to retrieve cached verifiable credential secret id for baseline organization: %s; %s", key, err.Error())
+		common.Log.Warningf("failed to retrieve cached verifiable credential for baseline organization: %s; %s", key, err.Error())
 		return nil
 	}
 
 	token, err := vendOrganizationAccessToken()
 	if err != nil {
-		common.Log.Warningf("failed to retrieve cached verifiable credential secret id for baseline organization: %s; %s", key, err.Error())
+		common.Log.Warningf("failed to retrieve cached verifiable credential for baseline organization: %s; %s", key, err.Error())
 		return nil
 	}
 
 	resp, err := vault.FetchSecret(*token, common.Vault.ID.String(), *secretID, map[string]interface{}{})
 	if err != nil {
-		common.Log.Warningf("failed to retrieve cached verifiable credential secret for baseline organization: %s; %s", key, err.Error())
+		common.Log.Warningf("failed to retrieve cached verifiable credential for baseline organization: %s; %s", key, err.Error())
 		return nil
 	}
 
 	return resp.Value
+}
+
+func CacheBaselineOrganizationIssuedVC(address, vc string) error {
+	token, err := vendOrganizationAccessToken()
+	if err != nil {
+		common.Log.Warningf("failed to cache verifiable credential for baseline organization: %s; %s", address, err.Error())
+		return err
+	}
+
+	secretName := fmt.Sprintf("verifiable credential for %s", address)
+	resp, err := vault.CreateSecret(*token, common.Vault.ID.String(), vc, secretName, secretName, "verifiable_credential")
+	if err != nil {
+		common.Log.Warningf("failed to cach verifiable credential for baseline organization: %s; %s", address, err.Error())
+		return err
+	}
+
+	key := fmt.Sprintf("baseline.organization.%s.credential", address)
+	err = redisutil.Set(key, resp.ID.String(), nil)
+	if err != nil {
+		common.Log.Warningf("failed to cached verifiable credential for baseline organization: %s; %s", key, err.Error())
+		return err
+	}
+
+	return nil
 }
 
 func lookupBaselineOrganizationMessagingEndpoint(recipient string) *string {
@@ -119,13 +158,56 @@ func lookupBaselineOrganizationMessagingEndpoint(recipient string) *string {
 		return nil
 	}
 
+	if org.URL == nil {
+		token, err := vendOrganizationAccessToken()
+		if err != nil {
+			common.Log.Warningf("failed to retrieve messaging endpoint for baseline organization: %s", recipient)
+			return nil
+		}
+
+		// HACK! this account creation will go away with new nchain...
+		account, _ := nchain.CreateAccount(*token, map[string]interface{}{
+			"network_id": *common.NChainBaselineNetworkID,
+		})
+
+		resp, err := nchain.ExecuteContract(*token, *common.BaselineRegistryContractAddress, map[string]interface{}{
+			"account_id": account.ID.String(),
+			"method":     "getOrg",
+			"params":     []string{recipient},
+			"value":      0,
+		})
+
+		if err != nil {
+			common.Log.Warningf("failed to retrieve messaging endpoint for baseline organization: %s", recipient)
+			return nil
+		}
+
+		if endpoint, endpointOk := resp.Response.([]interface{})[2].(string); endpointOk {
+			endpoint, err := base64.StdEncoding.DecodeString(endpoint)
+			if err != nil {
+				common.Log.Warningf("failed to retrieve messaging endpoint for baseline organization: %s; failed to base64 decode endpoint", recipient)
+				return nil
+			}
+			org := &Participant{
+				Address: common.StringOrNil(recipient),
+				URL:     common.StringOrNil(string(endpoint)),
+			}
+
+			err = org.Cache()
+			if err != nil {
+				common.Log.Warningf("failed to retrieve messaging endpoint for baseline organization: %s; failed to", recipient)
+				return nil
+			}
+		}
+	}
+
 	return org.URL
 }
 
 func (m *ProtocolMessage) baselineInbound() bool {
 	baselineRecord := lookupBaselineRecord(m.BaselineID.String())
 	if baselineRecord == nil {
-		workflow := lookupBaselineWorkflow(*m.Identifier)
+		workflow := LookupBaselineWorkflow(m.Identifier.String())
 		// workflow, err := baselineWorkflowFactory(*m.Payload.Type)
 		if workflow == nil {
 			common.Log.Warningf("failed to retrieve cached baseline workflow: %s", *m.Identifier)
@@ -135,6 +217,7 @@ func (m *ProtocolMessage) baselineInbound() bool {
 		baselineRecord = &BaselineRecord{
 			BaselineID: m.BaselineID,
 			Workflow:   workflow,
+			WorkflowID: m.Identifier,
 		}
 
 		err := baselineRecord.cache()
@@ -219,8 +302,9 @@ func (m *Message) baselineOutbound() bool {
 
 		// map internal record id -> baseline record id
 		baselineRecord = &BaselineRecord{
-			ID:       m.ID,
-			Workflow: workflow,
+			ID:         m.ID,
+			Workflow:   workflow,
+			WorkflowID: workflow.Identifier,
 		}
 
 		err = baselineRecord.cache()
@@ -250,8 +334,8 @@ func (m *Message) baselineOutbound() bool {
 
 	m.ProtocolMessage = &ProtocolMessage{
 		BaselineID: baselineRecord.BaselineID,
-		Opcode:     common.StringOrNil(protocolMessageOpcodeBaseline),
-		Identifier: baselineRecord.Workflow.Identifier,
+		Opcode:     common.StringOrNil(ProtocolMessageOpcodeBaseline),
+		Identifier: baselineRecord.WorkflowID,
 		Payload: &ProtocolMessagePayload{
 			Object: m.Payload.(map[string]interface{}),
 			Type:   m.Type,
@@ -397,7 +481,7 @@ func (m *ProtocolMessage) verify(store bool) error {
 	return nil
 }
 
-func (p *Participant) cache() error {
+func (p *Participant) Cache() error {
 	if p.Address == nil {
 		return errors.New("failed to cache participant with nil address")
 	}

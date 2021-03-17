@@ -17,6 +17,9 @@ import (
 )
 
 var (
+	// BaselineOrganizationAddress is the baseline organization address
+	BaselineOrganizationAddress *string
+
 	// BaselineRegistryContractAddress is a contract address
 	BaselineRegistryContractAddress *string
 
@@ -73,6 +76,11 @@ func requireLogger() {
 }
 
 func requireBaseline() {
+	if os.Getenv("BASELINE_ORGANIZATION_ADDRESS") == "" {
+		panic("BASELINE_ORGANIZATION_ADDRESS not provided")
+	}
+	BaselineOrganizationAddress = common.StringOrNil(os.Getenv("BASELINE_ORGANIZATION_ADDRESS"))
+
 	if os.Getenv("BASELINE_REGISTRY_CONTRACT_ADDRESS") == "" {
 		panic("BASELINE_REGISTRY_CONTRACT_ADDRESS not provided")
 	}
@@ -134,9 +142,9 @@ func requireBaseline() {
 		if err != nil {
 			common.Log.Panicf("failed to initialize registry contract; %s", err.Error())
 		}
-		common.Log.Debugf("resolved baseline organization registry contract: %v", cntrct)
+		common.Log.Debugf("resolved baseline organization registry contract: %s", *cntrct.Address)
 	} else {
-		common.Log.Debugf("resolved baseline organization registry contract: %v", contract)
+		common.Log.Debugf("resolved baseline organization registry contract: %s", *contract.Address)
 	}
 }
 

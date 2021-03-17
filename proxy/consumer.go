@@ -1,7 +1,6 @@
 package proxy
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"os"
 	"sync"
@@ -10,7 +9,7 @@ import (
 	natsutil "github.com/kthomas/go-natsutil"
 	stan "github.com/nats-io/stan.go"
 	"github.com/provideapp/providibright/common"
-	"github.com/provideservices/provide-go/api/nchain"
+	"github.com/provideservices/provide-go/api/privacy"
 )
 
 const natsDispatchInvitationSubject = "providibright.invitation.outbound"
@@ -110,7 +109,7 @@ func consumeBaselineProxySubscriptionsMsg(msg *stan.Msg) {
 	}
 
 	switch *protomsg.Opcode {
-	case protocolMessageOpcodeBaseline:
+	case ProtocolMessageOpcodeBaseline:
 		success := protomsg.baselineInbound()
 		if !success {
 			common.Log.Warningf("failed to baseline inbound protocol message; %s")
@@ -118,11 +117,52 @@ func consumeBaselineProxySubscriptionsMsg(msg *stan.Msg) {
 			return
 		}
 		break
-	case protocolMessageOpcodeJoin:
+	case ProtocolMessageOpcodeJoin:
 		common.Log.Warningf("JOIN opcode not yet implemented")
+		// const payload = JSON.parse(msg.payload.toString());
+		// const messagingEndpoint = await this.resolveMessagingEndpoint(payload.address);
+		// if (!messagingEndpoint || !payload.address || !payload.authorized_bearer_token) {
+		//   return Promise.reject('failed to handle baseline JOIN protocol message');
+		// }
+		// this.workgroupCounterparties.push(payload.address);
+		// this.natsBearerTokens[messagingEndpoint] = payload.authorized_bearer_token;
+
+		// const circuit = JSON.parse(JSON.stringify(this.baselineCircuit));
+		// circuit.proving_scheme = circuit.provingScheme;
+		// circuit.verifier_contract = circuit.verifierContract;
+		// delete circuit.verifierContract;
+		// delete circuit.createdAt;
+		// delete circuit.vaultId;
+		// delete circuit.provingScheme;
+		// delete circuit.provingKeyId;
+		// delete circuit.verifyingKeyId;
+		// delete circuit.status;
+
+		// // sync circuit artifacts
+		// this.sendProtocolMessage(payload.address, Opcode.Sync, {
+		//   type: 'circuit',
+		//   payload: circuit,
+		// });
 		break
-	case protocolMessageOpcodeSync:
-		common.Log.Warningf("SYNC opcode not yet implemented")
+	case ProtocolMessageOpcodeSync:
+		token, err := vendOrganizationAccessToken()
+		if err != nil {
+			common.Log.Warningf("failed to handle inbound sync protocol message; %s", err.Error())
+			natsutil.AttemptNack(msg, natsDispatchProtocolMessageTimeout)
+			return
+		}
+
+		// FIXME -- use switch and attempt nack if invalid sync type...
+		if protomsg.Payload.Type != nil && *protomsg.Payload.Type == "circuit" {
+			circuit, err := privacy.CreateCircuit(*token, protomsg.Payload.Object)
+			if err != nil {
+				common.Log.Warningf("failed to handle inbound sync protocol message; failed to create circuit; %s", err.Error())
+				natsutil.AttemptNack(msg, natsDispatchProtocolMessageTimeout)
+				return
+			}
+			common.Log.Debugf("sync protocol message created circuit: %s", circuit.ID)
+		}
+
 		break
 	default:
 		common.Log.Warningf("inbound protocol message specified invalid opcode; %s", err.Error())
@@ -161,57 +201,14 @@ func consumeDispatchProtocolMessageSubscriptionsMsg(msg *stan.Msg) {
 		return
 	}
 
-	token, err := vendOrganizationAccessToken()
-	if err != nil {
-		common.Log.Warningf("failed to dispatch protocol message for recipient: %s; %s", *protomsg.Recipient, err.Error())
-		natsutil.AttemptNack(msg, natsDispatchProtocolMessageTimeout)
-		return
-	}
-
 	url := lookupBaselineOrganizationMessagingEndpoint(*protomsg.Recipient)
 	if url == nil {
 		common.Log.Warningf("failed to lookup recipient endpoint: %s", *protomsg.Recipient)
-
-		// HACK! this account creation will go away with new nchain...
-		account, _ := nchain.CreateAccount(*token, map[string]interface{}{
-			"network_id": *common.NChainBaselineNetworkID,
-		})
-
-		resp, err := nchain.ExecuteContract(*token, *common.BaselineRegistryContractAddress, map[string]interface{}{
-			"account_id": account.ID.String(),
-			"method":     "getOrg",
-			"params":     []string{*protomsg.Recipient},
-			"value":      0,
-		})
-
-		if err != nil {
-			common.Log.Warningf("failed to dispatch protocol message to recipient: %s; no endpoint resolved", *protomsg.Recipient)
-			natsutil.AttemptNack(msg, natsDispatchProtocolMessageTimeout)
-			return
-		}
-
-		if endpoint, endpointOk := resp.Response.([]interface{})[2].(string); endpointOk {
-			endpoint, err := base64.StdEncoding.DecodeString(endpoint)
-			if err != nil {
-				common.Log.Warningf("failed to dispatch protocol message to recipient: %s; failed to base64 decode endpoint", *protomsg.Recipient)
-				natsutil.AttemptNack(msg, natsDispatchProtocolMessageTimeout)
-				return
-			}
-			org := &Participant{
-				Address: protomsg.Recipient,
-				URL:     common.StringOrNil(string(endpoint)),
-			}
-
-			err = org.cache()
-			if err != nil {
-				common.Log.Warningf("failed to dispatch protocol message to recipient: %s; failed to", *protomsg.Recipient)
-				natsutil.AttemptNack(msg, natsDispatchProtocolMessageTimeout)
-				return
-			}
-		}
+		natsutil.Nack(msg)
+		return
 	}
 
-	jwt := lookupBaselineOrganizationMessagingEndpoint(*protomsg.Recipient)
+	jwt := lookupBaselineOrganizationIssuedVC(*protomsg.Recipient)
 	if jwt == nil {
 		// TODO: request a VC from the counterparty
 

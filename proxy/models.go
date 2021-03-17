@@ -6,16 +6,17 @@ import (
 	privacy "github.com/provideservices/provide-go/api/privacy"
 )
 
-const protocolMessageOpcodeBaseline = "BLINE"
-const protocolMessageOpcodeJoin = "JOIN"
-const protocolMessageOpcodeSync = "SYNC"
+const ProtocolMessageOpcodeBaseline = "BLINE"
+const ProtocolMessageOpcodeJoin = "JOIN"
+const ProtocolMessageOpcodeSync = "SYNC"
 
 // BaselineRecord represents a link between an object in the internal system of record
 // and the external baseline workflow context
 type BaselineRecord struct {
 	BaselineID *uuid.UUID `sql:"-" json:"baseline_id,omitempty"`
 	ID         *string    `sql:"-" json:"id,omitempty"`
-	Workflow   *Workflow  `sql:"-" json:"workflow"`
+	WorkflowID *uuid.UUID `sql:"-" json:"workflow_id"`
+	Workflow   *Workflow  `sql:"-" json:"-"`
 }
 
 // Message is a proxy-internal wrapper for protocol message handling
@@ -46,7 +47,7 @@ type ProtocolMessage struct {
 	Sender     *string                 `sql:"-" json:"sender,omitempty"`
 	Recipient  *string                 `sql:"-" json:"recipient,omitempty"`
 	Shield     *string                 `sql:"-" json:"shield,omitempty"`
-	Identifier *string                 `sql:"-" json:"identifier,omitempty"`
+	Identifier *uuid.UUID              `sql:"-" json:"identifier,omitempty"`
 	Signature  *string                 `sql:"-" json:"signature,omitempty"`
 	Type       *string                 `sql:"-" json:"type,omitempty"`
 	Payload    *ProtocolMessagePayload `sql:"-" json:"payload,omitempty"`
@@ -68,7 +69,7 @@ type Workgroup struct {
 // Workflow is a baseline workflow context
 type Workflow struct {
 	Circuits      []*privacy.Circuit `json:"circuit,omitempty"`
-	Identifier    *string            `sql:"-" json:"identifier,omitempty"`
+	Identifier    *uuid.UUID         `sql:"-" json:"identifier,omitempty"`
 	Participants  []*Participant     `sql:"-" json:"participants"`
 	Shield        *string            `sql:"-" json:"shield,omitempty"`
 	WorkstepIndex uint64             `sql:"-" json:"workstep_index,omitempty"`
