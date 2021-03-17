@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,6 +15,7 @@ import (
 	"github.com/provideapp/providibright/middleware"
 	provide "github.com/provideservices/provide-go/api"
 	"github.com/provideservices/provide-go/api/ident"
+	"github.com/provideservices/provide-go/api/nchain"
 	"github.com/provideservices/provide-go/api/privacy"
 	"github.com/provideservices/provide-go/api/vault"
 )
@@ -150,58 +152,56 @@ func CacheBaselineOrganizationIssuedVC(address, vc string) error {
 }
 
 func lookupBaselineOrganizationMessagingEndpoint(recipient string) *string {
-	return common.StringOrNil("nats://kt.local:4221")
+	org := lookupBaselineOrganization(recipient)
+	if org == nil {
+		common.Log.Warningf("failed to retrieve cached messaging endpoint for baseline organization: %s", recipient)
+		return nil
+	}
 
-	// org := lookupBaselineOrganization(recipient)
-	// if org == nil {
-	// 	common.Log.Warningf("failed to retrieve cached messaging endpoint for baseline organization: %s", recipient)
-	// 	return nil
-	// }
+	if org.URL == nil {
+		token, err := vendOrganizationAccessToken()
+		if err != nil {
+			common.Log.Warningf("failed to retrieve messaging endpoint for baseline organization: %s", recipient)
+			return nil
+		}
 
-	// if org.URL == nil {
-	// 	token, err := vendOrganizationAccessToken()
-	// 	if err != nil {
-	// 		common.Log.Warningf("failed to retrieve messaging endpoint for baseline organization: %s", recipient)
-	// 		return nil
-	// 	}
+		// HACK! this account creation will go away with new nchain...
+		account, _ := nchain.CreateAccount(*token, map[string]interface{}{
+			"network_id": *common.NChainBaselineNetworkID,
+		})
 
-	// 	// HACK! this account creation will go away with new nchain...
-	// 	account, _ := nchain.CreateAccount(*token, map[string]interface{}{
-	// 		"network_id": *common.NChainBaselineNetworkID,
-	// 	})
+		resp, err := nchain.ExecuteContract(*token, *common.BaselineRegistryContractAddress, map[string]interface{}{
+			"account_id": account.ID.String(),
+			"method":     "getOrg",
+			"params":     []string{recipient},
+			"value":      0,
+		})
 
-	// 	resp, err := nchain.ExecuteContract(*token, *common.BaselineRegistryContractAddress, map[string]interface{}{
-	// 		"account_id": account.ID.String(),
-	// 		"method":     "getOrg",
-	// 		"params":     []string{recipient},
-	// 		"value":      0,
-	// 	})
+		if err != nil {
+			common.Log.Warningf("failed to retrieve messaging endpoint for baseline organization: %s", recipient)
+			return nil
+		}
 
-	// 	if err != nil {
-	// 		common.Log.Warningf("failed to retrieve messaging endpoint for baseline organization: %s", recipient)
-	// 		return nil
-	// 	}
+		if endpoint, endpointOk := resp.Response.([]interface{})[2].(string); endpointOk {
+			endpoint, err := base64.StdEncoding.DecodeString(endpoint)
+			if err != nil {
+				common.Log.Warningf("failed to retrieve messaging endpoint for baseline organization: %s; failed to base64 decode endpoint", recipient)
+				return nil
+			}
+			org := &Participant{
+				Address: common.StringOrNil(recipient),
+				URL:     common.StringOrNil(string(endpoint)),
+			}
 
-	// 	if endpoint, endpointOk := resp.Response.([]interface{})[2].(string); endpointOk {
-	// 		endpoint, err := base64.StdEncoding.DecodeString(endpoint)
-	// 		if err != nil {
-	// 			common.Log.Warningf("failed to retrieve messaging endpoint for baseline organization: %s; failed to base64 decode endpoint", recipient)
-	// 			return nil
-	// 		}
-	// 		org := &Participant{
-	// 			Address: common.StringOrNil(recipient),
-	// 			URL:     common.StringOrNil(string(endpoint)),
-	// 		}
+			err = org.Cache()
+			if err != nil {
+				common.Log.Warningf("failed to retrieve messaging endpoint for baseline organization: %s; failed to", recipient)
+				return nil
+			}
+		}
+	}
 
-	// 		err = org.Cache()
-	// 		if err != nil {
-	// 			common.Log.Warningf("failed to retrieve messaging endpoint for baseline organization: %s; failed to", recipient)
-	// 			return nil
-	// 		}
-	// 	}
-	// }
-
-	// return org.URL
+	return org.URL
 }
 
 func (m *ProtocolMessage) baselineInbound() bool {
@@ -233,7 +233,7 @@ func (m *ProtocolMessage) baselineInbound() bool {
 		return false
 	}
 
-	sor := middleware.SORFactoryByType(m.Type, nil) //(common.InternalSOR, nil)
+	sor := middleware.SORFactoryByType(*m.Type, nil) //(common.InternalSOR, nil)
 
 	if baselineRecord.ID == nil {
 		// TODO -- map baseline record id -> internal record id (i.e, this is currently done but lazily on outbound message)
@@ -278,7 +278,7 @@ func (m *Message) baselineOutbound() bool {
 		return false
 	}
 
-	sor := middleware.SORFactoryByType(common.InternalSOR, nil)
+	sor := middleware.SORFactoryByType(*m.Type, nil)
 
 	baselineRecord := lookupBaselineRecordByInternalID(*m.ID)
 	if baselineRecord == nil && m.BaselineID != nil {
