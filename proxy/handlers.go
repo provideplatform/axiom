@@ -40,7 +40,7 @@ func createBusinessObjectHandler(c *gin.Context) {
 	}
 
 	if message.baselineOutbound() {
-		message.ProtocolMessage.Payload = nil
+		message.ProtocolMessage.Payload.Object = nil
 		provide.Render(message.ProtocolMessage, 202, c)
 	} else {
 		obj := map[string]interface{}{}
@@ -79,7 +79,7 @@ func updateBusinessObjectHandler(c *gin.Context) {
 	}
 
 	if message.baselineOutbound() {
-		message.ProtocolMessage.Payload = nil
+		message.ProtocolMessage.Payload.Object = nil
 		provide.Render(message.ProtocolMessage, 202, c)
 	} else {
 		obj := map[string]interface{}{}
