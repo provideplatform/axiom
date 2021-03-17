@@ -85,8 +85,10 @@ func (s *ServiceNowService) CreateBusinessObject(params map[string]interface{}) 
 	}
 
 	_params := params
-	if replicate, replicateOk := params["replicate"].(map[string]interface{}); replicateOk {
-		_params = replicate
+	if payload, payloadOk := params["payload"].(map[string]interface{}); payloadOk {
+		if replicate, replicateOk := payload["replicate"].(map[string]interface{}); replicateOk {
+			_params = replicate
+		}
 	}
 
 	status, resp, err := s.Post("incident", _params)
@@ -107,8 +109,10 @@ func (s *ServiceNowService) UpdateBusinessObject(id string, params map[string]in
 	defer s.mutex.Unlock()
 
 	_params := params
-	if replicate, replicateOk := params["replicate"].(map[string]interface{}); replicateOk {
-		_params = replicate
+	if payload, payloadOk := params["payload"].(map[string]interface{}); payloadOk {
+		if replicate, replicateOk := payload["replicate"].(map[string]interface{}); replicateOk {
+			_params = replicate
+		}
 	}
 
 	uri := fmt.Sprintf("incident/%s", id)
