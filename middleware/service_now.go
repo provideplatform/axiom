@@ -84,7 +84,12 @@ func (s *ServiceNowService) CreateBusinessObject(params map[string]interface{}) 
 		return nil, err
 	}
 
-	status, resp, err := s.Post("incident", params)
+	_params := params
+	if replicate, replicateOk := params["replicate"].(map[string]interface{}); replicateOk {
+		_params = replicate
+	}
+
+	status, resp, err := s.Post("incident", _params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create business object; status: %v; %s", status, err.Error())
 	}
@@ -101,8 +106,13 @@ func (s *ServiceNowService) UpdateBusinessObject(id string, params map[string]in
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
+	_params := params
+	if replicate, replicateOk := params["replicate"].(map[string]interface{}); replicateOk {
+		_params = replicate
+	}
+
 	uri := fmt.Sprintf("incident/%s", id)
-	status, _, err := s.Patch(uri, params)
+	status, _, err := s.Patch(uri, _params)
 	if err != nil {
 		return fmt.Errorf("failed to update business object; status: %v; %s", status, err.Error())
 	}

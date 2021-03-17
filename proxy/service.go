@@ -349,7 +349,6 @@ func (m *Message) baselineOutbound() bool {
 			payload, _ := json.Marshal(msg)
 			natsutil.NatsStreamingPublish(natsDispatchProtocolMessageSubject, payload)
 		}
-
 	}
 
 	rawPayload, _ := json.Marshal(m.Payload)

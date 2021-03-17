@@ -239,6 +239,7 @@ func consumeDispatchProtocolMessageSubscriptionsMsg(msg *stan.Msg) {
 	// }
 
 	jwt, _ := vendOrganizationAccessToken()
+	time.Sleep(time.Second * 1)
 
 	conn, err := natsutil.GetNatsConnection(*url, time.Second*10, jwt)
 	if err != nil {
