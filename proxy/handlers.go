@@ -53,6 +53,9 @@ func updateBusinessObjectHandler(c *gin.Context) {
 	if organizationID == nil {
 		provide.RenderError("unauthorized", 401, c)
 		return
+	} else if common.OrganizationID != nil && organizationID.String() != *common.OrganizationID {
+		provide.RenderError("forbidden", 403, c)
+		return
 	}
 
 	buf, err := c.GetRawData()
