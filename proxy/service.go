@@ -214,7 +214,7 @@ func (m *ProtocolMessage) baselineInbound() bool {
 		if workflow == nil {
 			common.Log.Debugf("initializing baseline workflow: %s", *m.Identifier)
 
-			workflow, err = baselineWorkflowFactory(*m.Payload.Type)
+			workflow, err = baselineWorkflowFactory(*m.Payload.Type, common.StringOrNil(m.Identifier.String()))
 			if err != nil {
 				common.Log.Warningf("failed to initialize baseline workflow: %s", *m.Identifier)
 				return false
@@ -294,7 +294,7 @@ func (m *Message) baselineOutbound() bool {
 	}
 
 	if baselineRecord == nil {
-		workflow, err := baselineWorkflowFactory(*m.Type)
+		workflow, err := baselineWorkflowFactory(*m.Type, nil)
 		if err != nil {
 			common.Log.Warning(err.Error())
 			m.Errors = append(m.Errors, &provide.Error{
