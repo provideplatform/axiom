@@ -9,7 +9,6 @@ import (
 
 	logger "github.com/kthomas/go-logger"
 	"github.com/provideapp/ident/common"
-	"github.com/provideapp/providibright/proxy"
 	"github.com/provideservices/provide-go/api"
 	"github.com/provideservices/provide-go/api/ident"
 	"github.com/provideservices/provide-go/api/nchain"
@@ -31,7 +30,7 @@ var (
 	ConsumeNATSStreamingSubscriptions bool
 
 	// DefaultCounterparties are the default counterparties
-	DefaultCounterparties []*proxy.Participant
+	DefaultCounterparties []map[string]string
 
 	// Log is the configured logger
 	Log *logger.Logger
@@ -39,7 +38,7 @@ var (
 	// InternalSOR is the internal system of record
 	InternalSOR map[string]interface{}
 
-	// NChain baseline network id
+	// NChainBaselineNetworkID baseline network id
 	NChainBaselineNetworkID *string
 
 	// OrganizationID is the id of the org
@@ -206,16 +205,9 @@ func requireVault() {
 }
 
 func requireCounterparties() {
-	DefaultCounterparties = make([]*proxy.Participant, 0)
-	DefaultCounterparties = append(DefaultCounterparties, &proxy.Participant{
-		Address: StringOrNil("0x3E8E1a128190f9628f918Ef407389e656daB5530"),
-		URL:     StringOrNil("nats://kt.local:4221"),
+	DefaultCounterparties = make([]map[string]string, 0)
+	DefaultCounterparties = append(DefaultCounterparties, map[string]string{
+		"address": "0x3E8E1a128190f9628f918Ef407389e656daB5530",
+		"url":     "nats://kt.local:4221",
 	})
-
-	for _, party := range DefaultCounterparties {
-		err := party.Cache()
-		if err != nil {
-			panic("failed to cache counterparties")
-		}
-	}
 }

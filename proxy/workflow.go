@@ -12,6 +12,20 @@ import (
 	privacy "github.com/provideservices/provide-go/api/privacy"
 )
 
+func init() {
+	for _, party := range common.DefaultCounterparties {
+		participant := &Participant{
+			Address: common.StringOrNil(party["address"]),
+			URL:     common.StringOrNil(party["url"]),
+		}
+		err := participant.Cache()
+		if err != nil {
+			panic("failed to cache counterparties")
+		}
+	}
+}
+
+// Cache a workflow instance
 func (w *Workflow) Cache() error {
 	if w.Identifier == nil {
 		return errors.New("failed to cache workflow with nil identifier")
@@ -33,8 +47,11 @@ func baselineWorkflowFactory(objectType string) (*Workflow, error) {
 		Shield:       nil,
 	}
 
-	for _, participant := range common.DefaultCounterparties {
-		workflow.Participants = append(workflow.Participants, participant)
+	for _, party := range common.DefaultCounterparties {
+		workflow.Participants = append(workflow.Participants, &Participant{
+			Address: common.StringOrNil(party["address"]),
+			URL:     common.StringOrNil(party["url"]),
+		})
 	}
 
 	token, err := vendOrganizationAccessToken()
@@ -81,7 +98,7 @@ func baselineWorkflowFactory(objectType string) (*Workflow, error) {
 		break
 
 	case baselineWorkflowTypeServiceNowIncident:
-		circuit, err := privacy.CreateCircuit(*token, circuitParamsFactory("PO", "purchase_order", nil))
+		circuit, err := privacy.CreateCircuit(*token, circuitParamsFactory("Incident", "purchase_order", nil))
 		if err != nil {
 			common.Log.Debugf("failed to deploy circuit; %s", err.Error())
 			return nil, err
