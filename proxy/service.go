@@ -256,10 +256,18 @@ func (m *ProtocolMessage) baselineInbound() bool {
 		}
 		common.Log.Debugf("received response from internal system of record; %s", resp)
 
+		const resultField = "result"
 		const idField = "sys_id"
 		if id, idOk := resp.(map[string]interface{})[idField].(string); idOk {
 			baselineRecord.ID = common.StringOrNil(id)
 			baselineRecord.cache()
+		} else {
+			if result, resultOk := resp.(map[string]interface{})[resultField].(map[string]interface{}); resultOk {
+				if id, idOk := result[idField].(string); idOk {
+					baselineRecord.ID = common.StringOrNil(id)
+					baselineRecord.cache()
+				}
+			}
 		}
 	} else {
 		err := sor.UpdateBusinessObject(*baselineRecord.ID, m.Payload.Object)
