@@ -13,16 +13,20 @@ import (
 )
 
 func init() {
-	for _, party := range common.DefaultCounterparties {
-		participant := &Participant{
-			Address: common.StringOrNil(party["address"]),
-			URL:     common.StringOrNil(party["url"]),
+	go func() { // HACK! wait for redlock...
+		time.Sleep(time.Second * 3)
+		for _, party := range common.DefaultCounterparties {
+			participant := &Participant{
+				Address: common.StringOrNil(party["address"]),
+				URL:     common.StringOrNil(party["url"]),
+			}
+			err := participant.Cache()
+			if err != nil {
+				common.Log.Panicf("failed to cache counterparties; %s", err.Error())
+			}
+			common.Log.Debugf("cached baseline counterparty: %s", *participant.Address)
 		}
-		err := participant.Cache()
-		if err != nil {
-			panic("failed to cache counterparties")
-		}
-	}
+	}()
 }
 
 // Cache a workflow instance
