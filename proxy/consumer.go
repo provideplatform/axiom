@@ -2,11 +2,11 @@ package proxy
 
 import (
 	"encoding/json"
-	"os"
 	"sync"
 	"time"
 
 	natsutil "github.com/kthomas/go-natsutil"
+	"github.com/nats-io/nats.go"
 	stan "github.com/nats-io/stan.go"
 	"github.com/provideapp/providibright/common"
 	"github.com/provideservices/provide-go/api/privacy"
@@ -35,7 +35,6 @@ func init() {
 
 	var waitGroup sync.WaitGroup
 
-	// requireExternalNats(&waitGroup)
 	natsutil.EstablishSharedNatsStreamingConnection(nil)
 
 	createNatsBaselineProxySubscriptions(&waitGroup)
@@ -43,24 +42,20 @@ func init() {
 	createNatsDispatchProtocolMessageSubscriptions(&waitGroup)
 }
 
-func requireExternalNats(wg *sync.WaitGroup) {
-	if os.Getenv("BASELINE_NATS_URL") == "" {
-		panic("BASELINE_NATS_URL not provided")
-	}
-}
-
 func createNatsBaselineProxySubscriptions(wg *sync.WaitGroup) {
-	for i := uint64(0); i < natsutil.GetNatsConsumerConcurrency(); i++ {
-		natsutil.RequireNatsStreamingSubscription(wg,
-			baselineProxyAckWait,
-			natsBaselineProxySubject,
-			natsBaselineProxySubject,
-			consumeBaselineProxySubscriptionsMsg,
-			baselineProxyAckWait,
-			natsBaselineProxyMaxInFlight,
-			nil,
-		)
-	}
+	conn, _ := natsutil.GetSharedNatsConnection(nil)
+	conn.Subscribe(natsBaselineProxySubject, consumeBaselineProxySubscriptionsMsg)
+	// for i := uint64(0); i < natsutil.GetNatsConsumerConcurrency(); i++ {
+	// 	natsutil.RequireNatsStreamingSubscription(wg,
+	// 		baselineProxyAckWait,
+	// 		natsBaselineProxySubject,
+	// 		natsBaselineProxySubject,
+	// 		consumeBaselineProxySubscriptionsMsg,
+	// 		baselineProxyAckWait,
+	// 		natsBaselineProxyMaxInFlight,
+	// 		nil,
+	// 	)
+	// }
 }
 
 func createNatsDispatchInvitationSubscriptions(wg *sync.WaitGroup) {
@@ -91,20 +86,20 @@ func createNatsDispatchProtocolMessageSubscriptions(wg *sync.WaitGroup) {
 	}
 }
 
-func consumeBaselineProxySubscriptionsMsg(msg *stan.Msg) {
-	common.Log.Debugf("consuming %d-byte NATS inbound protocol message on subject: %s", msg.Size(), msg.Subject)
+func consumeBaselineProxySubscriptionsMsg(msg *nats.Msg) {
+	common.Log.Debugf("consuming %d-byte NATS inbound protocol message on subject: %s", len(msg.Data), msg.Subject)
 
 	protomsg := &ProtocolMessage{}
 	err := json.Unmarshal(msg.Data, &protomsg)
 	if err != nil {
 		common.Log.Warningf("failed to umarshal inbound protocol message; %s", err.Error())
-		natsutil.Nack(msg)
+		// natsutil.Nack(msg)
 		return
 	}
 
 	if protomsg.Opcode == nil {
 		common.Log.Warningf("inbound protocol message specified invalid opcode; %s", err.Error())
-		natsutil.Nack(msg)
+		// natsutil.Nack(msg)
 		return
 	}
 
@@ -113,7 +108,7 @@ func consumeBaselineProxySubscriptionsMsg(msg *stan.Msg) {
 		success := protomsg.baselineInbound()
 		if !success {
 			common.Log.Warningf("failed to baseline inbound protocol message; %s")
-			natsutil.AttemptNack(msg, natsBaselineProxyTimeout)
+			// natsutil.AttemptNack(msg, natsBaselineProxyTimeout)
 			return
 		}
 		break
@@ -148,7 +143,7 @@ func consumeBaselineProxySubscriptionsMsg(msg *stan.Msg) {
 		token, err := vendOrganizationAccessToken()
 		if err != nil {
 			common.Log.Warningf("failed to handle inbound sync protocol message; %s", err.Error())
-			natsutil.AttemptNack(msg, natsDispatchProtocolMessageTimeout)
+			// natsutil.AttemptNack(msg, natsDispatchProtocolMessageTimeout)
 			return
 		}
 
@@ -157,7 +152,7 @@ func consumeBaselineProxySubscriptionsMsg(msg *stan.Msg) {
 			circuit, err := privacy.CreateCircuit(*token, protomsg.Payload.Object)
 			if err != nil {
 				common.Log.Warningf("failed to handle inbound sync protocol message; failed to create circuit; %s", err.Error())
-				natsutil.AttemptNack(msg, natsDispatchProtocolMessageTimeout)
+				// natsutil.AttemptNack(msg, natsDispatchProtocolMessageTimeout)
 				return
 			}
 			common.Log.Debugf("sync protocol message created circuit: %s", circuit.ID)
@@ -166,11 +161,11 @@ func consumeBaselineProxySubscriptionsMsg(msg *stan.Msg) {
 		break
 	default:
 		common.Log.Warningf("inbound protocol message specified invalid opcode; %s", err.Error())
-		natsutil.Nack(msg)
+		// natsutil.Nack(msg)
 		return
 	}
 
-	msg.Ack()
+	// msg.Ack()
 }
 
 func consumeDispatchInvitationSubscriptionsMsg(msg *stan.Msg) {
@@ -208,14 +203,17 @@ func consumeDispatchProtocolMessageSubscriptionsMsg(msg *stan.Msg) {
 		return
 	}
 
-	jwt := lookupBaselineOrganizationIssuedVC(*protomsg.Recipient)
-	if jwt == nil {
-		// TODO: request a VC from the counterparty
+	// FIXME!!!!
+	// jwt := lookupBaselineOrganizationIssuedVC(*protomsg.Recipient)
+	// if jwt == nil {
+	// 	// TODO: request a VC from the counterparty
 
-		common.Log.Warningf("failed to dispatch protocol message to recipient: %s; no bearer token resolved", *protomsg.Recipient)
-		natsutil.AttemptNack(msg, natsDispatchProtocolMessageTimeout)
-		return
-	}
+	// 	common.Log.Warningf("failed to dispatch protocol message to recipient: %s; no bearer token resolved", *protomsg.Recipient)
+	// 	natsutil.AttemptNack(msg, natsDispatchProtocolMessageTimeout)
+	// 	return
+	// }
+
+	jwt, _ := vendOrganizationAccessToken()
 
 	conn, err := natsutil.GetNatsConnection(*url, time.Second*10, jwt)
 	if err != nil {
