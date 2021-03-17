@@ -33,10 +33,9 @@ func baselineWorkflowFactory(objectType string) (*Workflow, error) {
 		Shield:       nil,
 	}
 
-	workflow.Participants = append(workflow.Participants, &Participant{
-		Address: common.StringOrNil("0x3E8E1a128190f9628f918Ef407389e656daB5530"),
-		URL:     common.StringOrNil("nats://kt.local:4222"),
-	})
+	for _, participant := range common.DefaultCounterparties {
+		workflow.Participants = append(workflow.Participants, participant)
+	}
 
 	token, err := vendOrganizationAccessToken()
 	if err != nil {

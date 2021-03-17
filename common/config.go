@@ -9,6 +9,7 @@ import (
 
 	logger "github.com/kthomas/go-logger"
 	"github.com/provideapp/ident/common"
+	"github.com/provideapp/providibright/proxy"
 	"github.com/provideservices/provide-go/api"
 	"github.com/provideservices/provide-go/api/ident"
 	"github.com/provideservices/provide-go/api/nchain"
@@ -28,6 +29,9 @@ var (
 
 	// ConsumeNATSStreamingSubscriptions is a flag the indicates if the ident instance is running in API or consumer mode
 	ConsumeNATSStreamingSubscriptions bool
+
+	// DefaultCounterparties are the default counterparties
+	DefaultCounterparties []*proxy.Participant
 
 	// Log is the configured logger
 	Log *logger.Logger
@@ -56,6 +60,8 @@ func init() {
 	requireVault()
 
 	requireBaseline()
+
+	requireCounterparties()
 
 	ConsumeNATSStreamingSubscriptions = strings.ToLower(os.Getenv("CONSUME_NATS_STREAMING_SUBSCRIPTIONS")) == "true"
 }
@@ -196,5 +202,20 @@ func requireVault() {
 			Log.Panicf("failed to create default vaults for proxy instance; %s", err.Error())
 		}
 		Log.Debugf("created default vault instance for proxy: %s", Vault.ID.String())
+	}
+}
+
+func requireCounterparties() {
+	DefaultCounterparties = make([]*proxy.Participant, 0)
+	DefaultCounterparties = append(DefaultCounterparties, &proxy.Participant{
+		Address: StringOrNil("0x3E8E1a128190f9628f918Ef407389e656daB5530"),
+		URL:     StringOrNil("nats://kt.local:4221"),
+	})
+
+	for _, party := range DefaultCounterparties {
+		err := party.Cache()
+		if err != nil {
+			panic("failed to cache counterparties")
+		}
 	}
 }
