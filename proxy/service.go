@@ -233,7 +233,7 @@ func (m *ProtocolMessage) baselineInbound() bool {
 		return false
 	}
 
-	sor := middleware.SORFactory(common.InternalSOR, nil)
+	sor := middleware.SORFactoryByType(m.Type, nil) //(common.InternalSOR, nil)
 
 	if baselineRecord.ID == nil {
 		// TODO -- map baseline record id -> internal record id (i.e, this is currently done but lazily on outbound message)
@@ -278,7 +278,7 @@ func (m *Message) baselineOutbound() bool {
 		return false
 	}
 
-	sor := middleware.SORFactory(common.InternalSOR, nil)
+	sor := middleware.SORFactoryByType(common.InternalSOR, nil)
 
 	baselineRecord := lookupBaselineRecordByInternalID(*m.ID)
 	if baselineRecord == nil && m.BaselineID != nil {

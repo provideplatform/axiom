@@ -1,9 +1,13 @@
 package middleware
 
+import "github.com/provideapp/providibright/common"
+
 const sorIdentifierDynamics365 = "dynamics365"
 const sorIdentifierExcel = "excel"
 const sorIdentifierSAP = "sap"
 const sorIdentifierServiceNow = "servicenow"
+
+const sorTypeServiceNowIncident = "servicenow_incident"
 
 const SORBusinessObjectStatusError = "error"
 const SORBusinessObjectStatusSuccess = "success"
@@ -33,4 +37,16 @@ func SORFactory(params map[string]interface{}, token *string) SOR {
 	}
 
 	return nil
+}
+
+// SORFactoryByType initializes and returns a system of record interface impl for the given type
+func SORFactoryByType(recordType string, token *string) SOR {
+	switch recordType {
+	case sorTypeServiceNowIncident:
+		return InitServiceNowService(token)
+	default:
+		break
+	}
+
+	return SORFactory(common.InternalSOR, token)
 }
