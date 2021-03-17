@@ -131,6 +131,7 @@ func baselineWorkflowFactory(objectType string, identifier *string) (*Workflow, 
 				}
 				if circuit.Status != nil && *circuit.Status == "provisioned" {
 					common.Log.Debugf("provisioned initial workflow circuit: %s", circuit.ID)
+					workflow.Circuits[0] = circuit
 					break
 				}
 
