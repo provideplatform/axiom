@@ -15,6 +15,7 @@ const ProtocolMessageOpcodeSync = "SYNC"
 type BaselineRecord struct {
 	BaselineID *uuid.UUID `sql:"-" json:"baseline_id,omitempty"`
 	ID         *string    `sql:"-" json:"id,omitempty"`
+	Type       *string    `sql:"-" json:"type,omitempty"`
 	WorkflowID *uuid.UUID `sql:"-" json:"workflow_id"`
 	Workflow   *Workflow  `sql:"-" json:"-"`
 }

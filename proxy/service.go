@@ -223,6 +223,7 @@ func (m *ProtocolMessage) baselineInbound() bool {
 
 		baselineRecord = &BaselineRecord{
 			BaselineID: m.BaselineID,
+			Type:       m.Type,
 			Workflow:   workflow,
 			WorkflowID: m.Identifier,
 		}
@@ -310,6 +311,7 @@ func (m *Message) baselineOutbound() bool {
 		// map internal record id -> baseline record id
 		baselineRecord = &BaselineRecord{
 			ID:         m.ID,
+			Type:       m.Type,
 			Workflow:   workflow,
 			WorkflowID: workflow.Identifier,
 		}
@@ -352,6 +354,7 @@ func (m *Message) baselineOutbound() bool {
 			},
 		},
 		Shield: baselineRecord.Workflow.Shield,
+		Type:   m.Type,
 	}
 
 	err := m.prove()
