@@ -151,7 +151,7 @@ func (s *SAPService) CreateBusinessObject(params map[string]interface{}) (interf
 		return nil, err
 	}
 
-	status, resp, err := s.Post("ubc/business_objects", map[string]interface{}{})
+	status, resp, err := s.Post("ubc/business_objects", params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create business object; status: %v; %s", status, err.Error())
 	}
