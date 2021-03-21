@@ -54,10 +54,10 @@ var (
 func init() {
 	requireLogger()
 
-	requireInternalSOR()
 	requireOrganization()
 	requireVault()
 
+	requireInternalSOR()
 	requireBaseline()
 
 	requireCounterparties()

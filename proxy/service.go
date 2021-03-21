@@ -350,7 +350,7 @@ func (m *Message) baselineOutbound() bool {
 				Identifier: baselineRecord.WorkflowID,
 				Payload: &ProtocolMessagePayload{
 					Object: map[string]interface{}{
-						"circuits":   workflow.Circuits,
+						"circuits":   workflow.Circuits[0:1],
 						"identifier": workflow.Identifier,
 						"shield":     workflow.Shield,
 					},

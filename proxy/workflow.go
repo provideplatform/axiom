@@ -122,20 +122,24 @@ func baselineWorkflowFactory(objectType string, identifier *string) (*Workflow, 
 			return nil, fmt.Errorf("failed to create workflow for type: %s", objectType)
 		}
 
-		for {
+		provisioned := false
+		for !provisioned {
 			if len(workflow.Circuits) > 0 {
-				circuit, err := privacy.GetCircuitDetails(*token, workflow.Circuits[0].ID.String())
-				if err != nil {
-					common.Log.Debugf("failed to fetch circuit details; %s", err.Error())
-					break
-				}
-				if circuit.Status != nil && *circuit.Status == "provisioned" {
-					common.Log.Debugf("provisioned initial workflow circuit: %s", circuit.ID)
-					workflow.Circuits[0] = circuit
-					break
+				for i, _circuit := range workflow.Circuits {
+					circuit, err := privacy.GetCircuitDetails(*token, _circuit.ID.String())
+					if err != nil {
+						common.Log.Debugf("failed to fetch circuit details; %s", err.Error())
+						break
+					}
+					if circuit.Status != nil && *circuit.Status == "provisioned" {
+						common.Log.Debugf("provisioned workflow circuit: %s", circuit.ID)
+						workflow.Circuits[i] = circuit
+						provisioned = i == len(workflow.Circuits)-1
+					}
 				}
 
-				time.Sleep(time.Millisecond * 250)
+				// HACK
+				time.Sleep(time.Millisecond * 500)
 			} else {
 				break
 			}

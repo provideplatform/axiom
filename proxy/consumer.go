@@ -228,18 +228,14 @@ func consumeDispatchProtocolMessageSubscriptionsMsg(msg *stan.Msg) {
 		return
 	}
 
-	// FIXME!!!!
-	// jwt := lookupBaselineOrganizationIssuedVC(*protomsg.Recipient)
-	// if jwt == nil {
-	// 	// TODO: request a VC from the counterparty
+	jwt := lookupBaselineOrganizationIssuedVC(*protomsg.Recipient)
+	if jwt == nil {
+		// TODO: request a VC from the counterparty
 
-	// 	common.Log.Warningf("failed to dispatch protocol message to recipient: %s; no bearer token resolved", *protomsg.Recipient)
-	// 	natsutil.AttemptNack(msg, natsDispatchProtocolMessageTimeout)
-	// 	return
-	// }
-
-	jwt, _ := vendOrganizationAccessToken()
-	time.Sleep(time.Second * 1)
+		common.Log.Warningf("failed to dispatch protocol message to recipient: %s; no bearer token resolved", *protomsg.Recipient)
+		natsutil.AttemptNack(msg, natsDispatchProtocolMessageTimeout)
+		return
+	}
 
 	conn, err := natsutil.GetNatsConnection(*url, time.Second*10, jwt)
 	if err != nil {
