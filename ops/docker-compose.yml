@@ -321,7 +321,6 @@ services:
 
   prvd-privacy:
     image: provide/privacy
-    container_name: prvd-privacy
     depends_on:
       - prvd-nats-streaming
       - prvd-postgres
@@ -362,7 +361,6 @@ services:
   prvd-privacy-consumer:
     image: provide/privacy
     entrypoint: ./ops/run_consumer.sh
-    container_name: prvd-privacy-consumer
     depends_on:
       - prvd-nats-streaming
       - prvd-postgres
