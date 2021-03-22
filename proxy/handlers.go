@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/gin-gonic/gin"
-	"github.com/provideapp/providibright/common"
+	"github.com/provideapp/baseline-proxy/common"
 	provide "github.com/provideservices/provide-go/common"
 	"github.com/provideservices/provide-go/common/util"
 )

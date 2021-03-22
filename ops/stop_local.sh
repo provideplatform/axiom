@@ -1,4 +1,4 @@
 #!/bin/bash
 
-pkill providibright_api || true
-pkill providibright_consumer || true
+pkill baselineproxy_api || true
+pkill baselineproxy_consumer || true

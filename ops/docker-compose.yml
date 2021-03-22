@@ -397,7 +397,7 @@ services:
       - prvd
     restart: always
 
-  providibright-proxy:
+  baseline-proxy:
     build: ../
     entrypoint: ./ops/run_api.sh
     depends_on:
@@ -409,13 +409,13 @@ services:
       - BASELINE_ORGANIZATION_ADDRESS=0x
       - BASELINE_REGISTRY_CONTRACT_ADDRESS=0xfae7Cd9c0D9827E40224CbF9C2F11c9135f9B2B7
       - DATABASE_HOST=prvd-postgres
-      - DATABASE_NAME=providibright_dev
-      - DATABASE_USER=providibright
-      - DATABASE_PASSWORD=providibright
+      - DATABASE_NAME=baselineproxy_dev
+      - DATABASE_USER=baseline-proxy
+      - DATABASE_PASSWORD=baseline-proxy
       - IDENT_API_HOST=prvd-ident:8080
       - IDENT_API_SCHEME=http
       - LOG_LEVEL=DEBUG
-      - NATS_CLIENT_PREFIX=providibright
+      - NATS_CLIENT_PREFIX=baseline-proxy
       - NATS_URL=nats://prvd-nats:4222
       - NATS_STREAMING_URL=nats://prvd-nats-streaming:4222
       - NCHAIN_API_HOST=prvd-nchain:8080
@@ -438,19 +438,19 @@ services:
       - VAULT_SEAL_UNSEAL_KEY=forest step weird object extend boat ball unit canoe pull render monkey drink monitor behind supply brush frown alone rural minute level host clock
       - REDIS_HOSTS=prvd-redis:6379
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://prvd-providibright:8080/status"]
+      test: ["CMD", "curl", "-f", "http://prvd-baseline-proxy:8080/status"]
       interval: 1m
       timeout: 1s
       retries: 2
       start_period: 10s
-    hostname: prvd-providibright
+    hostname: prvd-baseline-proxy
     networks:
       - prvd
     ports:
       - 8084:8080
     restart: always
 
-  providibright-proxy-consumer:
+  baseline-proxy-consumer:
     build: ../
     entrypoint: ./ops/run_consumer.sh
     depends_on:
@@ -461,13 +461,13 @@ services:
       - BASELINE_ORGANIZATION_ADDRESS=0x
       - BASELINE_REGISTRY_CONTRACT_ADDRESS=0xfae7Cd9c0D9827E40224CbF9C2F11c9135f9B2B7
       - DATABASE_HOST=prvd-postgres
-      - DATABASE_NAME=providibright_dev
-      - DATABASE_USER=providibright
-      - DATABASE_PASSWORD=providibright
+      - DATABASE_NAME=baselineproxy_dev
+      - DATABASE_USER=baseline-proxy
+      - DATABASE_PASSWORD=baseline-proxy
       - IDENT_API_HOST=prvd-ident:8080
       - IDENT_API_SCHEME=http
       - LOG_LEVEL=DEBUG
-      - NATS_CLIENT_PREFIX=providibright
+      - NATS_CLIENT_PREFIX=baseline-proxy
       - NATS_URL=nats://prvd-nats:4222
       - NATS_STREAMING_URL=nats://prvd-nats-streaming:4222
       - NCHAIN_API_HOST=prvd-nchain:8080
@@ -490,12 +490,12 @@ services:
       - VAULT_SEAL_UNSEAL_KEY=forest step weird object extend boat ball unit canoe pull render monkey drink monitor behind supply brush frown alone rural minute level host clock
       - REDIS_HOSTS=prvd-redis:6379
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://prvd-providibright:8080/status"]
+      test: ["CMD", "curl", "-f", "http://prvd-baseline-proxy:8080/status"]
       interval: 1m
       timeout: 1s
       retries: 2
       start_period: 10s
-    hostname: prvd-providibright-consumer
+    hostname: prvd-baseline-proxy-consumer
     networks:
       - prvd
     restart: always

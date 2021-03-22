@@ -30,11 +30,11 @@ if [[ -z "${DATABASE_HOST}" ]]; then
 fi
 
 if [[ -z "${DATABASE_NAME}" ]]; then
-  DATABASE_NAME=providibright_dev
+  DATABASE_NAME=baselineproxy_dev
 fi
 
 if [[ -z "${DATABASE_USER}" ]]; then
-  DATABASE_USER=providibright
+  DATABASE_USER=baseline-proxy
 fi
 
 if [[ -z "${DATABASE_PASSWORD}" ]]; then
@@ -125,4 +125,4 @@ REDIS_HOSTS=$REDIS_HOSTS \
 REDIS_DB_INDEX=$REDIS_DB_INDEX \
 REDIS_LOG_LEVEL=$REDIS_LOG_LEVEL \
 REQUIRE_TLS=$REQUIRE_TLS \
-./.bin/providibright_api
+./.bin/baselineproxy_api

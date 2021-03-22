@@ -1,4 +1,4 @@
-module github.com/provideapp/providibright
+module github.com/provideapp/baseline-proxy
 
 go 1.15
 
@@ -10,6 +10,7 @@ require (
 	github.com/kthomas/go-natsutil v0.0.0-20200602073459-388e1f070b05
 	github.com/kthomas/go-redisutil v0.0.0-20200602073431-aa49de17e9ff
 	github.com/kthomas/go.uuid v1.2.1-0.20190324131420-28d1fa77e9a4
+	github.com/nats-io/nats.go v1.10.0
 	github.com/nats-io/stan.go v0.8.3
 	github.com/onsi/ginkgo v1.15.1
 	github.com/onsi/gomega v1.11.0

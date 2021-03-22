@@ -1,6 +1,6 @@
 #!/bin/bash
 
-docker-compose -f ./ops/docker-compose-integration.yml build --no-cache providibright
+docker-compose -f ./ops/docker-compose-integration.yml build --no-cache baseline-proxy
 docker-compose -f ./ops/docker-compose-integration.yml up -d
 TAGS=integration ./ops/run_local_tests_long.sh
 docker-compose -f ./ops/docker-compose.yml logs

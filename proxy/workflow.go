@@ -8,7 +8,7 @@ import (
 
 	"github.com/kthomas/go-redisutil"
 	uuid "github.com/kthomas/go.uuid"
-	"github.com/provideapp/providibright/common"
+	"github.com/provideapp/baseline-proxy/common"
 	privacy "github.com/provideservices/provide-go/api/privacy"
 )
 

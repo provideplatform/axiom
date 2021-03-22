@@ -2,14 +2,14 @@
 
 clean:
 	rm -rf ./.bin 2>/dev/null || true
-	rm ./providibright 2>/dev/null || true
+	rm ./baseline-proxy 2>/dev/null || true
 	go fix ./...
 	go clean -i ./...
 
 build: clean mod
 	go fmt ./...
-	go build -v -o ./.bin/providibright_api ./cmd/api
-	go build -v -o ./.bin/providibright_consumer ./cmd/consumer
+	go build -v -o ./.bin/baselineproxy_api ./cmd/api
+	go build -v -o ./.bin/baselineproxy_consumer ./cmd/consumer
 
 ecs_deploy:
 	./ops/ecs_deploy.sh

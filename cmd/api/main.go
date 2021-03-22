@@ -12,10 +12,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/kthomas/go-redisutil"
 
+	"github.com/provideapp/baseline-proxy/common"
+	"github.com/provideapp/baseline-proxy/proxy"
 	identcommon "github.com/provideapp/ident/common"
 	"github.com/provideapp/ident/token"
-	"github.com/provideapp/providibright/common"
-	"github.com/provideapp/providibright/proxy"
 
 	provide "github.com/provideservices/provide-go/common"
 	util "github.com/provideservices/provide-go/common/util"
@@ -47,7 +47,7 @@ func init() {
 }
 
 func main() {
-	common.Log.Debugf("starting providibright API...")
+	common.Log.Debugf("starting baseline-proxy API...")
 	installSignalHandlers()
 
 	runAPI()
@@ -70,12 +70,12 @@ func main() {
 		}
 	}
 
-	common.Log.Debug("exiting providibright API")
+	common.Log.Debug("exiting baseline-proxy API")
 	cancelF()
 }
 
 func installSignalHandlers() {
-	common.Log.Debug("installing signal handlers for providibright API")
+	common.Log.Debug("installing signal handlers for baseline-proxy API")
 	sigs = make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL)
 	shutdownCtx, cancelF = context.WithCancel(context.Background())
@@ -83,7 +83,7 @@ func installSignalHandlers() {
 
 func shutdown() {
 	if atomic.AddUint32(&closing, 1) == 1 {
-		common.Log.Debug("shutting down providibright API")
+		common.Log.Debug("shutting down baseline-proxy API")
 		cancelF()
 	}
 }

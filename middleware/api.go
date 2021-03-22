@@ -1,6 +1,6 @@
 package middleware
 
-import "github.com/provideapp/providibright/common"
+import "github.com/provideapp/baseline-proxy/common"
 
 const sorIdentifierDynamics365 = "dynamics365"
 const sorIdentifierExcel = "excel"

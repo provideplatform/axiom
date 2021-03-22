@@ -8,13 +8,13 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/kthomas/go-natsutil"
 	uuid "github.com/kthomas/go.uuid"
-	"github.com/provideapp/providibright/common"
-	"github.com/provideapp/providibright/proxy"
+	"github.com/provideapp/baseline-proxy/common"
+	"github.com/provideapp/baseline-proxy/proxy"
 	provide "github.com/provideservices/provide-go/common"
 	"github.com/provideservices/provide-go/common/util"
 )
 
-const natsDispatchProtocolMessageSubject = "providibright.protocolmessage.outbound"
+const natsDispatchProtocolMessageSubject = "baseline-proxy.protocolmessage.outbound"
 
 // InstallProxyAPI installs system of record proxy API
 func InstallProxyAPI(r *gin.Engine) {

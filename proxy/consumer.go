@@ -8,16 +8,16 @@ import (
 	natsutil "github.com/kthomas/go-natsutil"
 	"github.com/nats-io/nats.go"
 	stan "github.com/nats-io/stan.go"
-	"github.com/provideapp/providibright/common"
+	"github.com/provideapp/baseline-proxy/common"
 	"github.com/provideservices/provide-go/api/privacy"
 )
 
-const natsDispatchInvitationSubject = "providibright.invitation.outbound"
+const natsDispatchInvitationSubject = "baseline-proxy.invitation.outbound"
 const natsDispatchInvitationMaxInFlight = 2048
 const dispatchInvitationAckWait = time.Second * 30
 const natsDispatchInvitationTimeout = int64(time.Minute * 5)
 
-const natsDispatchProtocolMessageSubject = "providibright.protocolmessage.outbound"
+const natsDispatchProtocolMessageSubject = "baseline-proxy.protocolmessage.outbound"
 const natsDispatchProtocolMessageMaxInFlight = 2048
 const dispatchProtocolMessageAckWait = time.Second * 30
 const natsDispatchProtocolMessageTimeout = int64(time.Minute * 5)

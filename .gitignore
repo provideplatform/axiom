@@ -24,11 +24,12 @@ _cgo_export.*
 .idea/
 *.iml
 
+.bin/
 .gocore-id_rsa
 
-providibright
-providibright_api
-providibright_consumer
+baseline-proxy
+baselineproxy_api
+baselineproxy_consumer
 
 # Miscellaneous
 .DS_Store
@@ -41,7 +42,6 @@ vendor/
 # test files
 coverage.txt
 profile.out
-
 
 # dev files
 .vscode/launch.json
