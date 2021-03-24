@@ -20,6 +20,18 @@ type BaselineRecord struct {
 	Workflow   *Workflow  `sql:"-" json:"-"`
 }
 
+// Config represents the proxy configuration
+type Config struct {
+	Counterparties           []*Participant    `sql:"-" json:"counterparties,omitempty"`
+	Env                      map[string]string `sql:"-" json:"env,omitempty"`
+	Errors                   []*provide.Error  `sql:"-" json:"errors,omitempty"`
+	NetworkID                *uuid.UUID        `sql:"-" json:"network_id,omitempty"`
+	OrganizationAddress      *string           `sql:"-" json:"organization_address,omitempty"`
+	OrganizationID           *uuid.UUID        `sql:"-" json:"organization_id,omitempty"`
+	OrganizationRefreshToken *string           `sql:"-" json:"organization_refresh_token,omitempty"`
+	RegistryContractAddress  *string           `sql:"-" json:"registry_contract_address,omitempty"`
+}
+
 // Message is a proxy-internal wrapper for protocol message handling
 type Message struct {
 	BaselineID      *uuid.UUID       `sql:"-" json:"baseline_id,omitempty"` // optional; when included, can be used to map outbound message just-in-time

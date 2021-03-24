@@ -60,8 +60,6 @@ func init() {
 	requireInternalSOR()
 	requireBaseline()
 
-	requireCounterparties()
-
 	ConsumeNATSStreamingSubscriptions = strings.ToLower(os.Getenv("CONSUME_NATS_STREAMING_SUBSCRIPTIONS")) == "true"
 }
 
@@ -82,19 +80,29 @@ func requireLogger() {
 
 func requireBaseline() {
 	if os.Getenv("BASELINE_ORGANIZATION_ADDRESS") == "" {
-		panic("BASELINE_ORGANIZATION_ADDRESS not provided")
+		Log.Warningf("BASELINE_ORGANIZATION_ADDRESS not provided")
 	}
 	BaselineOrganizationAddress = common.StringOrNil(os.Getenv("BASELINE_ORGANIZATION_ADDRESS"))
 
 	if os.Getenv("BASELINE_REGISTRY_CONTRACT_ADDRESS") == "" {
-		panic("BASELINE_REGISTRY_CONTRACT_ADDRESS not provided")
+		Log.Warningf("BASELINE_REGISTRY_CONTRACT_ADDRESS not provided")
 	}
 	BaselineRegistryContractAddress = common.StringOrNil(os.Getenv("BASELINE_REGISTRY_CONTRACT_ADDRESS"))
 
 	if os.Getenv("NCHAIN_BASELINE_NETWORK_ID") == "" {
-		panic("NCHAIN_BASELINE_NETWORK_ID not provided")
+		Log.Warningf("NCHAIN_BASELINE_NETWORK_ID not provided")
 	}
 	NChainBaselineNetworkID = common.StringOrNil(os.Getenv("NCHAIN_BASELINE_NETWORK_ID"))
+
+	ResolveBaselineContract()
+}
+
+// FIXME -- return error
+func ResolveBaselineContract() {
+	if NChainBaselineNetworkID == nil || OrganizationRefreshToken == nil {
+		Log.Warning("unable to resolve baseline contract without configured network id and organization refresh token")
+		return
+	}
 
 	capabilitiesClient := &api.Client{
 		Host:   "s3.amazonaws.com",
@@ -103,7 +111,8 @@ func requireBaseline() {
 	}
 	_, capabilities, err := capabilitiesClient.Get("provide-capabilities-manifest.json", map[string]interface{}{})
 	if err != nil {
-		common.Log.Panicf("failed to fetch capabilities; %s", err.Error())
+		Log.Warningf("failed to fetch capabilities; %s", err.Error())
+		return
 	}
 
 	if baseline, baselineOk := capabilities.(map[string]interface{})["baseline"].(map[string]interface{}); baselineOk {
@@ -113,16 +122,18 @@ func requireBaseline() {
 					raw, _ := json.Marshal(contract)
 					err := json.Unmarshal(raw, &BaselineRegistryContract)
 					if err != nil {
-						panic("failed to parse registry contract from capabilities")
+						Log.Warningf("failed to parse registry contract from capabilities; %s", err.Error())
+						return
 					}
-					common.Log.Debug("resolved baseline registry contract artifact")
+					Log.Debug("resolved baseline registry contract artifact")
 				}
 			}
 		}
 	}
 
 	if BaselineRegistryContract == nil {
-		panic("failed to parse registry contract from capabilities")
+		Log.Warning("failed to parse registry contract from capabilities")
+		return
 	}
 
 	token, err := ident.CreateToken(*OrganizationRefreshToken, map[string]interface{}{
@@ -130,7 +141,8 @@ func requireBaseline() {
 		"organization_id": *OrganizationID,
 	})
 	if err != nil {
-		common.Log.Panicf("failed to vend organization access token; %s", err.Error())
+		Log.Warningf("failed to vend organization access token; %s", err.Error())
+		return
 	}
 
 	contract, err := nchain.GetContractDetails(*token.AccessToken, *BaselineRegistryContractAddress, map[string]interface{}{})
@@ -145,21 +157,21 @@ func requireBaseline() {
 			"type": "organization-registry",
 		})
 		if err != nil {
-			common.Log.Panicf("failed to initialize registry contract; %s", err.Error())
+			Log.Warningf("failed to initialize registry contract; %s", err.Error())
 		}
-		common.Log.Debugf("resolved baseline organization registry contract: %s", *cntrct.Address)
+		Log.Debugf("resolved baseline organization registry contract: %s", *cntrct.Address)
 	} else {
-		common.Log.Debugf("resolved baseline organization registry contract: %s", *contract.Address)
+		Log.Debugf("resolved baseline organization registry contract: %s", *contract.Address)
 	}
 }
 
 func requireInternalSOR() {
 	if os.Getenv("PROVIDE_SOR_IDENTIFIER") == "" {
-		panic("PROVIDE_SOR_IDENTIFIER not provided")
+		Log.Warningf("PROVIDE_SOR_IDENTIFIER not provided")
 	}
 
 	if os.Getenv("PROVIDE_SOR_URL") == "" {
-		panic("PROVIDE_SOR_URL not provided")
+		Log.Warningf("PROVIDE_SOR_URL not provided")
 	}
 
 	InternalSOR = map[string]interface{}{
@@ -170,14 +182,14 @@ func requireInternalSOR() {
 
 func requireOrganization() {
 	if os.Getenv("PROVIDE_ORGANIZATION_ID") == "" {
-		panic("PROVIDE_ORGANIZATION_ID not provided")
+		Log.Warningf("PROVIDE_ORGANIZATION_ID not provided")
 	}
-	OrganizationID = common.StringOrNil(os.Getenv("PROVIDE_ORGANIZATION_ID"))
+	OrganizationID = StringOrNil(os.Getenv("PROVIDE_ORGANIZATION_ID"))
 
 	if os.Getenv("PROVIDE_ORGANIZATION_REFRESH_TOKEN") == "" {
-		panic("PROVIDE_ORGANIZATION_REFRESH_TOKEN not provided")
+		Log.Warningf("PROVIDE_ORGANIZATION_REFRESH_TOKEN not provided")
 	}
-	OrganizationRefreshToken = common.StringOrNil(os.Getenv("PROVIDE_ORGANIZATION_REFRESH_TOKEN"))
+	OrganizationRefreshToken = StringOrNil(os.Getenv("PROVIDE_ORGANIZATION_REFRESH_TOKEN"))
 }
 
 func requireVault() {
@@ -202,12 +214,4 @@ func requireVault() {
 		}
 		Log.Debugf("created default vault instance for proxy: %s", Vault.ID.String())
 	}
-}
-
-func requireCounterparties() {
-	DefaultCounterparties = make([]map[string]string, 0)
-	DefaultCounterparties = append(DefaultCounterparties, map[string]string{
-		"address": "0xde6ab5e055d34fc4f65c5850e23503d43d6958d4",
-		"url":     "nats://kt-mbp.local:4221",
-	})
 }

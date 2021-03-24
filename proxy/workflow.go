@@ -12,22 +12,22 @@ import (
 	privacy "github.com/provideservices/provide-go/api/privacy"
 )
 
-func init() {
-	go func() { // HACK! wait for redlock...
-		time.Sleep(time.Second * 3)
-		for _, party := range common.DefaultCounterparties {
-			participant := &Participant{
-				Address: common.StringOrNil(party["address"]),
-				URL:     common.StringOrNil(party["url"]),
-			}
-			err := participant.Cache()
-			if err != nil {
-				common.Log.Panicf("failed to cache counterparties; %s", err.Error())
-			}
-			common.Log.Debugf("cached baseline counterparty: %s", *participant.Address)
-		}
-	}()
-}
+// func init() {
+// 	go func() { // HACK! wait for redlock...
+// 		time.Sleep(time.Second * 3)
+// 		for _, party := range common.DefaultCounterparties {
+// 			participant := &Participant{
+// 				Address: common.StringOrNil(party["address"]),
+// 				URL:     common.StringOrNil(party["url"]),
+// 			}
+// 			err := participant.Cache()
+// 			if err != nil {
+// 				common.Log.Panicf("failed to cache counterparties; %s", err.Error())
+// 			}
+// 			common.Log.Debugf("cached baseline counterparty: %s", *participant.Address)
+// 		}
+// 	}()
+// }
 
 // Cache a workflow instance
 func (w *Workflow) Cache() error {
