@@ -147,19 +147,31 @@ func ResolveBaselineContract() {
 
 	contract, err := nchain.GetContractDetails(*token.AccessToken, *BaselineRegistryContractAddress, map[string]interface{}{})
 	if err != nil || contract == nil {
+		wallet, err := nchain.CreateWallet(*token.AccessToken, map[string]interface{}{
+			"purpose": 44,
+		})
+		if err != nil {
+			Log.Warningf("failed to initialize wallet for organization; %s", err.Error())
+		} else {
+			Log.Debugf("created HD wallet for organization: %s", wallet.ID)
+		}
+
 		cntrct, err := nchain.CreateContract(*token.AccessToken, map[string]interface{}{
 			"address":    *BaselineRegistryContractAddress,
 			"name":       BaselineRegistryContract.Name,
 			"network_id": NChainBaselineNetworkID,
 			"params": map[string]interface{}{
+				"argv":              []interface{}{},
 				"compiled_artifact": BaselineRegistryContract,
+				"wallet_id":         wallet.ID,
 			},
 			"type": "organization-registry",
 		})
 		if err != nil {
 			Log.Warningf("failed to initialize registry contract; %s", err.Error())
+		} else {
+			Log.Debugf("resolved baseline organization registry contract: %s", *cntrct.Address)
 		}
-		Log.Debugf("resolved baseline organization registry contract: %s", *cntrct.Address)
 	} else {
 		Log.Debugf("resolved baseline organization registry contract: %s", *contract.Address)
 	}
