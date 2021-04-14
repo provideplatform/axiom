@@ -44,6 +44,12 @@ var (
 	// OrganizationID is the id of the org
 	OrganizationID *string
 
+	// OrganizationMessagingEndpoint is the public organziation messaging endpoint
+	OrganizationMessagingEndpoint *string
+
+	// OrganizationProxyEndpoint is the configured endpoint for the baseline proxy REST API
+	OrganizationProxyEndpoint *string
+
 	// OrganizationRefreshToken is the refresh token for the org
 	OrganizationRefreshToken *string
 
@@ -75,7 +81,7 @@ func requireLogger() {
 		endpoint = &endpt
 	}
 
-	Log = logger.NewLogger("ident", lvl, endpoint)
+	Log = logger.NewLogger("baseline", lvl, endpoint)
 }
 
 func requireBaseline() {
@@ -202,6 +208,16 @@ func requireOrganization() {
 		Log.Warningf("PROVIDE_ORGANIZATION_REFRESH_TOKEN not provided")
 	}
 	OrganizationRefreshToken = StringOrNil(os.Getenv("PROVIDE_ORGANIZATION_REFRESH_TOKEN"))
+
+	OrganizationMessagingEndpoint = StringOrNil(os.Getenv("BASELINE_ORGANIZATION_MESSAGING_ENDPOINT"))
+	if OrganizationMessagingEndpoint == nil {
+		Log.Warningf("BASELINE_ORGANIZATION_MESSAGING_ENDPOINT not provided")
+	}
+
+	OrganizationProxyEndpoint = StringOrNil(os.Getenv("BASELINE_ORGANIZATION_PROXY_ENDPOINT"))
+	if OrganizationProxyEndpoint == nil {
+		Log.Panicf("BASELINE_ORGANIZATION_MESSAGING_ENDPOINT is required")
+	}
 }
 
 func requireVault() {

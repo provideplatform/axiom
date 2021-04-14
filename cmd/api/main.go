@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -13,6 +14,7 @@ import (
 	"github.com/kthomas/go-redisutil"
 
 	"github.com/provideapp/baseline-proxy/common"
+	"github.com/provideapp/baseline-proxy/middleware"
 	"github.com/provideapp/baseline-proxy/proxy"
 	identcommon "github.com/provideapp/ident/common"
 	"github.com/provideapp/ident/token"
@@ -44,6 +46,26 @@ func init() {
 	redisutil.RequireRedis()
 	// util.RequireVault()
 	identcommon.EnableAPIAccounting()
+	configureSOR()
+}
+
+func configureSOR() {
+	sor := middleware.SORFactory(common.InternalSOR, nil)
+	err := sor.HealthCheck()
+	if err != nil {
+		panic(err.Error())
+	}
+	common.Log.Debugf("health check completed; SOR API available at %s", common.InternalSOR["url"])
+
+	err = sor.ConfigureProxy(map[string]interface{}{
+		"organization_id": common.OrganizationID,
+		"ident_endpoint":  fmt.Sprintf("%s://%s", os.Getenv("IDENT_API_SCHEME"), os.Getenv("IDENT_API_HOST")),
+		"proxy_endpoint":  common.OrganizationProxyEndpoint,
+		"refresh_token":   common.OrganizationRefreshToken,
+	})
+	if err != nil {
+		panic(err.Error())
+	}
 }
 
 func main() {
