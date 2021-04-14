@@ -216,7 +216,7 @@ func requireOrganization() {
 
 	OrganizationProxyEndpoint = StringOrNil(os.Getenv("BASELINE_ORGANIZATION_PROXY_ENDPOINT"))
 	if OrganizationProxyEndpoint == nil {
-		Log.Panicf("BASELINE_ORGANIZATION_MESSAGING_ENDPOINT is required")
+		Log.Panicf("BASELINE_ORGANIZATION_PROXY_ENDPOINT is required")
 	}
 }
 
