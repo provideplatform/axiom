@@ -79,6 +79,7 @@ func InitSAPService(token *string) *SAPService {
 
 // Authenticate a user by email address and password, returning a newly-authorized X-CSRF-Token token
 func (s *SAPService) Authenticate() error {
+	s.Cookie = nil
 	s.Headers = map[string][]string{
 		"X-CSRF-Token": {"Fetch"},
 	}
