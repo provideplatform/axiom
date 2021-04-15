@@ -317,9 +317,10 @@ func (m *Message) baselineOutbound() bool {
 				Message: common.StringOrNil(err.Error()),
 			})
 			sor.UpdateBusinessObjectStatus(*m.ID, map[string]interface{}{
-				"status":     middleware.SORBusinessObjectStatusError,
 				"errors":     m.Errors,
 				"message_id": m.MessageID,
+				"status":     middleware.SORBusinessObjectStatusError,
+				"type":       *m.Type,
 			})
 			return false
 		}
@@ -339,9 +340,10 @@ func (m *Message) baselineOutbound() bool {
 				Message: common.StringOrNil(err.Error()),
 			})
 			sor.UpdateBusinessObjectStatus(*m.ID, map[string]interface{}{
-				"status":     middleware.SORBusinessObjectStatusError,
 				"errors":     m.Errors,
 				"message_id": m.MessageID,
+				"status":     middleware.SORBusinessObjectStatusError,
+				"type":       *m.Type,
 			})
 			return false
 		}
@@ -403,9 +405,11 @@ func (m *Message) baselineOutbound() bool {
 			Message: common.StringOrNil(msg),
 		})
 		sor.UpdateBusinessObjectStatus(*m.ID, map[string]interface{}{
-			"status":     middleware.SORBusinessObjectStatusError,
-			"errors":     m.Errors,
-			"message_id": m.MessageID,
+			"baseline_id": m.BaselineID.String(),
+			"errors":      m.Errors,
+			"message_id":  m.MessageID,
+			"status":      middleware.SORBusinessObjectStatusError,
+			"type":        *m.Type,
 		})
 		return false
 	}
@@ -436,8 +440,10 @@ func (m *Message) baselineOutbound() bool {
 	}
 
 	err = sor.UpdateBusinessObjectStatus(*m.ID, map[string]interface{}{
-		"status":     middleware.SORBusinessObjectStatusSuccess,
-		"message_id": m.MessageID,
+		"baseline_id": m.BaselineID.String(),
+		"message_id":  m.MessageID,
+		"status":      middleware.SORBusinessObjectStatusSuccess,
+		"type":        *m.Type,
 	})
 	if err != nil {
 		common.Log.Warningf("failed to update business logic status; %s", err.Error())
