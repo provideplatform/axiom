@@ -1,0 +1,54 @@
+on: 
+  push:
+    branches:
+      - master
+
+jobs:
+  push_to_branch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10    
+    env:
+      SLACK_WEBHOOK_URL: ${{ secrets.INTEGRATION_SLACK_WEBHOOK }}
+    steps:
+      - name: Setup go
+        uses: actions/setup-go@v2
+        with:
+          go-version: '1.15.1'
+      - name: Checkout ident
+        uses: actions/checkout@v2
+        with:
+          repository: provideapp/ident
+          path: 'ident'
+          ref: master
+          token: ${{ secrets.DEPLOY_GITHUB_PAT }}             
+      - name: Checkout baseline
+        uses: actions/checkout@v2
+        with:
+          path: 'baseline'                  
+      - run: docker-compose -f ./ops/docker-compose-master.yml build --no-cache baseline
+        working-directory: baseline
+      - run: docker-compose -f ./ops/docker-compose-master.yml up -d
+        working-directory: baseline
+      - run: TAGS=integration ./ops/run_local_tests_long.sh
+        working-directory: baseline
+      - run: docker-compose -f ./ops/docker-compose.yml logs
+        working-directory: baseline
+      - run: docker-compose -f ./ops/docker-compose-master.yml down
+        working-directory: baseline
+      - run: docker volume rm ops_provide-db
+        working-directory: baseline   
+      - name: push_to_docker_hub
+        if: success()
+        uses: docker/build-push-action@v1
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_PAT }}
+          repository: provide/baseline
+          tags: "latest"
+          path: 'baseline'
+      - name: slack channel update
+        if: failure()  
+        uses: act10ns/slack@v1
+        with:
+          status: ${{ job.status }}
+          steps: ${{ toJson(steps) }}
