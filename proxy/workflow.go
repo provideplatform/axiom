@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/kthomas/go-redisutil"
@@ -109,12 +110,26 @@ func baselineWorkflowFactory(objectType string, identifier *string) (*Workflow, 
 			return nil, fmt.Errorf("failed to create workflow for type: %s", objectType)
 		}
 
-		startTime := time.Now()
-		timer := time.NewTicker(requireCircuitTickerInterval)
-		defer timer.Stop()
+		err := requireCircuits(token, workflow)
+		if err != nil {
+			common.Log.Debugf("failed to provision circuit(s); %s", err.Error())
+			return nil, err
+		}
+	}
 
-		provisioned := false
-		for !provisioned {
+	return workflow, nil
+}
+
+func requireCircuits(token *string, workflow *Workflow) error {
+	wg := &sync.WaitGroup{}
+
+	startTime := time.Now()
+	timer := time.NewTicker(requireCircuitTickerInterval)
+	defer timer.Stop()
+
+	wg.Add(1)
+	go func() {
+		for {
 			select {
 			case <-timer.C:
 				for i, _circuit := range workflow.Circuits {
@@ -126,22 +141,25 @@ func baselineWorkflowFactory(objectType string, identifier *string) (*Workflow, 
 					if circuit.Status != nil && *circuit.Status == "provisioned" {
 						common.Log.Debugf("provisioned workflow circuit: %s", circuit.ID)
 						workflow.Circuits[i] = circuit
-						provisioned = i == len(workflow.Circuits)-1
+						if i == 0 {
+							wg.Done()
+						}
 					}
 				}
 			default:
 				if startTime.Add(requireCircuitTimeout).Before(time.Now()) {
 					msg := fmt.Sprintf("failed to provision %d circuit(s)", len(workflow.Circuits))
 					common.Log.Warning(msg)
-					return nil, errors.New(msg)
+					wg.Done()
 				} else {
 					time.Sleep(requireCircuitSleepInterval)
 				}
 			}
 		}
-	}
+	}()
 
-	return workflow, nil
+	wg.Wait()
+	return nil
 }
 
 func LookupBaselineWorkflow(identifier string) *Workflow {
