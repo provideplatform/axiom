@@ -4,6 +4,7 @@ import "github.com/provideapp/baseline-proxy/common"
 
 const sorIdentifierDynamics365 = "dynamics365"
 const sorIdentifierExcel = "excel"
+const sorIdentifierSalesforce = "salesforce"
 const sorIdentifierSAP = "sap"
 const sorIdentifierServiceNow = "servicenow"
 
@@ -31,6 +32,8 @@ func SORFactory(params map[string]interface{}, token *string) SOR {
 		return InitDefaultDynamics365Service(token)
 	case sorIdentifierSAP:
 		return InitSAPService(token)
+	case sorIdentifierSalesforce:
+		return InitSalesforceService(token)
 	case sorIdentifierServiceNow:
 		return InitServiceNowService(token)
 	default:
