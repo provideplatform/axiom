@@ -18,10 +18,10 @@ const natsDispatchProtocolMessageSubject = "baseline-proxy.protocolmessage.outbo
 
 // InstallProxyAPI installs system of record proxy API
 func InstallProxyAPI(r *gin.Engine) {
-	r.POST("/api/v1/invitations", acceptWorkgroupInvitationHandler)
+	r.POST("/api/v1/workgroups", createWorkgroupHandler)
 }
 
-func acceptWorkgroupInvitationHandler(c *gin.Context) {
+func createWorkgroupHandler(c *gin.Context) {
 	organizationID := util.AuthorizedSubjectID(c, "organization")
 	if organizationID == nil {
 		provide.RenderError("unauthorized", 401, c)
@@ -52,13 +52,15 @@ func acceptWorkgroupInvitationHandler(c *gin.Context) {
 		return
 	}
 
-	token, err := jwt.Parse(c.Param("token"), func(_jwtToken *jwt.Token) (interface{}, error) {
+	bearerToken := c.Param("token")
+
+	token, err := jwt.Parse(bearerToken, func(_jwtToken *jwt.Token) (interface{}, error) {
 		var kid *string
 		if kidhdr, ok := _jwtToken.Header["kid"].(string); ok {
 			kid = &kidhdr
 		}
 
-		publicKey, _, _ := util.ResolveJWTKeypair(kid)
+		publicKey, _, _, _ := util.ResolveJWTKeypair(kid)
 		if publicKey == nil {
 			msg := "failed to resolve a valid JWT verification key"
 			if kid != nil {
@@ -80,31 +82,48 @@ func acceptWorkgroupInvitationHandler(c *gin.Context) {
 	}
 
 	claims := token.Claims.(jwt.MapClaims)
-	prvd := claims["prvd"].(map[string]interface{})
-	data := prvd["data"].(map[string]interface{})
-	params := data["params"].(map[string]interface{})
+	// prvd := claims["prvd"].(map[string]interface{})
+	// data := prvd["data"].(map[string]interface{})
+	baseline := claims["baseline"].(map[string]interface{})
 
 	var identifier *string
-	if id, identifierOk := params["workflow_identifier"].(string); identifierOk {
+	if id, identifierOk := baseline["workgroup_id"].(string); identifierOk {
 		identifier = common.StringOrNil(id)
 	}
 
 	identifierUUID, err := uuid.FromString(*identifier)
 	if err != nil {
-		msg := fmt.Sprintf("failed to accept workgroup invitation; invalid workflow identifier; %s", err.Error())
+		msg := fmt.Sprintf("failed to accept workgroup invitation; invalid identifier; %s", err.Error())
 		common.Log.Warningf(msg)
 		provide.RenderError(msg, 422, c)
 		return
 	}
 
-	var shield *string
-	if shld, shieldOk := params["shield_contract_address"].(string); shieldOk {
-		shield = common.StringOrNil(shld)
+	var invitorAddress *string
+	if addr, invitorAddressOk := baseline["invitor_organization_address"].(string); invitorAddressOk {
+		invitorAddress = common.StringOrNil(addr)
+	} else {
+		msg := "no invitor address provided in vc"
+		common.Log.Warningf(msg)
+		provide.RenderError(msg, 422, c)
+		return
 	}
 
-	var invitorAddress *string
-	if addr, invitorAddressOk := params["invitor_organization_address"].(string); invitorAddressOk {
-		invitorAddress = common.StringOrNil(addr)
+	var registryContractAddress *string
+	if addr, registryContractAddressOk := baseline["registry_contract_address"].(string); registryContractAddressOk {
+		registryContractAddress = common.StringOrNil(addr)
+	} else {
+		msg := fmt.Sprintf("no registry contract address provided by invitor: %s", *invitorAddress)
+		common.Log.Warningf(msg)
+		provide.RenderError(msg, 422, c)
+		return
+	}
+
+	if registryContractAddress == nil || *registryContractAddress != *common.BaselineRegistryContractAddress {
+		msg := fmt.Sprintf("given registry contract address (%s) did not match configured address (%s)", *invitorAddress, *common.BaselineRegistryContractAddress)
+		common.Log.Warningf(msg)
+		provide.RenderError(msg, 422, c)
+		return
 	}
 
 	var vc *string
@@ -128,19 +147,18 @@ func acceptWorkgroupInvitationHandler(c *gin.Context) {
 		return
 	}
 
-	workflow := &proxy.Workflow{
-		Identifier:   &identifierUUID,
-		Shield:       shield,
-		Participants: participants,
-	}
+	// workgroup := &proxy.Workgroup{
+	// 	Identifier:   &identifierUUID,
+	// 	Participants: participants,
+	// }
 
-	err = workflow.Cache()
-	if err != nil {
-		msg := fmt.Sprintf("failed to accept workgroup invitation; failed to cache workflow; %s", err.Error())
-		common.Log.Warningf(msg)
-		provide.RenderError(msg, 422, c)
-		return
-	}
+	// err = workgroup.Cache()
+	// if err != nil {
+	// 	msg := fmt.Sprintf("failed to accept workgroup invitation; failed to cache workflow; %s", err.Error())
+	// 	common.Log.Warningf(msg)
+	// 	provide.RenderError(msg, 422, c)
+	// 	return
+	// }
 
 	// FIXME-- ensure org registry and shield is available via nchain...
 

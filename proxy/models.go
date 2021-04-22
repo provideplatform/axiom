@@ -76,7 +76,9 @@ type ProtocolMessagePayload struct {
 
 // Workgroup is a baseline workgroup context
 type Workgroup struct {
-	Workflows []*Workflow `json:"workflows,omitempty"`
+	Identifier   *uuid.UUID     `sql:"-" json:"identifier,omitempty"`
+	Participants []*Participant `sql:"-" json:"participants"`
+	Workflows    []*Workflow    `json:"workflows,omitempty"`
 }
 
 // Workflow is a baseline workflow context

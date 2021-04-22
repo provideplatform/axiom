@@ -370,6 +370,8 @@ func (m *Message) baselineOutbound() bool {
 		}
 	}
 
+	m.BaselineID = baselineRecord.BaselineID
+
 	rawPayload, _ := json.Marshal(m.Payload)
 
 	var i big.Int
@@ -565,7 +567,7 @@ func vendOrganizationAccessToken() (*string, error) {
 
 func circuitParamsFactory(name, identifier string, storeID *string) map[string]interface{} {
 	params := map[string]interface{}{
-		"curve":          "BN256",
+		"curve":          "BN254",
 		"identifier":     identifier,
 		"name":           name,
 		"provider":       "gnark",

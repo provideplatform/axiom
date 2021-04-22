@@ -12,22 +12,9 @@ import (
 	privacy "github.com/provideservices/provide-go/api/privacy"
 )
 
-// func init() {
-// 	go func() { // HACK! wait for redlock...
-// 		time.Sleep(time.Second * 3)
-// 		for _, party := range common.DefaultCounterparties {
-// 			participant := &Participant{
-// 				Address: common.StringOrNil(party["address"]),
-// 				URL:     common.StringOrNil(party["url"]),
-// 			}
-// 			err := participant.Cache()
-// 			if err != nil {
-// 				common.Log.Panicf("failed to cache counterparties; %s", err.Error())
-// 			}
-// 			common.Log.Debugf("cached baseline counterparty: %s", *participant.Address)
-// 		}
-// 	}()
-// }
+const requireCircuitTickerInterval = time.Second * 5
+const requireCircuitSleepInterval = time.Millisecond * 500
+const requireCircuitTimeout = time.Minute * 5
 
 // Cache a workflow instance
 func (w *Workflow) Cache() error {
@@ -122,9 +109,14 @@ func baselineWorkflowFactory(objectType string, identifier *string) (*Workflow, 
 			return nil, fmt.Errorf("failed to create workflow for type: %s", objectType)
 		}
 
+		startTime := time.Now()
+		timer := time.NewTicker(requireCircuitTickerInterval)
+		defer timer.Stop()
+
 		provisioned := false
 		for !provisioned {
-			if len(workflow.Circuits) > 0 {
+			select {
+			case <-timer.C:
 				for i, _circuit := range workflow.Circuits {
 					circuit, err := privacy.GetCircuitDetails(*token, _circuit.ID.String())
 					if err != nil {
@@ -137,11 +129,14 @@ func baselineWorkflowFactory(objectType string, identifier *string) (*Workflow, 
 						provisioned = i == len(workflow.Circuits)-1
 					}
 				}
-
-				// HACK
-				time.Sleep(time.Millisecond * 500)
-			} else {
-				break
+			default:
+				if startTime.Add(requireCircuitTimeout).Before(time.Now()) {
+					msg := fmt.Sprintf("failed to provision %d circuit(s)", len(workflow.Circuits))
+					common.Log.Warning(msg)
+					return nil, errors.New(msg)
+				} else {
+					time.Sleep(requireCircuitSleepInterval)
+				}
 			}
 		}
 	}
