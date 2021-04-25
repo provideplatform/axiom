@@ -623,8 +623,8 @@ func (c *Config) requireCounterparties() {
 			}
 
 			common.DefaultCounterparties = append(common.DefaultCounterparties, map[string]string{
-				"address": *participant.Address,
-				"url":     *participant.URL,
+				"address":            *participant.Address,
+				"messaging_endpoint": *participant.URL,
 			})
 			common.Log.Debugf("cached baseline counterparty: %s", *participant.Address)
 		}

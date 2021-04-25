@@ -48,7 +48,7 @@ func baselineWorkflowFactory(objectType string, identifier *string) (*Workflow, 
 	for _, party := range common.DefaultCounterparties {
 		workflow.Participants = append(workflow.Participants, &Participant{
 			Address: common.StringOrNil(party["address"]),
-			URL:     common.StringOrNil(party["url"]),
+			URL:     common.StringOrNil(party["messaging_endpoint"]),
 		})
 	}
 

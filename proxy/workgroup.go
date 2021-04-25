@@ -30,7 +30,7 @@ func resolveBaselineCounterparties() {
 		for _, party := range common.DefaultCounterparties {
 			counterparties = append(counterparties, &Participant{
 				Address: common.StringOrNil(party["address"]),
-				URL:     common.StringOrNil(party["url"]),
+				URL:     common.StringOrNil(party["messaging_endpoint"]),
 			})
 		}
 
@@ -40,7 +40,7 @@ func resolveBaselineCounterparties() {
 		for _, org := range orgs {
 			counterparties = append(counterparties, &Participant{
 				Address: common.StringOrNil(org.Metadata["address"].(string)),
-				URL:     common.StringOrNil(org.Metadata["url"].(string)),
+				URL:     common.StringOrNil(org.Metadata["messaging_endpoint"].(string)),
 			})
 		}
 
