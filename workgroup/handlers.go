@@ -280,7 +280,7 @@ func issueVerifiableCredentialHandler(c *gin.Context) {
 	// recoveredAddress := fmt.Sprintf("0x%s", pubkeyBytes[12:32])
 	// common.Log.Debugf("recovered public key: 0x%s; recovered address: %s", hex.EncodeToString(pubkeyBytes), recoveredAddress)
 
-	signerPubkey, err := hex.DecodeString(*issueVCRequest.PublicKey)
+	signerPubkey, err := hex.DecodeString((*issueVCRequest.PublicKey)[2:])
 	if err != nil {
 		msg := fmt.Sprintf("failed to recover public key from signature: %s; %s", *issueVCRequest.Signature, err.Error())
 		common.Log.Warning(msg)
