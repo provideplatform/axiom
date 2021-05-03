@@ -278,7 +278,7 @@ func issueVerifiableCredentialHandler(c *gin.Context) {
 		return
 	}
 
-	recoveredAddress := secp256k1.CompressPubkey(x, y)
+	recoveredAddress := fmt.Sprintf("0x%s", hex.EncodeToString(secp256k1.CompressPubkey(x, y)))
 	if strings.ToLower(string(recoveredAddress)) != strings.ToLower(*issueVCRequest.Address) {
 		common.Log.Warningf("recovered address %s did not match expected signer %s", string(recoveredAddress), *issueVCRequest.Address)
 		provide.RenderError("recovered address did not match signer", 422, c)
