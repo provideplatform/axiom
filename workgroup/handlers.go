@@ -234,7 +234,7 @@ func createWorkgroupHandler(c *gin.Context) {
 }
 
 func issueVerifiableCredentialHandler(c *gin.Context) {
-	var issueVCRequest *proxy.IssueVerifiableCredentialRequest
+	issueVCRequest := &proxy.IssueVerifiableCredentialRequest{}
 
 	buf, err := c.GetRawData()
 	if err != nil {
@@ -272,6 +272,7 @@ func issueVerifiableCredentialHandler(c *gin.Context) {
 
 	recoveredAddress := secp256k1.CompressPubkey(x, y)
 	if strings.ToLower(string(recoveredAddress)) != strings.ToLower(*issueVCRequest.Address) {
+		common.Log.Warningf("recovered address %s did not match expected signer %s", string(recoveredAddress), *issueVCRequest.Address)
 		provide.RenderError("recovered address did not match signer", 422, c)
 		return
 	}
