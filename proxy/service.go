@@ -206,7 +206,7 @@ func requestBaselineOrganizationIssuedVC(address string) (*string, error) {
 		*token,
 		common.Vault.ID.String(),
 		*keyID,
-		crypto.Keccak256Hash([]byte(*common.BaselineOrganizationAddress)).Hex(),
+		crypto.Keccak256Hash([]byte(*common.BaselineOrganizationAddress)).Hex()[2:],
 		map[string]interface{}{},
 	)
 	if err != nil {
