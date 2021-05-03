@@ -191,7 +191,7 @@ func requestBaselineOrganizationIssuedVC(address string) (*string, error) {
 	}
 
 	for _, k := range keys {
-		if key.Address != nil && strings.ToLower(*key.Address) == strings.ToLower(*common.BaselineOrganizationAddress) {
+		if k.Address != nil && strings.ToLower(*k.Address) == strings.ToLower(*common.BaselineOrganizationAddress) {
 			key = k
 			break
 		}
