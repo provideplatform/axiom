@@ -263,6 +263,13 @@ func issueVerifiableCredentialHandler(c *gin.Context) {
 
 	addrHash := hex.EncodeToString([]byte(*issueVCRequest.Address))
 	pubkey, err := crypto.Ecrecover([]byte(addrHash), []byte(*issueVCRequest.Signature))
+	if err != nil {
+		msg := fmt.Sprintf("failed to recover public key from signature: %s; %s", *issueVCRequest.Signature, err.Error())
+		common.Log.Warning(msg)
+		provide.RenderError(msg, 422, c)
+		return
+	}
+	common.Log.Debugf("recovered public key: %s", pubkey)
 
 	x, y := elliptic.Unmarshal(crypto.S256(), pubkey)
 	if x == nil {
