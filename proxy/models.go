@@ -34,8 +34,9 @@ type Config struct {
 
 // IssueVerifiableCredentialRequest represents a request to issue a verifiable credential
 type IssueVerifiableCredentialRequest struct {
-	Address        *string    `json:"address"`
+	Address        *string    `json:"address,omitempty"`
 	OrganizationID *uuid.UUID `json:"organization_id,omitempty"`
+	PublicKey      *string    `json:"public_key,omitempty"`
 	Signature      *string    `json:"signature"`
 }
 

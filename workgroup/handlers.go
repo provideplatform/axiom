@@ -250,20 +250,25 @@ func issueVerifiableCredentialHandler(c *gin.Context) {
 		return
 	}
 
-	// FIXME-- make general
 	if issueVCRequest.Address == nil {
 		provide.RenderError("address is required", 422, c)
 		return
 	}
+
+	// FIXME-- make general with PublicKey
+	// if issueVCRequest.PublicKey == nil {
+	// 	provide.RenderError("public_key is required", 422, c)
+	// 	return
+	// }
 
 	if issueVCRequest.Signature == nil {
 		provide.RenderError("signature is required", 422, c)
 		return
 	}
 
-	addrHash := crypto.Keccak256Hash([]byte(*issueVCRequest.Address))
+	msg := crypto.Keccak256Hash([]byte(*issueVCRequest.Address))
 	sig, _ := hex.DecodeString(*issueVCRequest.Signature)
-	pubkey, err := crypto.Ecrecover(addrHash.Bytes(), []byte(sig))
+	pubkey, err := crypto.Ecrecover(msg.Bytes(), []byte(sig))
 	if err != nil {
 		msg := fmt.Sprintf("failed to recover public key from signature: %s; %s", *issueVCRequest.Signature, err.Error())
 		common.Log.Warning(msg)
@@ -271,9 +276,9 @@ func issueVerifiableCredentialHandler(c *gin.Context) {
 		return
 	}
 
-	pubkeyHash := crypto.Keccak256Hash(pubkey).Hex()
-	recoveredAddress := fmt.Sprintf("0x%s", pubkeyHash[2:42])
-	common.Log.Debugf("recovered public key: %s; recovered address: %s", pubkey, recoveredAddress)
+	pubkeyBytes := crypto.Keccak256Hash(pubkey).Bytes()
+	recoveredAddress := fmt.Sprintf("0x%s", pubkeyBytes[12:32])
+	common.Log.Debugf("recovered public key: 0x%s; recovered address: %s", hex.EncodeToString(pubkeyBytes), recoveredAddress)
 
 	if strings.ToLower(string(recoveredAddress)) != strings.ToLower(*issueVCRequest.Address) {
 		common.Log.Warningf("recovered address %s did not match expected signer %s", string(recoveredAddress), *issueVCRequest.Address)

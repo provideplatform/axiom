@@ -184,20 +184,20 @@ func requestBaselineOrganizationIssuedVC(address string) (*string, error) {
 		return nil, err
 	}
 
-	var keyID *string
+	var key *vault.Key
 	if len(keys) == 0 {
 		common.Log.Warningf("failed to request verifiable credential from baseline organization: %s; failed to resolve signing key; %s", address, err.Error())
 		return nil, fmt.Errorf("failed to request verifiable credential from baseline organization: %s; failed to resolve signing key; %s", address, err.Error())
 	}
 
-	for _, key := range keys {
+	for _, k := range keys {
 		if key.Address != nil && strings.ToLower(*key.Address) == strings.ToLower(*common.BaselineOrganizationAddress) {
-			keyID = common.StringOrNil(key.ID.String())
+			key = k
 			break
 		}
 	}
 
-	if keyID == nil {
+	if key == nil {
 		common.Log.Warningf("failed to request verifiable credential from baseline organization: %s; failed to resolve signing key", address)
 		return nil, fmt.Errorf("failed to request verifiable credential from baseline organization: %s; failed to resolve signing key", address)
 	}
@@ -205,7 +205,7 @@ func requestBaselineOrganizationIssuedVC(address string) (*string, error) {
 	signresp, err := vault.SignMessage(
 		*token,
 		common.Vault.ID.String(),
-		*keyID,
+		key.ID.String(),
 		crypto.Keccak256Hash([]byte(*common.BaselineOrganizationAddress)).Hex()[2:],
 		map[string]interface{}{},
 	)
@@ -221,8 +221,9 @@ func requestBaselineOrganizationIssuedVC(address string) (*string, error) {
 	}
 
 	status, resp, err := client.Post("credentials", map[string]interface{}{
-		"address":   *common.BaselineOrganizationAddress,
-		"signature": signresp.Signature,
+		"address":    *common.BaselineOrganizationAddress,
+		"public_key": key.PublicKey,
+		"signature":  signresp.Signature,
 	})
 	if err != nil {
 		common.Log.Warningf("failed to request verifiable credential from baseline organization: %s; %s", address, err.Error())
