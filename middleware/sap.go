@@ -152,6 +152,10 @@ func (s *SAPService) CreateBusinessObject(params map[string]interface{}) (interf
 		return nil, err
 	}
 
+	if baselineID, baselineIDOk := params["baseline_id"].(string); baselineIDOk {
+		params["object_connection_id"] = baselineID
+	}
+
 	status, resp, err := s.Post("ubc/business_objects", params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create business object; status: %v; %s", status, err.Error())
@@ -172,6 +176,10 @@ func (s *SAPService) UpdateBusinessObject(id string, params map[string]interface
 	err := s.Authenticate()
 	if err != nil {
 		return err
+	}
+
+	if baselineID, baselineIDOk := params["baseline_id"].(string); baselineIDOk {
+		params["object_connection_id"] = baselineID
 	}
 
 	uri := fmt.Sprintf("ubc/business_objects/%s", id)
@@ -195,6 +203,10 @@ func (s *SAPService) UpdateBusinessObjectStatus(id string, params map[string]int
 	err := s.Authenticate()
 	if err != nil {
 		return err
+	}
+
+	if baselineID, baselineIDOk := params["baseline_id"].(string); baselineIDOk {
+		params["object_connection_id"] = baselineID
 	}
 
 	uri := fmt.Sprintf("ubc/business_objects/%s/status", id)
