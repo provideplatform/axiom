@@ -235,7 +235,7 @@ func requestBaselineOrganizationIssuedVC(address string) (*string, error) {
 	}
 
 	var credential *string
-	if vc, ok := resp.(map[string]interface{})["vc"].(string); ok {
+	if vc, ok := resp.(map[string]interface{})["credential"].(string); ok {
 		err = CacheBaselineOrganizationIssuedVC(address, vc)
 		if err != nil {
 			common.Log.Warningf("failed to request verifiable credential from baseline organization: %s; failed to cache issued credential; %s", address, err.Error())

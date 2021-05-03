@@ -42,7 +42,7 @@ type IssueVerifiableCredentialRequest struct {
 
 // IssueVerifiableCredentialResponse represents a response to a VC issuance request
 type IssueVerifiableCredentialResponse struct {
-	VC *string `json:"verifiable_credential"`
+	VC *string `json:"credential"`
 }
 
 // Message is a proxy-internal wrapper for protocol message handling
