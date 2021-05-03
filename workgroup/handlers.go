@@ -2,6 +2,7 @@ package workgroup
 
 import (
 	"crypto/elliptic"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -261,7 +262,8 @@ func issueVerifiableCredentialHandler(c *gin.Context) {
 	}
 
 	addrHash := crypto.Keccak256Hash([]byte(*issueVCRequest.Address))
-	pubkey, err := crypto.Ecrecover(addrHash.Bytes(), []byte(*issueVCRequest.Signature))
+	sig, _ := hex.DecodeString(*issueVCRequest.Signature)
+	pubkey, err := crypto.Ecrecover(addrHash.Bytes(), []byte(sig))
 	if err != nil {
 		msg := fmt.Sprintf("failed to recover public key from signature: %s; %s", *issueVCRequest.Signature, err.Error())
 		common.Log.Warning(msg)
