@@ -1,15 +1,15 @@
 package workgroup
 
 import (
-	"crypto/elliptic"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"strings"
 
 	"github.com/dgrijalva/jwt-go"
-	crypto "github.com/ethereum/go-ethereum/crypto"              // FIXME
-	secp256k1 "github.com/ethereum/go-ethereum/crypto/secp256k1" // FIXME
+	crypto "github.com/ethereum/go-ethereum/crypto" // FIXME
+
+	// FIXME
 	"github.com/gin-gonic/gin"
 	"github.com/kthomas/go-natsutil"
 	uuid "github.com/kthomas/go.uuid"
@@ -270,15 +270,11 @@ func issueVerifiableCredentialHandler(c *gin.Context) {
 		provide.RenderError(msg, 422, c)
 		return
 	}
-	common.Log.Debugf("recovered public key: %s", pubkey)
 
-	x, y := elliptic.Unmarshal(crypto.S256(), pubkey)
-	if x == nil {
-		provide.RenderError("failed to unmarshal public key", 422, c)
-		return
-	}
+	pubkeyHash := crypto.Keccak256Hash(pubkey).Hex()
+	recoveredAddress := fmt.Sprintf("0x%s", pubkeyHash[120:160])
+	common.Log.Debugf("recovered public key: %s; recovered address: %s", pubkey, recoveredAddress)
 
-	recoveredAddress := fmt.Sprintf("0x%s", hex.EncodeToString(secp256k1.CompressPubkey(x, y)))
 	if strings.ToLower(string(recoveredAddress)) != strings.ToLower(*issueVCRequest.Address) {
 		common.Log.Warningf("recovered address %s did not match expected signer %s", string(recoveredAddress), *issueVCRequest.Address)
 		provide.RenderError("recovered address did not match signer", 422, c)
