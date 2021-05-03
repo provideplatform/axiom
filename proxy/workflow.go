@@ -4,12 +4,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
 	"github.com/kthomas/go-redisutil"
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideapp/baseline-proxy/common"
+	"github.com/provideservices/provide-go/api/ident"
 	privacy "github.com/provideservices/provide-go/api/privacy"
 )
 
@@ -55,6 +57,16 @@ func baselineWorkflowFactory(objectType string, identifier *string) (*Workflow, 
 	token, err := vendOrganizationAccessToken()
 	if err != nil {
 		return nil, err
+	}
+
+	// FIXME -- read all workgroup participants from cache
+	workgroupID := os.Getenv("BASELINE_WORKGROUP_ID")
+	orgs, err := ident.ListApplicationOrganizations(*token, workgroupID, map[string]interface{}{})
+	for _, org := range orgs {
+		workflow.Participants = append(workflow.Participants, &Participant{
+			Address: common.StringOrNil(org.Metadata["address"].(string)),
+			URL:     common.StringOrNil(org.Metadata["messaging_endpoint"].(string)),
+		})
 	}
 
 	if identifier == nil {
