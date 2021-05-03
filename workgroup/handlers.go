@@ -290,6 +290,7 @@ func issueVerifiableCredentialHandler(c *gin.Context) {
 
 	if bytes.Equal(pubkey, signerPubkey) {
 		// common.Log.Warningf("recovered address %s did not match expected signer %s", string(recoveredAddress), *issueVCRequest.Address)
+		common.Log.Warningf("recovered public key %s did not match expected signer %s", string(pubkey), *issueVCRequest.PublicKey)
 		provide.RenderError("recovered address did not match signer", 422, c)
 		return
 	}
