@@ -199,7 +199,7 @@ func requestBaselineOrganizationIssuedVC(address string) (*string, error) {
 
 	if keyID == nil {
 		common.Log.Warningf("failed to request verifiable credential from baseline organization: %s; failed to resolve signing key", address)
-		return nil, fmt.Errorf("failed to request verifiable credential from baseline organization: %s; failed to resolve signing key; %s", address, err.Error())
+		return nil, fmt.Errorf("failed to request verifiable credential from baseline organization: %s; failed to resolve signing key", address)
 	}
 
 	signresp, err := vault.SignMessage(
@@ -220,7 +220,7 @@ func requestBaselineOrganizationIssuedVC(address string) (*string, error) {
 		Path:   "api/v1",
 	}
 
-	status, resp, err := client.Get("credentials", map[string]interface{}{
+	status, resp, err := client.Post("credentials", map[string]interface{}{
 		"address":   *common.BaselineOrganizationAddress,
 		"signature": signresp.Signature,
 	})
