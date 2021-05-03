@@ -260,8 +260,8 @@ func issueVerifiableCredentialHandler(c *gin.Context) {
 		return
 	}
 
-	addrHash := crypto.Keccak256Hash([]byte(*issueVCRequest.Address)).Hex()[2:]
-	pubkey, err := crypto.Ecrecover([]byte(addrHash), []byte(*issueVCRequest.Signature))
+	addrHash := crypto.Keccak256Hash([]byte(*issueVCRequest.Address))
+	pubkey, err := crypto.Ecrecover(addrHash.Bytes(), []byte(*issueVCRequest.Signature))
 	if err != nil {
 		msg := fmt.Sprintf("failed to recover public key from signature: %s; %s", *issueVCRequest.Signature, err.Error())
 		common.Log.Warning(msg)
