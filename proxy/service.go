@@ -9,6 +9,7 @@ import (
 	"math/big"
 	"net/url"
 	"os"
+	"strings"
 
 	mimc "github.com/consensys/gnark/crypto/hash/mimc/bn256"
 	natsutil "github.com/kthomas/go-natsutil"
@@ -190,7 +191,7 @@ func requestBaselineOrganizationIssuedVC(address string) (*string, error) {
 	}
 
 	for _, key := range keys {
-		if key.Address != nil && *key.Address == *common.BaselineOrganizationAddress {
+		if key.Address != nil && strings.ToLower(*key.Address) == strings.ToLower(*common.BaselineOrganizationAddress) {
 			keyID = common.StringOrNil(key.ID.String())
 			break
 		}
