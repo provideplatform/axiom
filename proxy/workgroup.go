@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"os"
 	"time"
 
 	"github.com/provideapp/baseline-proxy/common"
@@ -13,6 +14,11 @@ func init() {
 }
 
 func resolveBaselineCounterparties() {
+	workgroupID := os.Getenv("BASELINE_WORKGROUP_ID")
+	if workgroupID == "" {
+		common.Log.Panicf("failed to read BASELINE_WORKGROUP_ID from environment; %s", err.Error())
+	}
+
 	go func() {
 		common.Log.Debugf("attempting to resolve baseline counterparties")
 
@@ -33,8 +39,6 @@ func resolveBaselineCounterparties() {
 				URL:     common.StringOrNil(party["messaging_endpoint"]),
 			})
 		}
-
-		var workgroupID string // FIXME!
 
 		orgs, err := ident.ListApplicationOrganizations(*token.AccessToken, workgroupID, map[string]interface{}{})
 		for _, org := range orgs {
