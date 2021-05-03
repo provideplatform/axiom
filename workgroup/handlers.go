@@ -272,7 +272,7 @@ func issueVerifiableCredentialHandler(c *gin.Context) {
 	}
 
 	pubkeyHash := crypto.Keccak256Hash(pubkey).Hex()
-	recoveredAddress := fmt.Sprintf("0x%s", pubkeyHash[24:64])
+	recoveredAddress := fmt.Sprintf("0x%s", pubkeyHash[26:66])
 	common.Log.Debugf("recovered public key: %s; recovered address: %s", pubkey, recoveredAddress)
 
 	if strings.ToLower(string(recoveredAddress)) != strings.ToLower(*issueVCRequest.Address) {
