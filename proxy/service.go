@@ -2,10 +2,12 @@ package proxy
 
 import (
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
+	"net/url"
 	"os"
 
 	mimc "github.com/consensys/gnark/crypto/hash/mimc/bn256"
@@ -14,6 +16,7 @@ import (
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideapp/baseline-proxy/common"
 	"github.com/provideapp/baseline-proxy/middleware"
+	"github.com/provideservices/provide-go/api"
 	provide "github.com/provideservices/provide-go/api"
 	"github.com/provideservices/provide-go/api/ident"
 	"github.com/provideservices/provide-go/api/nchain"
@@ -138,7 +141,7 @@ func CacheBaselineOrganizationIssuedVC(address, vc string) error {
 	secretName := fmt.Sprintf("verifiable credential for %s", address)
 	resp, err := vault.CreateSecret(*token, common.Vault.ID.String(), vc, secretName, secretName, "verifiable_credential")
 	if err != nil {
-		common.Log.Warningf("failed to cach verifiable credential for baseline organization: %s; %s", address, err.Error())
+		common.Log.Warningf("failed to cache verifiable credential for baseline organization: %s; %s", address, err.Error())
 		return err
 	}
 
@@ -152,6 +155,110 @@ func CacheBaselineOrganizationIssuedVC(address, vc string) error {
 	return nil
 }
 
+// request a signed VC from the named counterparty
+func requestBaselineOrganizationIssuedVC(address string) (*string, error) {
+	token, err := vendOrganizationAccessToken()
+	if err != nil {
+		common.Log.Warningf("failed to request verifiable credential from baseline organization: %s; %s", address, err.Error())
+		return nil, err
+	}
+
+	apiURLStr := lookupBaselineOrganizationAPIEndpoint(address)
+	if apiURLStr == nil {
+		common.Log.Warningf("failed to lookup recipient API endpoint: %s", address)
+		return nil, fmt.Errorf("failed to lookup recipient API endpoint: %s", address)
+	}
+
+	apiURL, err := url.Parse(*apiURLStr)
+	if err != nil {
+		common.Log.Warningf("failed to parse recipient API endpoint: %s; %s", address, err.Error())
+		return nil, err
+	}
+
+	keys, err := vault.ListKeys(*token, common.Vault.ID.String(), map[string]interface{}{
+		"spec": "secp256k1", // FIXME-- make general
+	})
+	if err != nil {
+		common.Log.Warningf("failed to request verifiable credential from baseline organization: %s; failed to resolve signing key; %s", address, err.Error())
+		return nil, err
+	}
+
+	var keyID *string
+	if len(keys) == 0 {
+		common.Log.Warningf("failed to request verifiable credential from baseline organization: %s; failed to resolve signing key; %s", address, err.Error())
+		return nil, fmt.Errorf("failed to request verifiable credential from baseline organization: %s; failed to resolve signing key; %s", address, err.Error())
+	}
+
+	for _, key := range keys {
+		if key.Address != nil && *key.Address == *common.BaselineOrganizationAddress {
+			keyID = common.StringOrNil(key.ID.String())
+			break
+		}
+	}
+
+	if keyID == nil {
+		common.Log.Warningf("failed to request verifiable credential from baseline organization: %s; failed to resolve signing key", address)
+		return nil, fmt.Errorf("failed to request verifiable credential from baseline organization: %s; failed to resolve signing key; %s", address, err.Error())
+	}
+
+	signresp, err := vault.SignMessage(
+		*token,
+		common.Vault.ID.String(),
+		*keyID,
+		hex.EncodeToString([]byte(*common.BaselineOrganizationAddress)),
+		map[string]interface{}{},
+	)
+	if err != nil {
+		common.Log.Warningf("failed to request verifiable credential for for baseline organization: %s; failed to sign VC issuance request; %s", address, err.Error())
+		return nil, fmt.Errorf("failed to request verifiable credential for for baseline organization: %s; failed to sign VC issuance request; %s", address, err.Error())
+	}
+
+	client := &api.Client{
+		Host:   apiURL.Host,
+		Scheme: apiURL.Scheme,
+		Path:   "api/v1",
+	}
+
+	status, resp, err := client.Get("credentials", map[string]interface{}{
+		"address":   *common.BaselineOrganizationAddress,
+		"signature": signresp.Signature,
+	})
+	if err != nil {
+		common.Log.Warningf("failed to request verifiable credential from baseline organization: %s; %s", address, err.Error())
+		return nil, fmt.Errorf("failed to request verifiable credential from baseline organization: %s; %s", address, err.Error())
+	}
+
+	if status != 201 {
+		return nil, fmt.Errorf("failed to request verifiable credential from baseline organization: %s; received status code: %d", address, status)
+	}
+
+	var credential *string
+	if vc, ok := resp.(map[string]interface{})["vc"].(string); ok {
+		err = CacheBaselineOrganizationIssuedVC(address, vc)
+		if err != nil {
+			common.Log.Warningf("failed to request verifiable credential from baseline organization: %s; failed to cache issued credential; %s", address, err.Error())
+			return nil, fmt.Errorf("failed to request verifiable credential from baseline organization: %s; failed to cache issued credential; %s", address, err.Error())
+		}
+		credential = &vc
+	}
+
+	return credential, nil
+}
+
+func lookupBaselineOrganizationAPIEndpoint(recipient string) *string {
+	org := lookupBaselineOrganization(recipient)
+	if org == nil {
+		common.Log.Warningf("failed to retrieve cached API endpoint for baseline organization: %s", recipient)
+		return nil
+	}
+
+	if org.APIEndpoint == nil {
+		// this endpoint does not currently does not live on-chain, and should remain that way
+	}
+
+	return org.APIEndpoint
+}
+
 func lookupBaselineOrganizationMessagingEndpoint(recipient string) *string {
 	org := lookupBaselineOrganization(recipient)
 	if org == nil {
@@ -159,7 +266,7 @@ func lookupBaselineOrganizationMessagingEndpoint(recipient string) *string {
 		return nil
 	}
 
-	if org.URL == nil {
+	if org.MessagingEndpoint == nil {
 		token, err := vendOrganizationAccessToken()
 		if err != nil {
 			common.Log.Warningf("failed to retrieve messaging endpoint for baseline organization: %s", recipient)
@@ -190,8 +297,8 @@ func lookupBaselineOrganizationMessagingEndpoint(recipient string) *string {
 				return nil
 			}
 			org := &Participant{
-				Address: common.StringOrNil(recipient),
-				URL:     common.StringOrNil(string(endpoint)),
+				Address:           common.StringOrNil(recipient),
+				MessagingEndpoint: common.StringOrNil(string(endpoint)),
 			}
 
 			err = org.Cache()
@@ -202,7 +309,7 @@ func lookupBaselineOrganizationMessagingEndpoint(recipient string) *string {
 		}
 	}
 
-	return org.URL
+	return org.MessagingEndpoint
 }
 
 func (m *ProtocolMessage) baselineInbound() bool {
@@ -624,7 +731,7 @@ func (c *Config) requireCounterparties() {
 
 			common.DefaultCounterparties = append(common.DefaultCounterparties, map[string]string{
 				"address":            *participant.Address,
-				"messaging_endpoint": *participant.URL,
+				"messaging_endpoint": *participant.MessagingEndpoint,
 			})
 			common.Log.Debugf("cached baseline counterparty: %s", *participant.Address)
 		}

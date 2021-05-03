@@ -35,16 +35,18 @@ func resolveBaselineCounterparties() {
 
 		for _, party := range common.DefaultCounterparties {
 			counterparties = append(counterparties, &Participant{
-				Address: common.StringOrNil(party["address"]),
-				URL:     common.StringOrNil(party["messaging_endpoint"]),
+				Address:           common.StringOrNil(party["address"]),
+				APIEndpoint:       common.StringOrNil(party["api_endpoint"]),
+				MessagingEndpoint: common.StringOrNil(party["messaging_endpoint"]),
 			})
 		}
 
 		orgs, err := ident.ListApplicationOrganizations(*token.AccessToken, workgroupID, map[string]interface{}{})
 		for _, org := range orgs {
 			counterparties = append(counterparties, &Participant{
-				Address: common.StringOrNil(org.Metadata["address"].(string)),
-				URL:     common.StringOrNil(org.Metadata["messaging_endpoint"].(string)),
+				Address:           common.StringOrNil(org.Metadata["address"].(string)),
+				APIEndpoint:       common.StringOrNil(org.Metadata["api_endpoint"].(string)),
+				MessagingEndpoint: common.StringOrNil(org.Metadata["messaging_endpoint"].(string)),
 			})
 		}
 

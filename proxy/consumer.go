@@ -223,15 +223,23 @@ func consumeDispatchProtocolMessageSubscriptionsMsg(msg *stan.Msg) {
 
 	url := lookupBaselineOrganizationMessagingEndpoint(*protomsg.Recipient)
 	if url == nil {
-		common.Log.Warningf("failed to lookup recipient endpoint: %s", *protomsg.Recipient)
+		common.Log.Warningf("failed to lookup recipient messaging endpoint: %s", *protomsg.Recipient)
 		natsutil.Nack(msg)
 		return
 	}
 
 	jwt := lookupBaselineOrganizationIssuedVC(*protomsg.Recipient)
 	if jwt == nil {
-		// TODO: request a VC from the counterparty
+		// request a VC from the counterparty
+		jwt, err = requestBaselineOrganizationIssuedVC(*protomsg.Recipient)
+		if err != nil {
+			common.Log.Warningf("failed to request verifiable credential from recipient counterparty: %s; %s", *protomsg.Recipient, err.Error())
+			natsutil.AttemptNack(msg, natsDispatchProtocolMessageTimeout)
+			return
+		}
+	}
 
+	if jwt == nil {
 		common.Log.Warningf("failed to dispatch protocol message to recipient: %s; no bearer token resolved", *protomsg.Recipient)
 		natsutil.AttemptNack(msg, natsDispatchProtocolMessageTimeout)
 		return

@@ -1,10 +1,15 @@
 package workgroup
 
 import (
+	"crypto/elliptic"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/dgrijalva/jwt-go"
+	crypto "github.com/ethereum/go-ethereum/crypto"              // FIXME
+	secp256k1 "github.com/ethereum/go-ethereum/crypto/secp256k1" // FIXME
 	"github.com/gin-gonic/gin"
 	"github.com/kthomas/go-natsutil"
 	uuid "github.com/kthomas/go.uuid"
@@ -16,9 +21,10 @@ import (
 
 const natsDispatchProtocolMessageSubject = "baseline-proxy.protocolmessage.outbound"
 
-// InstallProxyAPI installs system of record proxy API
-func InstallProxyAPI(r *gin.Engine) {
-	r.POST("/api/v1/workgroups", createWorkgroupHandler)
+// InstallWorkgroupAPI installs system of record proxy API
+func InstallWorkgroupAPI(r *gin.Engine) {
+	// r.POST("/api/v1/workgroups", createWorkgroupHandler)
+	r.POST("/api/v1/credentials", issueVerifiableCredentialHandler)
 }
 
 func createWorkgroupHandler(c *gin.Context) {
@@ -220,6 +226,62 @@ func createWorkgroupHandler(c *gin.Context) {
 
 	if err == nil {
 		provide.Render(nil, 204, c)
+	} else {
+		obj := map[string]interface{}{}
+		obj["errors"] = []interface{}{} // FIXME
+		provide.Render(obj, 422, c)
+	}
+}
+
+func issueVerifiableCredentialHandler(c *gin.Context) {
+	var issueVCRequest *proxy.IssueVerifiableCredentialRequest
+
+	buf, err := c.GetRawData()
+	if err != nil {
+		provide.RenderError(err.Error(), 400, c)
+		return
+	}
+
+	err = json.Unmarshal(buf, &issueVCRequest)
+	if err != nil {
+		msg := fmt.Sprintf("failed to umarshal workgroup invitation acceptance request; %s", err.Error())
+		common.Log.Warning(msg)
+		provide.RenderError(msg, 422, c)
+		return
+	}
+
+	// FIXME-- make general
+	if issueVCRequest.Address == nil {
+		provide.RenderError("address is required", 422, c)
+		return
+	}
+
+	if issueVCRequest.Signature == nil {
+		provide.RenderError("signature is required", 422, c)
+		return
+	}
+
+	addrHash := hex.EncodeToString([]byte(*issueVCRequest.Address))
+	pubkey, err := crypto.Ecrecover([]byte(addrHash), []byte(*issueVCRequest.Signature))
+
+	x, y := elliptic.Unmarshal(crypto.S256(), pubkey)
+	if x == nil {
+		provide.RenderError("failed to unmarshal public key", 422, c)
+		return
+	}
+
+	recoveredAddress := secp256k1.CompressPubkey(x, y)
+	if strings.ToLower(string(recoveredAddress)) != strings.ToLower(*issueVCRequest.Address) {
+		provide.RenderError("recovered address did not match signer", 422, c)
+		return
+	}
+
+	credential, err := proxy.IssueVC(*issueVCRequest.Address, map[string]interface{}{})
+
+	if err == nil {
+		provide.Render(&proxy.IssueVerifiableCredentialResponse{
+			VC: credential,
+		}, 201, c)
 	} else {
 		obj := map[string]interface{}{}
 		obj["errors"] = []interface{}{} // FIXME

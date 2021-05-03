@@ -16,6 +16,7 @@ import (
 	"github.com/provideapp/baseline-proxy/common"
 	"github.com/provideapp/baseline-proxy/middleware"
 	"github.com/provideapp/baseline-proxy/proxy"
+	"github.com/provideapp/baseline-proxy/workgroup"
 	identcommon "github.com/provideapp/ident/common"
 	"github.com/provideapp/ident/token"
 
@@ -117,6 +118,8 @@ func runAPI() {
 	r.Use(provide.CORSMiddleware())
 
 	r.GET("/status", statusHandler)
+
+	workgroup.InstallWorkgroupAPI(r)
 
 	r.Use(token.AuthMiddleware())
 	r.Use(identcommon.AccountingMiddleware())

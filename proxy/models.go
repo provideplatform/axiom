@@ -32,6 +32,18 @@ type Config struct {
 	RegistryContractAddress  *string           `sql:"-" json:"registry_contract_address,omitempty"`
 }
 
+// IssueVerifiableCredentialRequest represents a request to issue a verifiable credential
+type IssueVerifiableCredentialRequest struct {
+	Address        *string    `json:"address"`
+	OrganizationID *uuid.UUID `json:"organization_id,omitempty"`
+	Signature      *string    `json:"signature"`
+}
+
+// IssueVerifiableCredentialResponse represents a response to a VC issuance request
+type IssueVerifiableCredentialResponse struct {
+	VC *string `json:"verifiable_credential"`
+}
+
 // Message is a proxy-internal wrapper for protocol message handling
 type Message struct {
 	BaselineID      *uuid.UUID       `sql:"-" json:"baseline_id,omitempty"` // optional; when included, can be used to map outbound message just-in-time
@@ -47,9 +59,10 @@ type Message struct {
 
 // Participant is a party to a baseline workgroup or workflow context
 type Participant struct {
-	Address  *string                `sql:"-" json:"address"`
-	Metadata map[string]interface{} `sql:"-" json:"metadata,omitempty"`
-	URL      *string                `sql:"-" json:"url,omitempty"`
+	Address           *string                `sql:"-" json:"address"`
+	Metadata          map[string]interface{} `sql:"-" json:"metadata,omitempty"`
+	APIEndpoint       *string                `sql:"-" json:"api_endpoint,omitempty"`
+	MessagingEndpoint *string                `sql:"-" json:"messaging_endpoint,omitempty"`
 }
 
 // ProtocolMessage is a baseline protocol message

@@ -49,8 +49,8 @@ func baselineWorkflowFactory(objectType string, identifier *string) (*Workflow, 
 
 	for _, party := range common.DefaultCounterparties {
 		workflow.Participants = append(workflow.Participants, &Participant{
-			Address: common.StringOrNil(party["address"]),
-			URL:     common.StringOrNil(party["messaging_endpoint"]),
+			Address:           common.StringOrNil(party["address"]),
+			MessagingEndpoint: common.StringOrNil(party["messaging_endpoint"]),
 		})
 	}
 
@@ -64,8 +64,9 @@ func baselineWorkflowFactory(objectType string, identifier *string) (*Workflow, 
 	orgs, err := ident.ListApplicationOrganizations(*token, workgroupID, map[string]interface{}{})
 	for _, org := range orgs {
 		workflow.Participants = append(workflow.Participants, &Participant{
-			Address: common.StringOrNil(org.Metadata["address"].(string)),
-			URL:     common.StringOrNil(org.Metadata["messaging_endpoint"].(string)),
+			Address:           common.StringOrNil(org.Metadata["address"].(string)),
+			APIEndpoint:       common.StringOrNil(org.Metadata["api_endpoint"].(string)),
+			MessagingEndpoint: common.StringOrNil(org.Metadata["messaging_endpoint"].(string)),
 		})
 	}
 
