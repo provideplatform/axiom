@@ -593,6 +593,11 @@ func (m *Message) prove() error {
 }
 
 func (m *ProtocolMessage) broadcast(recipient string) error {
+	if strings.ToLower(recipient) == strings.ToLower(*common.BaselineOrganizationAddress) {
+		common.Log.Debugf("skipping no-op protocol message broadcast to self: %s", recipient)
+		return nil
+	}
+
 	payload, err := json.Marshal(&ProtocolMessage{
 		BaselineID: m.BaselineID,
 		Opcode:     m.Opcode,
