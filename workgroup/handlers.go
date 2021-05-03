@@ -1,10 +1,10 @@
 package workgroup
 
 import (
+	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	"github.com/dgrijalva/jwt-go"
 	crypto "github.com/ethereum/go-ethereum/crypto" // FIXME
@@ -256,10 +256,10 @@ func issueVerifiableCredentialHandler(c *gin.Context) {
 	}
 
 	// FIXME-- make general with PublicKey
-	// if issueVCRequest.PublicKey == nil {
-	// 	provide.RenderError("public_key is required", 422, c)
-	// 	return
-	// }
+	if issueVCRequest.PublicKey == nil {
+		provide.RenderError("public_key is required", 422, c)
+		return
+	}
 
 	if issueVCRequest.Signature == nil {
 		provide.RenderError("signature is required", 422, c)
@@ -276,12 +276,20 @@ func issueVerifiableCredentialHandler(c *gin.Context) {
 		return
 	}
 
-	pubkeyBytes := crypto.Keccak256Hash(pubkey).Bytes()
-	recoveredAddress := fmt.Sprintf("0x%s", pubkeyBytes[12:32])
-	common.Log.Debugf("recovered public key: 0x%s; recovered address: %s", hex.EncodeToString(pubkeyBytes), recoveredAddress)
+	// pubkeyBytes := crypto.Keccak256Hash(pubkey).Bytes()
+	// recoveredAddress := fmt.Sprintf("0x%s", pubkeyBytes[12:32])
+	// common.Log.Debugf("recovered public key: 0x%s; recovered address: %s", hex.EncodeToString(pubkeyBytes), recoveredAddress)
 
-	if strings.ToLower(string(recoveredAddress)) != strings.ToLower(*issueVCRequest.Address) {
-		common.Log.Warningf("recovered address %s did not match expected signer %s", string(recoveredAddress), *issueVCRequest.Address)
+	signerPubkey, err := hex.DecodeString(*issueVCRequest.PublicKey)
+	if err != nil {
+		msg := fmt.Sprintf("failed to recover public key from signature: %s; %s", *issueVCRequest.Signature, err.Error())
+		common.Log.Warning(msg)
+		provide.RenderError(msg, 422, c)
+		return
+	}
+
+	if bytes.Equal(pubkey, signerPubkey) {
+		// common.Log.Warningf("recovered address %s did not match expected signer %s", string(recoveredAddress), *issueVCRequest.Address)
 		provide.RenderError("recovered address did not match signer", 422, c)
 		return
 	}
