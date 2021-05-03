@@ -2,7 +2,6 @@ package proxy
 
 import (
 	"encoding/base64"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,6 +11,7 @@ import (
 	"strings"
 
 	mimc "github.com/consensys/gnark/crypto/hash/mimc/bn256"
+	"github.com/ethereum/go-ethereum/crypto"
 	natsutil "github.com/kthomas/go-natsutil"
 	"github.com/kthomas/go-redisutil"
 	uuid "github.com/kthomas/go.uuid"
@@ -206,7 +206,7 @@ func requestBaselineOrganizationIssuedVC(address string) (*string, error) {
 		*token,
 		common.Vault.ID.String(),
 		*keyID,
-		hex.EncodeToString([]byte(*common.BaselineOrganizationAddress)),
+		crypto.Keccak256Hash([]byte(*common.BaselineOrganizationAddress)).Hex(),
 		map[string]interface{}{},
 	)
 	if err != nil {
