@@ -16,7 +16,7 @@ func init() {
 func resolveBaselineCounterparties() {
 	workgroupID := os.Getenv("BASELINE_WORKGROUP_ID")
 	if workgroupID == "" {
-		common.Log.Panicf("failed to read BASELINE_WORKGROUP_ID from environment; %s", err.Error())
+		common.Log.Panicf("failed to read BASELINE_WORKGROUP_ID from environment; %s")
 	}
 
 	go func() {
