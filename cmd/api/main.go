@@ -118,14 +118,14 @@ func runAPI() {
 	r.Use(provide.CORSMiddleware())
 
 	r.GET("/status", statusHandler)
-
-	workgroup.InstallWorkgroupAPI(r)
+	proxy.InstallCredentialsAPI(r)
 
 	r.Use(token.AuthMiddleware())
 	r.Use(identcommon.AccountingMiddleware())
 	r.Use(identcommon.RateLimitingMiddleware())
 
 	proxy.InstallProxyAPI(r)
+	workgroup.InstallWorkgroupAPI(r)
 
 	srv = &http.Server{
 		Addr:    util.ListenAddr,

@@ -1,8 +1,10 @@
 package proxy
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -11,11 +13,94 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/gin-gonic/gin"
 	"github.com/kthomas/go-pgputil"
 	"github.com/provideapp/baseline-proxy/common"
 	"github.com/provideservices/provide-go/api/vault"
+	provide "github.com/provideservices/provide-go/common"
 	"golang.org/x/crypto/ssh"
 )
+
+// InstallCredentialsAPI installs public API for interacting with verifiable credentials
+func InstallCredentialsAPI(r *gin.Engine) {
+	r.POST("/api/v1/credentials", issueVerifiableCredentialHandler)
+}
+
+func issueVerifiableCredentialHandler(c *gin.Context) {
+	issueVCRequest := &IssueVerifiableCredentialRequest{}
+
+	buf, err := c.GetRawData()
+	if err != nil {
+		provide.RenderError(err.Error(), 400, c)
+		return
+	}
+
+	err = json.Unmarshal(buf, &issueVCRequest)
+	if err != nil {
+		msg := fmt.Sprintf("failed to umarshal workgroup invitation acceptance request; %s", err.Error())
+		common.Log.Warning(msg)
+		provide.RenderError(msg, 422, c)
+		return
+	}
+
+	if issueVCRequest.Address == nil {
+		provide.RenderError("address is required", 422, c)
+		return
+	}
+
+	// FIXME-- make general with PublicKey
+	if issueVCRequest.PublicKey == nil {
+		provide.RenderError("public_key is required", 422, c)
+		return
+	}
+
+	if issueVCRequest.Signature == nil {
+		provide.RenderError("signature is required", 422, c)
+		return
+	}
+
+	msg := crypto.Keccak256Hash([]byte(*issueVCRequest.Address))
+	sig, _ := hex.DecodeString(*issueVCRequest.Signature)
+	pubkey, err := crypto.Ecrecover(msg.Bytes(), []byte(sig))
+	if err != nil {
+		msg := fmt.Sprintf("failed to recover public key from signature: %s; %s", *issueVCRequest.Signature, err.Error())
+		common.Log.Warning(msg)
+		provide.RenderError(msg, 422, c)
+		return
+	}
+
+	// pubkeyBytes := crypto.Keccak256Hash(pubkey).Bytes()
+	// recoveredAddress := fmt.Sprintf("0x%s", pubkeyBytes[12:32])
+	// common.Log.Debugf("recovered public key: 0x%s; recovered address: %s", hex.EncodeToString(pubkeyBytes), recoveredAddress)
+
+	signerPubkey, err := hex.DecodeString((*issueVCRequest.PublicKey)[2:])
+	if err != nil {
+		msg := fmt.Sprintf("failed to recover public key from signature: %s; %s", *issueVCRequest.Signature, err.Error())
+		common.Log.Warning(msg)
+		provide.RenderError(msg, 422, c)
+		return
+	}
+
+	if !bytes.Equal(pubkey, signerPubkey) {
+		// common.Log.Warningf("recovered address %s did not match expected signer %s", string(recoveredAddress), *issueVCRequest.Address)
+		common.Log.Warningf("recovered public key %s did not match expected signer %s", string(pubkey), *issueVCRequest.PublicKey)
+		provide.RenderError("recovered address did not match signer", 422, c)
+		return
+	}
+
+	credential, err := IssueVC(*issueVCRequest.Address, map[string]interface{}{})
+
+	if err == nil {
+		provide.Render(&IssueVerifiableCredentialResponse{
+			VC: credential,
+		}, 201, c)
+	} else {
+		obj := map[string]interface{}{}
+		obj["errors"] = []interface{}{} // FIXME
+		provide.Render(obj, 422, c)
+	}
+}
 
 // IssueVC vends a verifiable credential for the given third-party; it assumes authorization
 // has already been completed successfully for the counterparty
