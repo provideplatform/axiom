@@ -129,7 +129,7 @@ func (s *SAPService) ConfigureProxy(params map[string]interface{}) error {
 
 	organizationID, organizationIDOk := params["organization_id"].(string)
 	if !organizationIDOk {
-		return errors.New("failed to configure proxy; organization id required")
+		return errors.New("failed to configure proxy; organization_id required")
 	}
 
 	uri := fmt.Sprintf("ubc/organizations/%s/proxy", organizationID)
