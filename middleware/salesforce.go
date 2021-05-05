@@ -59,6 +59,14 @@ func (s *SalesforceService) ConfigureProxy(params map[string]interface{}) error 
 	return fmt.Errorf("not implemented")
 }
 
+// GetBusinessObjectModel retrieves a business object model by type
+func (s *SalesforceService) GetBusinessObjectModel(recordType string, params map[string]interface{}) (interface{}, error) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	return nil, fmt.Errorf("not implemented")
+}
+
 // CreateBusinessObject is a generic way to create a business object in the Salesforce environment
 func (s *SalesforceService) CreateBusinessObject(params map[string]interface{}) (interface{}, error) {
 	s.mutex.Lock()

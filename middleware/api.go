@@ -18,7 +18,7 @@ type SOR interface {
 	ConfigureProxy(params map[string]interface{}) error
 	CreateBusinessObject(params map[string]interface{}) (interface{}, error)
 	DeleteProxyConfiguration(organizationID string) error
-	// GetBusinessObjectModel(recordType string, params map[string]interface{}) error
+	GetBusinessObjectModel(recordType string, params map[string]interface{}) (interface{}, error)
 	HealthCheck() error
 	ProxyHealthCheck(organizationID string) error
 	UpdateBusinessObject(id string, params map[string]interface{}) error

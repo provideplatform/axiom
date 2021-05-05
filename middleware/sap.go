@@ -142,6 +142,29 @@ func (s *SAPService) ConfigureProxy(params map[string]interface{}) error {
 	return nil
 }
 
+// GetBusinessObjectModel retrieves a business object data model by type
+func (s *SAPService) GetBusinessObjectModel(recordType string, params map[string]interface{}) (interface{}, error) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	err := s.Authenticate()
+	if err != nil {
+		return nil, err
+	}
+
+	uri := fmt.Sprintf("ubc/business_object_models/%s", recordType)
+	status, resp, err := s.Get(uri, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch business object model; status: %v; %s", status, err.Error())
+	}
+
+	if status != 200 {
+		return nil, fmt.Errorf("failed to fetch business object model; status: %v", status)
+	}
+
+	return resp, nil
+}
+
 // CreateBusinessObject is a generic way to create a business object in the SAP environment
 func (s *SAPService) CreateBusinessObject(params map[string]interface{}) (interface{}, error) {
 	s.mutex.Lock()
