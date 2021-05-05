@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -127,13 +126,7 @@ func (s *SAPService) ConfigureProxy(params map[string]interface{}) error {
 		return err
 	}
 
-	organizationID, organizationIDOk := params["organization_id"].(string)
-	if !organizationIDOk {
-		return errors.New("failed to configure proxy; organization_id required")
-	}
-
-	uri := fmt.Sprintf("ubc/organizations/%s/proxy", organizationID)
-	status, _, err := s.Post(uri, params)
+	status, _, err := s.Post("ubc/proxies", params)
 	if err != nil {
 		return err
 	}

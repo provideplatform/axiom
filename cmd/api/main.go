@@ -59,7 +59,7 @@ func configureSOR() {
 	common.Log.Debugf("health check completed; SOR API available at %s", common.InternalSOR["url"])
 
 	err = sor.ConfigureProxy(map[string]interface{}{
-		"organization_id": *common.OrganizationID,
+		"organization_id": common.OrganizationID,
 		"ident_endpoint":  fmt.Sprintf("%s://%s", os.Getenv("IDENT_API_SCHEME"), os.Getenv("IDENT_API_HOST")),
 		"proxy_endpoint":  common.OrganizationProxyEndpoint,
 		"refresh_token":   common.OrganizationRefreshToken,
