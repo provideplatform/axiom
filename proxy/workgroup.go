@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"os"
+	"strings"
 	"time"
 
 	"github.com/provideapp/baseline-proxy/common"
@@ -51,10 +52,13 @@ func resolveBaselineCounterparties() {
 		}
 
 		for _, participant := range counterparties {
-			err := participant.Cache()
-			if err != nil {
-				common.Log.Warningf("failed to cache counterparty; %s", err.Error())
+			if participant.Address != nil && strings.ToLower(*participant.Address) != strings.ToLower(*common.BaselineOrganizationAddress) {
+				err := participant.Cache()
+				if err != nil {
+					common.Log.Warningf("failed to cache counterparty; %s", err.Error())
+				}
 			}
+
 			common.Log.Debugf("cached baseline counterparty: %s", *participant.Address)
 		}
 	}()
