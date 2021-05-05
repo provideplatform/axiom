@@ -126,7 +126,13 @@ func (s *SAPService) ConfigureProxy(params map[string]interface{}) error {
 		return err
 	}
 
-	status, _, err := s.Post("ubc/proxy_config", params)
+	organizationID, organizationIDOk := params["organization_id"].(string)
+	if !organizationIDOk {
+		return errors.New("failed to configure proxy; organization id required")
+	}
+
+	uri := fmt.Sprintf("ubc/organizations/%s/proxy", organizationID)
+	status, _, err := s.Post(uri, params)
 	if err != nil {
 		return err
 	}
@@ -235,7 +241,7 @@ func (s *SAPService) DeleteProxyConfiguration(organizationID string) error {
 		return err
 	}
 
-	uri := fmt.Sprintf("ubc/proxy_config?organization_id=%s", organizationID)
+	uri := fmt.Sprintf("ubc/organizations/%s/proxy", organizationID)
 	status, _, err := s.Delete(uri)
 	if err != nil {
 		return fmt.Errorf("failed to delete proxy config for organization %s; status: %v; %s", organizationID, status, err.Error())
@@ -280,9 +286,8 @@ func (s *SAPService) ProxyHealthCheck(organizationID string) error {
 		return err
 	}
 
-	status, _, err := s.Get("ubc/proxy_check", map[string]interface{}{
-		"organization_id": organizationID,
-	})
+	uri := fmt.Sprintf("ubc/organizations/%s/proxy", organizationID)
+	status, _, err := s.Get(uri, map[string]interface{}{})
 	if err != nil {
 		return fmt.Errorf("failed to complete proxy health check for organization %s; status: %v; %s", organizationID, status, err.Error())
 	}
