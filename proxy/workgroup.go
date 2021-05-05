@@ -62,10 +62,10 @@ func resolveBaselineCounterparties() {
 				err := participant.Cache()
 				if err != nil {
 					common.Log.Warningf("failed to cache counterparty; %s", err.Error())
+					continue
 				}
+				common.Log.Debugf("cached baseline counterparty: %s", *participant.Address)
 			}
-
-			common.Log.Debugf("cached baseline counterparty: %s", *participant.Address)
 		}
 	}()
 }
