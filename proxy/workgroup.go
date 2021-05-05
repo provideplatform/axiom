@@ -44,11 +44,17 @@ func resolveBaselineCounterparties() {
 
 		orgs, err := ident.ListApplicationOrganizations(*token.AccessToken, workgroupID, map[string]interface{}{})
 		for _, org := range orgs {
-			counterparties = append(counterparties, &Participant{
-				Address:           common.StringOrNil(org.Metadata["address"].(string)),
-				APIEndpoint:       common.StringOrNil(org.Metadata["api_endpoint"].(string)),
-				MessagingEndpoint: common.StringOrNil(org.Metadata["messaging_endpoint"].(string)),
-			})
+			addr, addrOk := org.Metadata["address"].(string)
+			apiEndpoint, _ := org.Metadata["api_endpoint"].(string)
+			messagingEndpoint, _ := org.Metadata["messaging_endpoint"].(string)
+
+			if addrOk {
+				counterparties = append(counterparties, &Participant{
+					Address:           common.StringOrNil(addr),
+					APIEndpoint:       common.StringOrNil(apiEndpoint),
+					MessagingEndpoint: common.StringOrNil(messagingEndpoint),
+				})
+			}
 		}
 
 		for _, participant := range counterparties {
