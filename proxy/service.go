@@ -244,6 +244,7 @@ func requestBaselineOrganizationIssuedVC(address string) (*string, error) {
 		credential = &vc
 	}
 
+	common.Log.Debugf("received requested verifiable credential from counterparty %s", address)
 	return credential, nil
 }
 
