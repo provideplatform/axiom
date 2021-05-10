@@ -166,7 +166,16 @@ func consumeBaselineProxySubscriptionsMsg(msg *nats.Msg) {
 				rawcircuit, _ := json.Marshal(circuit)
 				json.Unmarshal(rawcircuit, &params)
 
-				circuit, err := privacy.CreateCircuit(*token, params)
+				// FIXME-- marshal this on the send-side
+				circuit, err := privacy.CreateCircuit(*token, map[string]interface{}{
+					"artifacts":      circuit.Artifacts,
+					"name":           circuit.Name,
+					"description":    circuit.Description,
+					"identifier":     circuit.Identifier,
+					"provider":       circuit.Provider,
+					"proving_scheme": circuit.ProvingScheme,
+					"curve":          circuit.Curve,
+				})
 				if err != nil {
 					common.Log.Warningf("failed to handle inbound sync protocol message; failed to create circuit; %s", err.Error())
 					// natsutil.AttemptNack(msg, natsDispatchProtocolMessageTimeout)
