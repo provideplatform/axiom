@@ -65,12 +65,11 @@ func (r *BaselineRecord) cache() error {
 			return err
 		}
 
-		// cache the workflow identifier for convenient lookup using the baseline id
-		baselineWorkflowIDKey := fmt.Sprintf("baseline.id.%s.workflow.identifier", r.BaselineID.String())
-		return redisutil.WithRedlock(baselineWorkflowIDKey, func() error {
-			common.Log.Debugf("mapping baseline id to workflow identifier")
-			return redisutil.Set(baselineWorkflowIDKey, r.WorkflowID, nil)
-		})
+		if r.Workflow != nil {
+			err = r.Workflow.CacheByBaselineID(r.BaselineID.String())
+		}
+
+		return err
 	})
 }
 

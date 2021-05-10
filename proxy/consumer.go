@@ -195,6 +195,15 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *stan.Msg) {
 				return
 			}
 
+			if protomsg.BaselineID != nil {
+				err = workflow.CacheByBaselineID(protomsg.BaselineID.String())
+				if err != nil {
+					common.Log.Warningf("failed to handle inbound sync protocol message; failed to cache workflow identifier by baseline id; %s", err.Error())
+					natsutil.AttemptNack(msg, natsBaselineProxyInboundTimeout)
+					return
+				}
+			}
+
 			common.Log.Debugf("cached %d-circuit workflow: %s", len(workflow.Circuits), workflow.Identifier)
 		}
 

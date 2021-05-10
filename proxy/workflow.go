@@ -32,6 +32,19 @@ func (w *Workflow) Cache() error {
 	})
 }
 
+// CacheByBaselineID caches a workflow identifier, indexed by baseline id for convenient lookup
+func (w *Workflow) CacheByBaselineID(baselineID string) error {
+	if w.Identifier == nil {
+		return errors.New("failed to cache workflow with nil identifier")
+	}
+
+	key := fmt.Sprintf("baseline.id.%s.workflow.identifier", baselineID)
+	return redisutil.WithRedlock(key, func() error {
+		common.Log.Debugf("mapping baseline id to workflow identifier")
+		return redisutil.Set(key, w.Identifier, nil)
+	})
+}
+
 func baselineWorkflowFactory(objectType string, identifier *string) (*Workflow, error) {
 	var identifierUUID uuid.UUID
 	if identifier != nil {
