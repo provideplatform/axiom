@@ -146,15 +146,17 @@ func requireCircuits(token *string, workflow *Workflow) error {
 			select {
 			case <-timer.C:
 				for i, _circuit := range workflow.Circuits {
-					circuit, err := privacy.GetCircuitDetails(*token, _circuit.ID.String())
-					if err != nil {
-						common.Log.Debugf("failed to fetch circuit details; %s", err.Error())
-						break
-					}
-					if circuit.Status != nil && *circuit.Status == "provisioned" {
-						common.Log.Debugf("provisioned workflow circuit: %s", circuit.ID)
-						workflow.Circuits[i] = circuit
-						wg.Done()
+					if workflow.Circuits[i].Status == nil || *workflow.Circuits[i].Status != "provisioned" {
+						circuit, err := privacy.GetCircuitDetails(*token, _circuit.ID.String())
+						if err != nil {
+							common.Log.Debugf("failed to fetch circuit details; %s", err.Error())
+							break
+						}
+						if circuit.Status != nil && *circuit.Status == "provisioned" {
+							common.Log.Debugf("provisioned workflow circuit: %s", circuit.ID)
+							workflow.Circuits[i] = circuit
+							wg.Done()
+						}
 					}
 				}
 			default:
