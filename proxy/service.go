@@ -352,7 +352,7 @@ func (m *ProtocolMessage) baselineInbound() bool {
 		return false
 	}
 
-	sor := middleware.SORFactoryByType(*m.Type, nil) //(common.InternalSOR, nil)
+	sor := middleware.SORFactoryByType(*m.Type, nil)
 
 	if baselineRecord.ID == nil {
 		// TODO -- map baseline record id -> internal record id (i.e, this is currently done but lazily on outbound message)
@@ -478,7 +478,7 @@ func (m *Message) baselineOutbound() bool {
 				Identifier: baselineRecord.WorkflowID,
 				Payload: &ProtocolMessagePayload{
 					Object: map[string]interface{}{
-						"circuits":     circuits[0:1],
+						"circuits":     circuits,
 						"identifier":   workflow.Identifier,
 						"participants": workflow.Participants,
 						"shield":       workflow.Shield,
