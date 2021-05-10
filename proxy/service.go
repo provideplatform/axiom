@@ -60,7 +60,17 @@ func (r *BaselineRecord) cache() error {
 
 		raw, _ := json.Marshal(r)
 		common.Log.Debugf("mapping baseline id to baseline record: %s", baselineRecordKey)
-		return redisutil.Set(baselineRecordKey, raw, nil)
+		err := redisutil.Set(baselineRecordKey, raw, nil)
+		if err != nil {
+			return err
+		}
+
+		// cache the workflow identifier for convenient lookup using the baseline id
+		baselineWorkflowIDKey := fmt.Sprintf("baseline.id.%s.workflow.identifier", r.BaselineID.String())
+		return redisutil.WithRedlock(baselineWorkflowIDKey, func() error {
+			common.Log.Debugf("mapping baseline id to workflow identifier")
+			return redisutil.Set(baselineWorkflowIDKey, r.WorkflowID, nil)
+		})
 	})
 }
 
@@ -420,7 +430,18 @@ func (m *Message) baselineOutbound() bool {
 	}
 
 	if baselineRecord == nil {
-		workflow, err := baselineWorkflowFactory(*m.Type, nil)
+		var workflow *Workflow
+		var err error
+
+		if m.BaselineID != nil {
+			workflow = LookupBaselineWorkflowByBaselineID(m.BaselineID.String())
+			if workflow == nil {
+				err = fmt.Errorf("failed to lookup workflow for given baseline id: %s", m.BaselineID.String())
+			}
+		} else {
+			workflow, err = baselineWorkflowFactory(*m.Type, nil)
+		}
+
 		if err != nil {
 			common.Log.Warning(err.Error())
 			m.Errors = append(m.Errors, &provide.Error{

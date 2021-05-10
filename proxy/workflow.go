@@ -186,3 +186,14 @@ func LookupBaselineWorkflow(identifier string) *Workflow {
 	json.Unmarshal([]byte(*raw), &workflow)
 	return workflow
 }
+
+func LookupBaselineWorkflowByBaselineID(baselineID string) *Workflow {
+	key := fmt.Sprintf("baseline.id.%s.workflow.identifier", baselineID)
+	identifier, err := redisutil.Get(key)
+	if err != nil {
+		common.Log.Warningf("failed to retrieve cached baseline workflow identifier for baseline id: %s; %s", key, err.Error())
+		return nil
+	}
+
+	return LookupBaselineWorkflow(*identifier)
+}
