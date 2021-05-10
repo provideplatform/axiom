@@ -140,7 +140,7 @@ func requireCircuits(token *string, workflow *Workflow) error {
 	timer := time.NewTicker(requireCircuitTickerInterval)
 	defer timer.Stop()
 
-	wg.Add(1)
+	wg.Add(len(workflow.Circuits))
 	go func() {
 		for {
 			select {
@@ -154,9 +154,7 @@ func requireCircuits(token *string, workflow *Workflow) error {
 					if circuit.Status != nil && *circuit.Status == "provisioned" {
 						common.Log.Debugf("provisioned workflow circuit: %s", circuit.ID)
 						workflow.Circuits[i] = circuit
-						if i == 0 {
-							wg.Done()
-						}
+						wg.Done()
 					}
 				}
 			default:
