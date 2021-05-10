@@ -475,8 +475,15 @@ func (m *Message) baselineOutbound() bool {
 				Sender:    nil, // FIXME
 				Type:      m.Type,
 			}
-			payload, _ := json.Marshal(msg)
-			natsutil.NatsStreamingPublish(natsDispatchProtocolMessageSubject, payload)
+
+			err := msg.broadcast(*recipient.Address)
+			if err != nil {
+				msg := fmt.Sprintf("failed to dispatch protocol message to recipient: %s; %s", *recipient.Address, err.Error())
+				common.Log.Warning(msg)
+				m.Errors = append(m.Errors, &provide.Error{
+					Message: common.StringOrNil(msg),
+				})
+			}
 		}
 	}
 
@@ -613,6 +620,7 @@ func (m *ProtocolMessage) broadcast(recipient string) error {
 	})
 
 	if err != nil {
+		common.Log.Warningf("failed to broadcast %d-byte protocol message; %s", len(payload), err.Error())
 		return err
 	}
 
