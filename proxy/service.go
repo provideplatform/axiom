@@ -458,6 +458,19 @@ func (m *Message) baselineOutbound() bool {
 			return false
 		}
 
+		circuits := make([]*privacy.Circuit, 0)
+		for _, circuit := range workflow.Circuits {
+			circuits = append(circuits, &privacy.Circuit{
+				Artifacts:     circuit.Artifacts,
+				Name:          circuit.Name,
+				Description:   circuit.Description,
+				Identifier:    circuit.Identifier,
+				Provider:      circuit.Provider,
+				ProvingScheme: circuit.ProvingScheme,
+				Curve:         circuit.Curve,
+			})
+		}
+
 		for _, recipient := range workflow.Participants {
 			msg := &ProtocolMessage{
 				BaselineID: baselineRecord.BaselineID,
@@ -465,9 +478,10 @@ func (m *Message) baselineOutbound() bool {
 				Identifier: baselineRecord.WorkflowID,
 				Payload: &ProtocolMessagePayload{
 					Object: map[string]interface{}{
-						"circuits":   workflow.Circuits[0:1],
-						"identifier": workflow.Identifier,
-						"shield":     workflow.Shield,
+						"circuits":     circuits[0:1],
+						"identifier":   workflow.Identifier,
+						"participants": workflow.Participants,
+						"shield":       workflow.Shield,
 					},
 					Type: common.StringOrNil("workflow"),
 				},
