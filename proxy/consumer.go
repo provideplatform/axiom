@@ -22,6 +22,11 @@ const natsDispatchProtocolMessageMaxInFlight = 2048
 const dispatchProtocolMessageAckWait = time.Second * 30
 const natsDispatchProtocolMessageTimeout = int64(time.Minute * 5)
 
+const natsBaselineProxyInboundSubject = "baseline-proxy.inbound"
+const natsBaselineProxyInboundMaxInFlight = 2048
+const baselineProxyInboundAckWait = time.Second * 30
+const natsBaselineProxyInboundTimeout = int64(time.Minute * 5)
+
 const natsBaselineProxySubject = "baseline.proxy"
 const natsBaselineProxyMaxInFlight = 2048
 const baselineProxyAckWait = time.Second * 30
@@ -43,19 +48,23 @@ func init() {
 }
 
 func createNatsBaselineProxySubscriptions(wg *sync.WaitGroup) {
+	for i := uint64(0); i < natsutil.GetNatsConsumerConcurrency(); i++ {
+		natsutil.RequireNatsStreamingSubscription(wg,
+			baselineProxyAckWait,
+			natsBaselineProxySubject,
+			natsBaselineProxySubject,
+			consumeBaselineProxyInboundSubscriptionsMsg,
+			baselineProxyAckWait,
+			natsBaselineProxyMaxInFlight,
+			nil,
+		)
+	}
+
 	conn, _ := natsutil.GetSharedNatsConnection(nil)
-	conn.Subscribe(natsBaselineProxySubject, consumeBaselineProxySubscriptionsMsg)
-	// for i := uint64(0); i < natsutil.GetNatsConsumerConcurrency(); i++ {
-	// 	natsutil.RequireNatsStreamingSubscription(wg,
-	// 		baselineProxyAckWait,
-	// 		natsBaselineProxySubject,
-	// 		natsBaselineProxySubject,
-	// 		consumeBaselineProxySubscriptionsMsg,
-	// 		baselineProxyAckWait,
-	// 		natsBaselineProxyMaxInFlight,
-	// 		nil,
-	// 	)
-	// }
+	conn.Subscribe(natsBaselineProxySubject, func(msg *nats.Msg) {
+		common.Log.Debugf("consuming %d-byte NATS inbound protocol message on subject: %s", len(msg.Data), msg.Subject)
+		natsutil.NatsStreamingPublish(natsBaselineProxyInboundSubject, msg.Data)
+	})
 }
 
 func createNatsDispatchInvitationSubscriptions(wg *sync.WaitGroup) {
@@ -86,20 +95,20 @@ func createNatsDispatchProtocolMessageSubscriptions(wg *sync.WaitGroup) {
 	}
 }
 
-func consumeBaselineProxySubscriptionsMsg(msg *nats.Msg) {
-	common.Log.Debugf("consuming %d-byte NATS inbound protocol message on subject: %s", len(msg.Data), msg.Subject)
+func consumeBaselineProxyInboundSubscriptionsMsg(msg *stan.Msg) {
+	common.Log.Debugf("consuming %d-byte NATS inbound protocol message on internal subject: %s", len(msg.Data), msg.Subject)
 
 	protomsg := &ProtocolMessage{}
 	err := json.Unmarshal(msg.Data, &protomsg)
 	if err != nil {
 		common.Log.Warningf("failed to umarshal inbound protocol message; %s", err.Error())
-		// natsutil.Nack(msg)
+		natsutil.Nack(msg)
 		return
 	}
 
 	if protomsg.Opcode == nil {
 		common.Log.Warningf("inbound protocol message specified invalid opcode; %s", err.Error())
-		// natsutil.Nack(msg)
+		natsutil.Nack(msg)
 		return
 	}
 
@@ -108,7 +117,7 @@ func consumeBaselineProxySubscriptionsMsg(msg *nats.Msg) {
 		success := protomsg.baselineInbound()
 		if !success {
 			common.Log.Warning("failed to baseline inbound protocol message")
-			// natsutil.AttemptNack(msg, natsBaselineProxyTimeout)
+			natsutil.AttemptNack(msg, natsBaselineProxyTimeout)
 			return
 		}
 		break
@@ -143,7 +152,7 @@ func consumeBaselineProxySubscriptionsMsg(msg *nats.Msg) {
 		token, err := vendOrganizationAccessToken()
 		if err != nil {
 			common.Log.Warningf("failed to handle inbound sync protocol message; %s", err.Error())
-			// natsutil.AttemptNack(msg, natsDispatchProtocolMessageTimeout)
+			natsutil.AttemptNack(msg, natsDispatchProtocolMessageTimeout)
 			return
 		}
 
@@ -152,7 +161,7 @@ func consumeBaselineProxySubscriptionsMsg(msg *nats.Msg) {
 			circuit, err := privacy.CreateCircuit(*token, protomsg.Payload.Object)
 			if err != nil {
 				common.Log.Warningf("failed to handle inbound sync protocol message; failed to create circuit; %s", err.Error())
-				// natsutil.AttemptNack(msg, natsDispatchProtocolMessageTimeout)
+				natsutil.AttemptNack(msg, natsDispatchProtocolMessageTimeout)
 				return
 			}
 			common.Log.Debugf("sync protocol message created circuit: %s", circuit.ID)
@@ -178,7 +187,7 @@ func consumeBaselineProxySubscriptionsMsg(msg *nats.Msg) {
 				})
 				if err != nil {
 					common.Log.Warningf("failed to handle inbound sync protocol message; failed to create circuit; %s", err.Error())
-					// natsutil.AttemptNack(msg, natsDispatchProtocolMessageTimeout)
+					natsutil.AttemptNack(msg, natsDispatchProtocolMessageTimeout)
 					return
 				}
 				common.Log.Debugf("sync protocol message created workflow: %s", circuit.ID)
@@ -187,7 +196,7 @@ func consumeBaselineProxySubscriptionsMsg(msg *nats.Msg) {
 			err = workflow.Cache()
 			if err != nil {
 				common.Log.Warningf("failed to handle inbound sync protocol message; failed to cache workflow; %s", err.Error())
-				// natsutil.AttemptNack(msg, natsDispatchProtocolMessageTimeout)
+				natsutil.AttemptNack(msg, natsDispatchProtocolMessageTimeout)
 				return
 			}
 		}
@@ -195,11 +204,11 @@ func consumeBaselineProxySubscriptionsMsg(msg *nats.Msg) {
 		break
 	default:
 		common.Log.Warningf("inbound protocol message specified invalid opcode; %s", err.Error())
-		// natsutil.Nack(msg)
+		natsutil.Nack(msg)
 		return
 	}
 
-	// msg.Ack()
+	msg.Ack()
 }
 
 func consumeDispatchInvitationSubscriptionsMsg(msg *stan.Msg) {
