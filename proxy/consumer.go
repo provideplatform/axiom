@@ -191,6 +191,8 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *stan.Msg) {
 				natsutil.AttemptNack(msg, natsDispatchProtocolMessageTimeout)
 				return
 			}
+
+			common.Log.Debugf("cached %d-circuit workflow: %s", len(workflow.Circuits), workflow.Identifier)
 		}
 
 		break
