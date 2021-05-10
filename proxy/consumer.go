@@ -50,12 +50,12 @@ func init() {
 func createNatsBaselineProxySubscriptions(wg *sync.WaitGroup) {
 	for i := uint64(0); i < natsutil.GetNatsConsumerConcurrency(); i++ {
 		natsutil.RequireNatsStreamingSubscription(wg,
-			baselineProxyAckWait,
-			natsBaselineProxySubject,
-			natsBaselineProxySubject,
+			baselineProxyInboundAckWait,
+			natsBaselineProxyInboundSubject,
+			natsBaselineProxyInboundSubject,
 			consumeBaselineProxyInboundSubscriptionsMsg,
 			baselineProxyAckWait,
-			natsBaselineProxyMaxInFlight,
+			natsBaselineProxyInboundMaxInFlight,
 			nil,
 		)
 	}
