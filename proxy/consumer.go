@@ -170,6 +170,8 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *stan.Msg) {
 			raw, err := json.Marshal(protomsg.Payload.Object)
 			json.Unmarshal(raw, &workflow)
 
+			circuits := make([]*privacy.Circuit, 0)
+
 			for _, circuit := range workflow.Circuits {
 				params := map[string]interface{}{}
 				rawcircuit, _ := json.Marshal(circuit)
@@ -182,8 +184,10 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *stan.Msg) {
 					natsutil.AttemptNack(msg, natsBaselineProxyInboundTimeout)
 					return
 				}
-				common.Log.Debugf("sync protocol message created workflow: %s", circuit.ID)
+				common.Log.Debugf("sync protocol message created circuit: %s", circuit.ID)
+				circuits = append(circuits, circuit)
 			}
+			workflow.Circuits = circuits
 
 			err = workflow.Cache()
 			if err != nil {
