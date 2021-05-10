@@ -117,7 +117,7 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *stan.Msg) {
 		success := protomsg.baselineInbound()
 		if !success {
 			common.Log.Warning("failed to baseline inbound protocol message")
-			natsutil.AttemptNack(msg, natsBaselineProxyTimeout)
+			natsutil.AttemptNack(msg, natsBaselineProxyInboundTimeout)
 			return
 		}
 		break
@@ -152,7 +152,7 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *stan.Msg) {
 		token, err := vendOrganizationAccessToken()
 		if err != nil {
 			common.Log.Warningf("failed to handle inbound sync protocol message; %s", err.Error())
-			natsutil.AttemptNack(msg, natsDispatchProtocolMessageTimeout)
+			natsutil.AttemptNack(msg, natsBaselineProxyInboundTimeout)
 			return
 		}
 
@@ -161,7 +161,7 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *stan.Msg) {
 			circuit, err := privacy.CreateCircuit(*token, protomsg.Payload.Object)
 			if err != nil {
 				common.Log.Warningf("failed to handle inbound sync protocol message; failed to create circuit; %s", err.Error())
-				natsutil.AttemptNack(msg, natsDispatchProtocolMessageTimeout)
+				natsutil.AttemptNack(msg, natsBaselineProxyInboundTimeout)
 				return
 			}
 			common.Log.Debugf("sync protocol message created circuit: %s", circuit.ID)
@@ -179,7 +179,7 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *stan.Msg) {
 				circuit, err := privacy.CreateCircuit(*token, params)
 				if err != nil {
 					common.Log.Warningf("failed to handle inbound sync protocol message; failed to create circuit; %s", err.Error())
-					natsutil.AttemptNack(msg, natsDispatchProtocolMessageTimeout)
+					natsutil.AttemptNack(msg, natsBaselineProxyInboundTimeout)
 					return
 				}
 				common.Log.Debugf("sync protocol message created workflow: %s", circuit.ID)
@@ -188,7 +188,7 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *stan.Msg) {
 			err = workflow.Cache()
 			if err != nil {
 				common.Log.Warningf("failed to handle inbound sync protocol message; failed to cache workflow; %s", err.Error())
-				natsutil.AttemptNack(msg, natsDispatchProtocolMessageTimeout)
+				natsutil.AttemptNack(msg, natsBaselineProxyInboundTimeout)
 				return
 			}
 
