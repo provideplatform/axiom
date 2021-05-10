@@ -177,7 +177,6 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *stan.Msg) {
 				rawcircuit, _ := json.Marshal(circuit)
 				json.Unmarshal(rawcircuit, &params)
 
-				// FIXME-- marshal this on the send-side
 				circuit, err := privacy.CreateCircuit(*token, params)
 				if err != nil {
 					common.Log.Warningf("failed to handle inbound sync protocol message; failed to create circuit; %s", err.Error())
