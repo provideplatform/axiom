@@ -10,7 +10,9 @@ RUN rm -rf ~/.ssh && rm -rf /go/src/github.com/provideapp/baseline-proxy/ops/key
 WORKDIR /go/src/github.com/provideapp/baseline-proxy
 RUN make build
 
-FROM golang:1.15
+FROM alpine
+
+RUN apk add --no-cache bash
 
 RUN mkdir -p /baseline-proxy
 WORKDIR /baseline-proxy
