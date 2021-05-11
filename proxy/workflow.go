@@ -153,7 +153,7 @@ func requireCircuits(token *string, workflow *Workflow) error {
 	timer := time.NewTicker(requireCircuitTickerInterval)
 	defer timer.Stop()
 
-	circuits := map[int]bool{}
+	circuits := make([]bool, len(workflow.Circuits))
 	wg.Add(len(workflow.Circuits))
 
 	go func() {
