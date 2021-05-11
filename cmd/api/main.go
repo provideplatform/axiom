@@ -16,6 +16,7 @@ import (
 	"github.com/provideapp/baseline-proxy/common"
 	"github.com/provideapp/baseline-proxy/middleware"
 	"github.com/provideapp/baseline-proxy/proxy"
+	"github.com/provideapp/baseline-proxy/stats"
 	"github.com/provideapp/baseline-proxy/workgroup"
 	identcommon "github.com/provideapp/ident/common"
 	"github.com/provideapp/ident/token"
@@ -125,6 +126,7 @@ func runAPI() {
 	r.Use(identcommon.RateLimitingMiddleware())
 
 	proxy.InstallProxyAPI(r)
+	stats.InstallStatsAPI(r)
 	workgroup.InstallWorkgroupAPI(r)
 
 	srv = &http.Server{

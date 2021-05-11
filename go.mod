@@ -17,7 +17,7 @@ require (
 	github.com/onsi/ginkgo v1.15.1
 	github.com/onsi/gomega v1.11.0
 	github.com/provideapp/ident v0.0.0-00010101000000-000000000000
-	github.com/provideservices/provide-go v0.0.0-20210417082846-8ed6b3333d26
+	github.com/provideservices/provide-go v0.0.0-20210506031032-412570752f38
 	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad
 )
 
