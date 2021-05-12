@@ -1,3 +1,5 @@
+name: Baseline
+
 on: 
   push:
     branches:
