@@ -25,7 +25,7 @@ jobs:
         uses: actions/checkout@v2
         with:
           path: 'baseline'                  
-      - run: docker-compose -f ./ops/docker-compose.yml build --no-cache baseline
+      - run: docker-compose -f ./ops/docker-compose.yml build --no-cache baseline-proxy
         working-directory: baseline
       - run: docker-compose -f ./ops/docker-compose.yml up -d
         working-directory: baseline
