@@ -53,6 +53,10 @@ func init() {
 
 func configureSOR() {
 	sor := middleware.SORFactory(common.InternalSOR, nil)
+	if sor == nil {
+		panic("SOR provider not resolved")
+	}
+
 	err := sor.HealthCheck()
 	if err != nil {
 		panic(err.Error())
