@@ -360,6 +360,8 @@ func (m *ProtocolMessage) baselineInbound() bool {
 			common.Log.Warning(err.Error())
 			return false
 		}
+
+		common.Log.Debugf("inbound baseline protocol message initialized baseline record; baseline id: %s; workflow id: %s; type: %s", m.BaselineID.String(), m.Identifier.String(), *m.Type)
 	}
 
 	err := m.verify(true)
