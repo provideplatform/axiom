@@ -336,6 +336,9 @@ func (m *ProtocolMessage) baselineInbound() bool {
 
 		workflow = LookupBaselineWorkflow(m.Identifier.String())
 		if workflow == nil {
+			workflow = LookupBaselineWorkflowByBaselineID(m.BaselineID.String())
+		}
+		if workflow == nil {
 			common.Log.Debugf("initializing baseline workflow: %s", *m.Identifier)
 
 			workflow, err = baselineWorkflowFactory(*m.Type, common.StringOrNil(m.Identifier.String()))
