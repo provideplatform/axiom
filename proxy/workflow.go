@@ -41,7 +41,7 @@ func (w *Workflow) CacheByBaselineID(baselineID string) error {
 	key := fmt.Sprintf("baseline.id.%s.workflow.identifier", baselineID)
 	return redisutil.WithRedlock(key, func() error {
 		common.Log.Debugf("mapping baseline id to workflow identifier")
-		return redisutil.Set(key, w.Identifier, nil)
+		return redisutil.Set(key, w.Identifier.String(), nil)
 	})
 }
 
