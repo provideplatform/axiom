@@ -30,10 +30,7 @@ func (s *EphemeralMemoryService) Authenticate() error {
 
 // ConfigureProxy configures a new proxy instance in EphemeralMemory for a given organization
 func (s *EphemeralMemoryService) ConfigureProxy(params map[string]interface{}) error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	return fmt.Errorf("not implemented")
+	return nil
 }
 
 // GetBusinessObjectModel retrieves a business object model by type
