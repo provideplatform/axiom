@@ -257,6 +257,10 @@ func consumeDispatchProtocolMessageSubscriptionsMsg(msg *stan.Msg) {
 		// request a VC from the counterparty
 		jwt, err = requestBaselineOrganizationIssuedVC(*protomsg.Recipient)
 		if err != nil {
+			counterparty := lookupBaselineOrganization(*protomsg.Recipient)
+			counterparty.APIEndpoint = nil
+			counterparty.Cache()
+
 			common.Log.Warningf("failed to request verifiable credential from recipient counterparty: %s; %s", *protomsg.Recipient, err.Error())
 			natsutil.AttemptNack(msg, natsDispatchProtocolMessageTimeout)
 			return
