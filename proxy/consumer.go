@@ -280,7 +280,10 @@ func consumeDispatchProtocolMessageSubscriptionsMsg(msg *stan.Msg) {
 
 	err = conn.Publish(natsBaselineProxySubject, msg.Data)
 	if err != nil {
-		// TODO-- clear cached endpoint so it will be re-fetched...
+		// clear cached endpoint so it will be re-fetched...
+		counterparty := lookupBaselineOrganization(*protomsg.Recipient)
+		counterparty.MessagingEndpoint = nil
+		counterparty.Cache()
 
 		common.Log.Warningf("failed to publish protocol message to recipient: %s; %s", *protomsg.Recipient, err.Error())
 		natsutil.AttemptNack(msg, natsDispatchProtocolMessageTimeout)
