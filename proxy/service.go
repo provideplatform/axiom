@@ -93,6 +93,7 @@ func lookupBaselineRecord(baselineID string) *BaselineRecord {
 
 	if baselineRecord != nil && baselineRecord.BaselineID != nil && baselineRecord.BaselineID.String() == baselineID && baselineRecord.WorkflowID != nil {
 		baselineRecord.Workflow = LookupBaselineWorkflow(baselineRecord.WorkflowID.String())
+		common.Log.Debugf("enriched workflow on baseline record instance; workflow id: %s", baselineRecord.WorkflowID.String())
 	}
 
 	return baselineRecord
