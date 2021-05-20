@@ -87,6 +87,15 @@ func baselineWorkflowFactory(objectType string, identifier *string) (*Workflow, 
 		common.Log.Debugf("deploying circuit(s) for workflow: %s", identifierUUID.String())
 
 		switch objectType {
+		case baselineWorkflowTypeGeneralConsistency:
+			circuit, err := privacy.CreateCircuit(*token, circuitParamsFactory("General Consistency", "purchase_order", nil))
+			if err != nil {
+				common.Log.Debugf("failed to deploy circuit; %s", err.Error())
+				return nil, err
+			}
+			workflow.Circuits = append(workflow.Circuits, circuit)
+			break
+
 		case baselineWorkflowTypeProcureToPay:
 			circuit, err := privacy.CreateCircuit(*token, circuitParamsFactory("PO", "purchase_order", nil))
 			if err != nil {

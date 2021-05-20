@@ -25,6 +25,7 @@ import (
 	"github.com/provideservices/provide-go/api/vault"
 )
 
+const baselineWorkflowTypeGeneralConsistency = "general_consistency"
 const baselineWorkflowTypeProcureToPay = "purchase_order"
 const baselineWorkflowTypeServiceNowIncident = "servicenow_incident"
 
