@@ -257,9 +257,7 @@ func consumeDispatchProtocolMessageSubscriptionsMsg(msg *stan.Msg) {
 		// request a VC from the counterparty
 		jwt, err = requestBaselineOrganizationIssuedVC(*protomsg.Recipient)
 		if err != nil {
-			counterparty := lookupBaselineOrganization(*protomsg.Recipient)
-			counterparty.APIEndpoint = nil
-			counterparty.Cache()
+			resolveBaselineCounterparties() // HACK-- this should not re-resolve all counterparties...
 
 			common.Log.Warningf("failed to request verifiable credential from recipient counterparty: %s; %s", *protomsg.Recipient, err.Error())
 			natsutil.AttemptNack(msg, natsDispatchProtocolMessageTimeout)
@@ -285,9 +283,11 @@ func consumeDispatchProtocolMessageSubscriptionsMsg(msg *stan.Msg) {
 	err = conn.Publish(natsBaselineProxySubject, msg.Data)
 	if err != nil {
 		// clear cached endpoint so it will be re-fetched...
-		counterparty := lookupBaselineOrganization(*protomsg.Recipient)
-		counterparty.MessagingEndpoint = nil
-		counterparty.Cache()
+		// counterparty := lookupBaselineOrganization(*protomsg.Recipient)
+		// counterparty.MessagingEndpoint = nil
+		// counterparty.Cache()
+
+		resolveBaselineCounterparties() // HACK-- this should not re-resolve all counterparties...
 
 		common.Log.Warningf("failed to publish protocol message to recipient: %s; %s", *protomsg.Recipient, err.Error())
 		natsutil.AttemptNack(msg, natsDispatchProtocolMessageTimeout)
