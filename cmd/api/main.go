@@ -61,7 +61,10 @@ func configureSOR() {
 	if err != nil {
 		panic(err.Error())
 	}
-	common.Log.Debugf("health check completed; SOR API available at %s", common.InternalSOR["url"])
+	common.Log.Debugf("health check completed; SOR API available")
+	if sorURL, sorURLOk := common.InternalSOR["url"].(string); sorURLOk {
+		common.Log.Debugf("SOR API endpoint: %s", sorURL)
+	}
 
 	err = sor.ConfigureProxy(map[string]interface{}{
 		"organization_id": common.OrganizationID,

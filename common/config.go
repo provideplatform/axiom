@@ -194,7 +194,10 @@ func requireInternalSOR() {
 
 	InternalSOR = map[string]interface{}{
 		"identifier": os.Getenv("PROVIDE_SOR_IDENTIFIER"),
-		"url":        os.Getenv("PROVIDE_SOR_URL"),
+	}
+
+	if os.Getenv("PROVIDE_SOR_URL") != "" && os.Getenv("PROVIDE_SOR_URL") != "https://" {
+		InternalSOR["url"] = os.Getenv("PROVIDE_SOR_URL")
 	}
 }
 
