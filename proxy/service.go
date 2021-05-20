@@ -46,7 +46,7 @@ func (r *BaselineRecord) cache() error {
 			common.Log.Debugf("mapping internal system of record id to baseline id")
 			err := redisutil.Set(*baselineIDKey, r.BaselineID.String(), nil)
 			if err != nil {
-				common.Log.Warningf("failed to cache baseline record id; %s", err.Error())
+				common.Log.Warningf("failed to cache baseline record; %s", err.Error())
 				return err
 			}
 		}
@@ -54,7 +54,13 @@ func (r *BaselineRecord) cache() error {
 		if r.Workflow != nil {
 			err := r.Workflow.Cache()
 			if err != nil {
-				common.Log.Warningf("failed to cache baseline record id; failed to cache associated workflow; %s", err.Error())
+				common.Log.Warningf("failed to cache baseline record; failed to cache associated workflow; %s", err.Error())
+				return err
+			}
+
+			err = r.Workflow.CacheByBaselineID(r.BaselineID.String())
+			if err != nil {
+				common.Log.Warningf("failed to cache baseline record; failed to index associated workflow by baseline id; %s", err.Error())
 				return err
 			}
 		}
@@ -63,11 +69,8 @@ func (r *BaselineRecord) cache() error {
 		common.Log.Debugf("mapping baseline id to baseline record: %s", baselineRecordKey)
 		err := redisutil.Set(baselineRecordKey, raw, nil)
 		if err != nil {
+			common.Log.Warningf("failed to cache baseline record; failed to cache associated workflow; %s", err.Error())
 			return err
-		}
-
-		if r.Workflow != nil {
-			err = r.Workflow.CacheByBaselineID(r.BaselineID.String())
 		}
 
 		return err
