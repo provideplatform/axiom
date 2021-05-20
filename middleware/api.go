@@ -3,11 +3,13 @@ package middleware
 import "github.com/provideapp/baseline-proxy/common"
 
 const sorIdentifierDynamics365 = "dynamics365"
+const sorIdentifierEphemeralMemory = "ephemeral"
 const sorIdentifierExcel = "excel"
 const sorIdentifierSalesforce = "salesforce"
 const sorIdentifierSAP = "sap"
 const sorIdentifierServiceNow = "servicenow"
 
+const sorTypeGeneralConsistency = "general_consistency"
 const sorTypeServiceNowIncident = "servicenow_incident"
 
 const SORBusinessObjectStatusError = "error"
@@ -29,7 +31,9 @@ type SOR interface {
 func SORFactory(params map[string]interface{}, token *string) SOR {
 	switch params["identifier"].(string) {
 	case sorIdentifierDynamics365:
-		return InitDefaultDynamics365Service(token)
+		return InitDynamics365Service(token)
+	case sorIdentifierEphemeralMemory:
+		return InitEphemeralMemoryService(token)
 	case sorIdentifierSAP:
 		return InitSAPService(token)
 	case sorIdentifierSalesforce:
@@ -46,6 +50,8 @@ func SORFactory(params map[string]interface{}, token *string) SOR {
 // SORFactoryByType initializes and returns a system of record interface impl for the given type
 func SORFactoryByType(recordType string, token *string) SOR {
 	switch recordType {
+	case sorTypeGeneralConsistency:
+		return InitEphemeralMemoryService(token)
 	case sorTypeServiceNowIncident:
 		return InitServiceNowService(token)
 	default:

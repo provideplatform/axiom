@@ -13,8 +13,8 @@ type Dynamics365Service struct {
 	mutex sync.Mutex
 }
 
-// InitDefaultDynamics365Service convenience method to initialize a default `sap.Dynamics365Service` (i.e., production) instance
-func InitDefaultDynamics365Service(token *string) *Dynamics365Service {
+// InitDynamics365Service convenience method to initialize a default `sap.Dynamics365Service` (i.e., production) instance
+func InitDynamics365Service(token *string) *Dynamics365Service {
 	return &Dynamics365Service{
 		api.Client{
 			Token: token,
