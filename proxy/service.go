@@ -51,6 +51,14 @@ func (r *BaselineRecord) cache() error {
 			}
 		}
 
+		raw, _ := json.Marshal(r)
+		common.Log.Debugf("mapping baseline id to baseline record: %s", baselineRecordKey)
+		err := redisutil.Set(baselineRecordKey, raw, nil)
+		if err != nil {
+			common.Log.Warningf("failed to cache baseline record; failed to cache associated workflow; %s", err.Error())
+			return err
+		}
+
 		if r.Workflow != nil {
 			err := r.Workflow.Cache()
 			if err != nil {
@@ -63,14 +71,6 @@ func (r *BaselineRecord) cache() error {
 				common.Log.Warningf("failed to cache baseline record; failed to index associated workflow by baseline id; %s", err.Error())
 				return err
 			}
-		}
-
-		raw, _ := json.Marshal(r)
-		common.Log.Debugf("mapping baseline id to baseline record: %s", baselineRecordKey)
-		err := redisutil.Set(baselineRecordKey, raw, nil)
-		if err != nil {
-			common.Log.Warningf("failed to cache baseline record; failed to cache associated workflow; %s", err.Error())
-			return err
 		}
 
 		return err
