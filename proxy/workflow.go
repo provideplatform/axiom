@@ -8,12 +8,18 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common/compiler"
 	"github.com/kthomas/go-redisutil"
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideapp/baseline-proxy/common"
 	"github.com/provideservices/provide-go/api/ident"
+	"github.com/provideservices/provide-go/api/nchain"
 	privacy "github.com/provideservices/provide-go/api/privacy"
 )
+
+const requireContractSleepInterval = time.Second * 1
+const requireContractTickerInterval = time.Second * 5
+const requireContractTimeout = time.Minute * 10
 
 const requireCircuitTickerInterval = time.Second * 5
 const requireCircuitSleepInterval = time.Millisecond * 500
@@ -181,6 +187,9 @@ func requireCircuits(token *string, workflow *Workflow) error {
 							if circuit.VerifierContract != nil {
 								contractRaw, _ := json.MarshalIndent(circuit.VerifierContract, "", "  ")
 								common.Log.Debugf("verifier contract: %s", string(contractRaw))
+
+								contractName := fmt.Sprintf("%s Verifier", *circuit.Name)
+								DeployContract([]byte(contractName), contractRaw)
 							}
 
 							workflow.Circuits[i] = circuit
@@ -203,6 +212,101 @@ func requireCircuits(token *string, workflow *Workflow) error {
 
 	wg.Wait()
 	return nil
+}
+
+// DeployContract compiles and deploys a raw solidity smart contract
+func DeployContract(name, raw []byte) (*nchain.Contract, error) {
+	artifacts, err := compiler.CompileSolidityString("0.6.9", string(raw))
+
+	token, err := vendOrganizationAccessToken()
+	if err != nil {
+		common.Log.Warningf("failed to vend organization access token; %s", err.Error())
+		return nil, err
+	}
+
+	// deploy
+	wallet, err := nchain.CreateWallet(*token, map[string]interface{}{
+		"purpose": 44,
+	})
+	if err != nil {
+		common.Log.Warningf("failed to initialize wallet for organization; %s", err.Error())
+	} else {
+		common.Log.Debugf("created HD wallet for organization: %s", wallet.ID)
+	}
+
+	cntrct, err := nchain.CreateContract(*token, map[string]interface{}{
+		"address":    "0x",
+		"name":       string(name),
+		"network_id": common.NChainBaselineNetworkID,
+		"params": map[string]interface{}{
+			"argv":              []interface{}{},
+			"compiled_artifact": artifacts,
+			"wallet_id":         wallet.ID,
+		},
+		"type": "verifier",
+	})
+	if err != nil {
+		common.Log.Warningf("failed to deploy contract; %s", err.Error())
+		return nil, err
+	}
+
+	err = RequireContract(common.StringOrNil(cntrct.ID.String()), common.StringOrNil("verifier"), token, true)
+	if err != nil {
+		common.Log.Warningf("failed to deploy contract; %s", err.Error())
+		return nil, err
+	}
+
+	return cntrct, nil
+}
+
+func RequireContract(contractID, contractType, token *string, printCreationTxLink bool) error {
+	startTime := time.Now()
+	timer := time.NewTicker(requireContractTickerInterval)
+
+	printed := false
+
+	for {
+		select {
+		case <-timer.C:
+			var contract *nchain.Contract
+			var err error
+			if contractID != nil {
+				contract, err = nchain.GetContractDetails(*token, *contractID, map[string]interface{}{})
+			} else if contractType != nil {
+				contracts, _ := nchain.ListContracts(*token, map[string]interface{}{
+					"type": contractType,
+				})
+				if len(contracts) > 0 {
+					contract = contracts[0]
+				}
+			}
+
+			if err == nil && contract != nil {
+				if !printed && printCreationTxLink {
+					tx, _ := nchain.GetTransactionDetails(*token, contract.TransactionID.String(), map[string]interface{}{})
+					etherscanBaseURL := etherscanBaseURL(tx.NetworkID.String())
+					if etherscanBaseURL != nil {
+						common.Log.Debugf("View on Etherscan: %s/tx/%s", *etherscanBaseURL, *tx.Hash) // HACK
+					}
+					printed = true
+				}
+
+				if contract.Address != nil && *contract.Address != "0x" {
+					tx, _ := nchain.GetTransactionDetails(*token, contract.TransactionID.String(), map[string]interface{}{})
+					txraw, _ := json.MarshalIndent(tx, "", "  ")
+					common.Log.Debugf(string(txraw))
+					return nil
+				}
+			}
+		default:
+			if startTime.Add(requireContractTimeout).Before(time.Now()) {
+				common.Log.Warning("workgroup contract deployment timed out")
+				return errors.New("workgroup contract deployment timed out")
+			} else {
+				time.Sleep(requireContractSleepInterval)
+			}
+		}
+	}
 }
 
 func LookupBaselineWorkflow(identifier string) *Workflow {
@@ -228,4 +332,21 @@ func LookupBaselineWorkflowByBaselineID(baselineID string) *Workflow {
 	}
 
 	return LookupBaselineWorkflow(*identifier)
+}
+
+func etherscanBaseURL(networkID string) *string {
+	switch networkID {
+	case "deca2436-21ba-4ff5-b225-ad1b0b2f5c59":
+		return common.StringOrNil("https://etherscan.io")
+	case "07102258-5e49-480e-86af-6d0c3260827d":
+		return common.StringOrNil("https://rinkeby.etherscan.io")
+	case "66d44f30-9092-4182-a3c4-bc02736d6ae5":
+		return common.StringOrNil("https://ropsten.etherscan.io")
+	case "8d31bf48-df6b-4a71-9d7c-3cb291111e27":
+		return common.StringOrNil("https://kovan.etherscan.io")
+	case "1b16996e-3595-4985-816c-043345d22f8c":
+		return common.StringOrNil("https://goerli.etherscan.io")
+	default:
+		return nil
+	}
 }
