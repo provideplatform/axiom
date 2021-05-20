@@ -385,14 +385,21 @@ func (m *ProtocolMessage) baselineInbound() bool {
 		}
 		common.Log.Debugf("received response from internal system of record; %s", resp)
 
-		const resultField = "result"
+		const defaultIDField = "id"
 		const idField = "sys_id"
+		const resultField = "result" // FIXME-- this is specific to
+
 		if id, idOk := resp.(map[string]interface{})[idField].(string); idOk {
 			baselineRecord.ID = common.StringOrNil(id)
 			baselineRecord.cache()
 		} else {
 			if result, resultOk := resp.(map[string]interface{})[resultField].(map[string]interface{}); resultOk {
 				if id, idOk := result[idField].(string); idOk {
+					baselineRecord.ID = common.StringOrNil(id)
+					baselineRecord.cache()
+				}
+			} else {
+				if id, idOk := result[defaultIDField].(string); idOk {
 					baselineRecord.ID = common.StringOrNil(id)
 					baselineRecord.cache()
 				}
