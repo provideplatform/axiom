@@ -215,8 +215,10 @@ func requireCircuits(token *string, workflow *Workflow) error {
 }
 
 // DeployContract compiles and deploys a raw solidity smart contract
+// FIXME -- this presence of this as a dependency here should cause
+// a check to happen during boot that ensures `which solc` resolves...
 func DeployContract(name, raw []byte) (*nchain.Contract, error) {
-	artifact, err := compiler.CompileSolidityString("0.6.9", string(raw)) // FIXME... parse pragma?
+	artifact, err := compiler.CompileSolidityString("solc", string(raw)) // FIXME... parse pragma?
 	if err != nil {
 		common.Log.Warningf("failed to compile solidity contract: %s; %s", name, err.Error())
 		return nil, err
