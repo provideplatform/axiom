@@ -216,7 +216,11 @@ func requireCircuits(token *string, workflow *Workflow) error {
 
 // DeployContract compiles and deploys a raw solidity smart contract
 func DeployContract(name, raw []byte) (*nchain.Contract, error) {
-	artifacts, err := compiler.CompileSolidityString("0.6.9", string(raw))
+	artifact, err := compiler.CompileSolidityString("0.6.9", string(raw)) // FIXME... parse pragma?
+	if err != nil {
+		common.Log.Warningf("failed to compile solidity contract: %s; %s", name, err.Error())
+		return nil, err
+	}
 
 	token, err := vendOrganizationAccessToken()
 	if err != nil {
@@ -240,7 +244,7 @@ func DeployContract(name, raw []byte) (*nchain.Contract, error) {
 		"network_id": common.NChainBaselineNetworkID,
 		"params": map[string]interface{}{
 			"argv":              []interface{}{},
-			"compiled_artifact": artifacts,
+			"compiled_artifact": artifact,
 			"wallet_id":         wallet.ID,
 		},
 		"type": "verifier",
