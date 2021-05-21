@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -187,9 +188,10 @@ func requireCircuits(token *string, workflow *Workflow) error {
 							if circuit.VerifierContract != nil {
 								if source, sourceOk := circuit.VerifierContract["source"].(string); sourceOk {
 									// contractRaw, _ := json.MarshalIndent(source, "", "  ")
-									common.Log.Debugf("verifier contract:\n\n%s", source)
+									src := strings.TrimSpace(strings.ReplaceAll(source, "\\n", "\n"))
+									common.Log.Debugf("verifier contract: %s", src)
 									contractName := fmt.Sprintf("%s Verifier", *circuit.Name)
-									DeployContract([]byte(contractName), []byte(source))
+									DeployContract([]byte(contractName), []byte(src))
 								}
 							}
 
