@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kthomas/go-redisutil"
 	"github.com/provideapp/baseline-proxy/common"
 	"github.com/provideservices/provide-go/api/ident"
 )
@@ -13,8 +14,7 @@ const requireCounterpartiesSleepInterval = time.Second * 15
 const requireCounterpartiesTickerInterval = time.Second * 30 // HACK
 
 func init() {
-	time.Sleep(time.Second * 5) // HACK! wait for redlock...
-
+	redisutil.RequireRedis()
 	resolveBaselineCounterparties()
 
 	timer := time.NewTicker(requireCounterpartiesTickerInterval)
