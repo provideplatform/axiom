@@ -13,7 +13,9 @@ const requireCounterpartiesSleepInterval = time.Second * 15
 const requireCounterpartiesTickerInterval = time.Second * 30 // HACK
 
 func init() {
-	time.Sleep(time.Second * 3) // HACK! wait for redlock...
+	time.Sleep(time.Second * 5) // HACK! wait for redlock...
+
+	resolveBaselineCounterparties()
 
 	timer := time.NewTicker(requireCounterpartiesTickerInterval)
 	for {
