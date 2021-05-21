@@ -7,7 +7,7 @@ RUN mkdir ~/.ssh && cp /go/src/github.com/provideapp/baseline-proxy/ops/keys/ide
 RUN git clone git@github.com:provideapp/ident.git /go/src/github.com/provideapp/ident && cd /go/src/github.com/provideapp/ident
 RUN rm -rf ~/.ssh && rm -rf /go/src/github.com/provideapp/baseline-proxy/ops/keys
 
-RUN curl https://github.com/ethereum/solidity/releases/download/v0.8.4/solc-static-linux > /solc
+RUN curl -L https://github.com/ethereum/solidity/releases/download/v0.8.4/solc-static-linux > /solc
 
 WORKDIR /go/src/github.com/provideapp/baseline-proxy
 RUN make build
