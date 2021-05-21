@@ -15,6 +15,8 @@ const requireCounterpartiesTickerInterval = time.Second * 30 // HACK
 
 func init() {
 	redisutil.RequireRedis()
+
+	common.Log.Debug("attempting to resolve baseline counterparties")
 	resolveBaselineCounterparties()
 
 	go func() {
@@ -37,7 +39,7 @@ func resolveBaselineCounterparties() {
 	}
 
 	go func() {
-		common.Log.Debugf("attempting to resolve baseline counterparties")
+		common.Log.Trace("attempting to resolve baseline counterparties")
 
 		token, err := ident.CreateToken(*common.OrganizationRefreshToken, map[string]interface{}{
 			"grant_type":      "refresh_token",
