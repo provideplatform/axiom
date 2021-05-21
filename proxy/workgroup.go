@@ -73,12 +73,15 @@ func resolveBaselineCounterparties() {
 
 		for _, participant := range counterparties {
 			if participant.Address != nil && strings.ToLower(*participant.Address) != strings.ToLower(*common.BaselineOrganizationAddress) {
+				exists := lookupBaselineOrganization(*participant.Address) != nil
 				err := participant.Cache()
 				if err != nil {
 					common.Log.Warningf("failed to cache counterparty; %s", err.Error())
 					continue
 				}
-				common.Log.Debugf("cached baseline counterparty: %s", *participant.Address)
+				if !exists {
+					common.Log.Debugf("cached baseline counterparty: %s", *participant.Address)
+				}
 			}
 		}
 	}()
