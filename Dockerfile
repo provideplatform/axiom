@@ -21,7 +21,9 @@ WORKDIR /baseline-proxy
 
 COPY --from=builder /go/src/github.com/provideapp/baseline-proxy/.bin /baseline-proxy/.bin
 COPY --from=builder /go/src/github.com/provideapp/baseline-proxy/ops /baseline-proxy/ops
-COPY --from=builder /solc /usr/local/bin/solc
+
+COPY --from=builder /solc /usr/bin/solc
+RUN chmod +x /usr/bin/solc
 
 EXPOSE 8080
 ENTRYPOINT ["./ops/run_api.sh"]
