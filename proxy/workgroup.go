@@ -17,15 +17,17 @@ func init() {
 	redisutil.RequireRedis()
 	resolveBaselineCounterparties()
 
-	timer := time.NewTicker(requireCounterpartiesTickerInterval)
-	for {
-		select {
-		case <-timer.C:
-			resolveBaselineCounterparties()
-		default:
-			time.Sleep(requireCounterpartiesSleepInterval)
+	go func() {
+		timer := time.NewTicker(requireCounterpartiesTickerInterval)
+		for {
+			select {
+			case <-timer.C:
+				resolveBaselineCounterparties()
+			default:
+				time.Sleep(requireCounterpartiesSleepInterval)
+			}
 		}
-	}
+	}()
 }
 
 func resolveBaselineCounterparties() {
