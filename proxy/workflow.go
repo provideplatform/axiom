@@ -185,11 +185,13 @@ func requireCircuits(token *string, workflow *Workflow) error {
 						if circuit.Status != nil && *circuit.Status == "provisioned" {
 							common.Log.Debugf("provisioned workflow circuit: %s", circuit.ID)
 							if circuit.VerifierContract != nil {
-								contractRaw, _ := json.MarshalIndent(circuit.VerifierContract["source"], "", "  ")
-								common.Log.Debugf("verifier contract: %s", string(contractRaw))
-
-								contractName := fmt.Sprintf("%s Verifier", *circuit.Name)
-								DeployContract([]byte(contractName), contractRaw)
+								if source, sourceOk := circuit.VerifierContract["source"].(string) {
+									contractRaw, _ := json.MarshalIndent(source, "", "  ")
+									common.Log.Debugf("verifier contract: %s", string(contractRaw))
+	
+									contractName := fmt.Sprintf("%s Verifier", *circuit.Name)
+									DeployContract([]byte(contractName), []byte(source))
+								}
 							}
 
 							workflow.Circuits[i] = circuit
