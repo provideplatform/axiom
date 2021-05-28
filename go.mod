@@ -7,7 +7,7 @@ require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/ethereum/go-ethereum v1.9.25
 	github.com/gin-gonic/gin v1.6.3
-	github.com/kthomas/go-logger v0.0.0-20210411034702-66a0af9aee2c
+	github.com/kthomas/go-logger v0.0.0-20210526080020-a63672d0724c
 	github.com/kthomas/go-natsutil v0.0.0-20200602073459-388e1f070b05
 	github.com/kthomas/go-pgputil v0.0.0-20200602073402-784e96083943
 	github.com/kthomas/go-redisutil v0.0.0-20200602073431-aa49de17e9ff
@@ -17,7 +17,7 @@ require (
 	github.com/onsi/ginkgo v1.15.1
 	github.com/onsi/gomega v1.11.0
 	github.com/provideapp/ident v0.0.0-00010101000000-000000000000
-	github.com/provideservices/provide-go v0.0.0-20210506031032-412570752f38
+	github.com/provideservices/provide-go v0.0.0-20210528064845-41b80b9b02b9
 	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad
 )
 
