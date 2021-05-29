@@ -1,6 +1,5 @@
 name: Baseline
-
-on: 
+on:
   push:
     branches:
       - master
