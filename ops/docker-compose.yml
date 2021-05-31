@@ -451,7 +451,7 @@ services:
     networks:
       - prvd
     ports:
-      - 8084:8080
+      - 8080:8080
     restart: always
 
   baseline-proxy-consumer:
