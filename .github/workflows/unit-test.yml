@@ -41,12 +41,8 @@ jobs:
       - run: go mod tidy
         working-directory: baseline
       - run: go mod vendor
-        working-directory: baseline      
-      - run: go build -v -o ./.bin/baseline_migrate ./cmd/migrate
         working-directory: baseline
-      - run: ./.bin/baseline_migrate
-        working-directory: baseline 
-      - run:     go test ./... -v -race -timeout 1800s -tags="$TAGS"                                      
+      - run: go test ./... -v -race -timeout 1800s -tags="$TAGS"                                      
         working-directory: baseline       
       - run: docker-compose -f baseline/ops/docker-compose-db.yml down
       - run: docker volume rm ops_baseline-db
