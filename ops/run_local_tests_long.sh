@@ -4,15 +4,15 @@ set -e
 echo "" > coverage.txt
 
 if [[ -z "${DATABASE_NAME}" ]]; then
-  export DATABASE_NAME=nchain_dev
+  export DATABASE_NAME=baseline_dev
 fi
 
 if [[ -z "${DATABASE_USER}" ]]; then
-  export DATABASE_USER=nchain
+  export DATABASE_USER=baseline
 fi
 
 if [[ -z "${DATABASE_PASSWORD}" ]]; then
-  export DATABASE_PASSWORD=nchain
+  export DATABASE_PASSWORD=baseline
 fi
 
 if [[ -z "${NATS_SERVER_PORT}" ]]; then

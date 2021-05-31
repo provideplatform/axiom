@@ -16,15 +16,15 @@ if [[ -z "${DATABASE_HOST}" ]]; then
 fi
 
 if [[ -z "${DATABASE_NAME}" ]]; then
-  DATABASE_NAME=baselineproxy_dev
+  DATABASE_NAME=baseline_dev
 fi
 
 if [[ -z "${DATABASE_USER}" ]]; then
-  DATABASE_USER=baseline-proxy
+  DATABASE_USER=baseline
 fi
 
 if [[ -z "${DATABASE_PASSWORD}" ]]; then
-  DATABASE_PASSWORD=baseline-proxy
+  DATABASE_PASSWORD=baseline
 fi
 
 if [[ -z "${DATABASE_SUPERUSER}" ]]; then
