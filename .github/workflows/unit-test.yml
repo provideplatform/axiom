@@ -45,4 +45,4 @@ jobs:
       - run: go test ./... -v -race -timeout 1800s -tags="$TAGS"                                      
         working-directory: baseline       
       - run: docker-compose -f baseline/ops/docker-compose-db.yml down
-      - run: docker volume rm ops_baseline-db
+      - run: docker volume rm ops_prvd-db
