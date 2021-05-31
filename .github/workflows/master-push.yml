@@ -1,4 +1,4 @@
-name: Baseline (master)
+name: Baseline
 on: 
   push:
     branches:
