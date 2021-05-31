@@ -112,6 +112,8 @@ services:
     networks:
       - prvd
     restart: always
+    ports:
+      - 8085:8080
 
   prvd-ident:
     image: provide/ident
@@ -220,6 +222,8 @@ services:
     networks:
       - prvd
     restart: always
+    ports:
+      - 8082:8080
 
   prvd-nchain-consumer:
     image: provide/nchain
@@ -363,7 +367,7 @@ services:
     networks:
       - prvd
     ports:
-      - 8082:8080
+      - 8083:8080
     restart: always
 
   prvd-privacy-consumer:
