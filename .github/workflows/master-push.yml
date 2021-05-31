@@ -1,17 +1,16 @@
-name: Baseline
-on:
+name: Baseline (master)
+on: 
   push:
     branches:
       - master
-
 jobs:
   push_to_branch:
     runs-on: ubuntu-latest
-    timeout-minutes: 10    
+    timeout-minutes: 10
     env:
       SLACK_WEBHOOK_URL: ${{ secrets.INTEGRATION_SLACK_WEBHOOK }}
     steps:
-      - name: Setup go
+      - name: Setup golang
         uses: actions/setup-go@v2
         with:
           go-version: '1.15.1'
@@ -21,11 +20,11 @@ jobs:
           repository: provideapp/ident
           path: 'ident'
           ref: master
-          token: ${{ secrets.DEPLOY_GITHUB_PAT }}             
+          token: ${{ secrets.DEPLOY_GITHUB_PAT }}
       - name: Checkout baseline
         uses: actions/checkout@v2
         with:
-          path: 'baseline'                  
+          path: 'baseline'
       - run: docker-compose -f ./ops/docker-compose.yml build --no-cache baseline-proxy
         working-directory: baseline
       - run: docker-compose -f ./ops/docker-compose.yml up -d
@@ -37,8 +36,8 @@ jobs:
       - run: docker-compose -f ./ops/docker-compose.yml down
         working-directory: baseline
       - run: docker volume rm ops_provide-db
-        working-directory: baseline   
-      - name: push_to_docker_hub
+        working-directory: baseline
+      - name: Push Docker Image
         if: success()
         uses: docker/build-push-action@v1
         with:
@@ -47,7 +46,7 @@ jobs:
           repository: provide/baseline
           tags: "latest"
           path: 'baseline'
-      - name: slack channel update
+      - name: Send Slack Notification
         if: failure()  
         uses: act10ns/slack@v1
         with:
