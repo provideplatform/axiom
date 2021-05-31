@@ -16,19 +16,19 @@ services:
       start_period: 10s
     hostname: postgres
     volumes:
-      - baseline-db:/var/lib/postgresql/data
+      - prvd-db:/var/lib/postgresql/data
     networks:
-      - baseline
+      - prvd
     ports:
       - 5432:5432
     restart: always
 
 networks:
-  baseline:
+  prvd:
     driver: bridge
     ipam:
       config:
       - subnet: 172.40.0.0/24
 
 volumes:
-  baseline-db:
+  prvd-db:
