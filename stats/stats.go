@@ -43,8 +43,6 @@ func statsLogHandler(c *gin.Context) {
 		return
 	}
 
-	common.Log.Debugf("received status log message: %s", msg)
-
 	if err == nil {
 		provide.Render(nil, 204, c)
 	} else {
