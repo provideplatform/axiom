@@ -35,7 +35,7 @@ jobs:
         working-directory: baseline
       - run: docker-compose -f ./ops/docker-compose.yml down
         working-directory: baseline
-      - run: docker volume rm ops_provide-db
+      - run: docker volume rm baseline-db
         working-directory: baseline   
       - name: Push Docker Image
         if: success()
