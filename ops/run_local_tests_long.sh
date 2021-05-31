@@ -77,9 +77,9 @@ export NATS_CLUSTER_ID=provide
 export DATABASE_HOST=localhost
 export LOG_LEVEL=DEBUG
 
-go test "./test/..." -v \
-                    -race \
-                    -timeout 1800s \
-                    -parallel 1 \
-                    -tags="$TAGS"
+go test "./..." -v \
+                -race \
+                -timeout 1800s \
+                -parallel 1 \
+                -tags="$TAGS"
  
