@@ -211,7 +211,7 @@ func (s *SAPService) UpdateBusinessObject(id string, params map[string]interface
 		return fmt.Errorf("failed to update business object; status: %v; %s", status, err.Error())
 	}
 
-	if status != 200 {
+	if status != 200 && status != 204 {
 		return fmt.Errorf("failed to update business object; status: %v", status)
 	}
 
@@ -239,7 +239,7 @@ func (s *SAPService) UpdateBusinessObjectStatus(id string, params map[string]int
 		return fmt.Errorf("failed to update business object status; status: %v; %s", status, err.Error())
 	}
 
-	if status != 200 {
+	if status != 200 && status != 204 {
 		return fmt.Errorf("failed to update business object status; status: %v", status)
 	}
 
