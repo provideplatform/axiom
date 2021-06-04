@@ -558,7 +558,7 @@ func (m *Message) baselineOutbound() bool {
 			Type:   m.Type,
 			Witness: map[string]interface{}{
 				"Document.Hash":     hashString,
-				"Document.PreImage": preImageString,
+				"Document.Preimage": preImageString,
 			},
 		},
 		Shield: baselineRecord.Workflow.Shield,
