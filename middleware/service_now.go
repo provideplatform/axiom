@@ -171,8 +171,5 @@ func (s *ServiceNowService) HealthCheck() error {
 
 // ProxyHealthCheck
 func (s *ServiceNowService) ProxyHealthCheck(organizationID string) error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	return fmt.Errorf("not implemented")
+	return nil
 }
