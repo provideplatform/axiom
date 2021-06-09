@@ -71,10 +71,7 @@ func (s *ServiceNowService) Authenticate() error {
 
 // ConfigureProxy configures a new proxy instance in ServiceNow for a given organization
 func (s *ServiceNowService) ConfigureProxy(params map[string]interface{}) error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	return fmt.Errorf("not implemented")
+	return nil
 }
 
 // GetBusinessObjectModel retrieves a business object model by type
