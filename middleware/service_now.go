@@ -2,8 +2,10 @@ package middleware
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/provideservices/provide-go/api"
 	"github.com/provideservices/provide-go/common"
@@ -14,6 +16,7 @@ const defaultServiceNowPath = "api/now/table"
 const defaultServiceNowScheme = "https"
 const defaultServiceNowUsername = "admin"
 const defaultServiceNowPassword = "providenow"
+const defaultServiceNowReachabilityTimeout = time.Second * 5
 
 // ServiceNowService for the SAP API
 type ServiceNowService struct {
@@ -157,7 +160,13 @@ func (s *ServiceNowService) HealthCheck() error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	return fmt.Errorf("not implemented")
+	conn, err := net.DialTimeout("tcp", s.Host, defaultServiceNowReachabilityTimeout)
+	if err == nil {
+		defer conn.Close()
+		return nil
+	}
+
+	return err
 }
 
 // ProxyHealthCheck
