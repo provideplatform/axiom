@@ -142,8 +142,8 @@ func (s *SAPService) ConfigureProxy(params map[string]interface{}) error {
 	return nil
 }
 
-// GetBusinessObjectModel retrieves a business object data model by type
-func (s *SAPService) GetBusinessObjectModel(recordType string, params map[string]interface{}) (interface{}, error) {
+// GetObjectModel retrieves a business object data model by type
+func (s *SAPService) GetObjectModel(recordType string, params map[string]interface{}) (interface{}, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -165,8 +165,8 @@ func (s *SAPService) GetBusinessObjectModel(recordType string, params map[string
 	return resp, nil
 }
 
-// CreateBusinessObject is a generic way to create a business object in the SAP environment
-func (s *SAPService) CreateBusinessObject(params map[string]interface{}) (interface{}, error) {
+// CreateObject is a generic way to create a business object in the SAP environment
+func (s *SAPService) CreateObject(params map[string]interface{}) (interface{}, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -191,8 +191,8 @@ func (s *SAPService) CreateBusinessObject(params map[string]interface{}) (interf
 	return resp, nil
 }
 
-// UpdateBusinessObject updates a business object
-func (s *SAPService) UpdateBusinessObject(id string, params map[string]interface{}) error {
+// UpdateObject updates a business object
+func (s *SAPService) UpdateObject(id string, params map[string]interface{}) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -218,8 +218,8 @@ func (s *SAPService) UpdateBusinessObject(id string, params map[string]interface
 	return nil
 }
 
-// UpdateBusinessObjectStatus updates the status of a business object
-func (s *SAPService) UpdateBusinessObjectStatus(id string, params map[string]interface{}) error {
+// UpdateObjectStatus updates the status of a business object
+func (s *SAPService) UpdateObjectStatus(id string, params map[string]interface{}) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 

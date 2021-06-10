@@ -33,16 +33,16 @@ func (s *EphemeralMemoryService) ConfigureProxy(params map[string]interface{}) e
 	return nil
 }
 
-// GetBusinessObjectModel retrieves a business object model by type
-func (s *EphemeralMemoryService) GetBusinessObjectModel(recordType string, params map[string]interface{}) (interface{}, error) {
+// GetObjectModel retrieves a business object model by type
+func (s *EphemeralMemoryService) GetObjectModel(recordType string, params map[string]interface{}) (interface{}, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	return nil, fmt.Errorf("not implemented")
 }
 
-// CreateBusinessObject is a generic way to create a business object in the EphemeralMemory environment
-func (s *EphemeralMemoryService) CreateBusinessObject(params map[string]interface{}) (interface{}, error) {
+// CreateObject is a generic way to create a business object in the EphemeralMemory environment
+func (s *EphemeralMemoryService) CreateObject(params map[string]interface{}) (interface{}, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -57,8 +57,8 @@ func (s *EphemeralMemoryService) CreateBusinessObject(params map[string]interfac
 	return params, nil
 }
 
-// UpdateBusinessObject updates a business object
-func (s *EphemeralMemoryService) UpdateBusinessObject(id string, params map[string]interface{}) error {
+// UpdateObject updates a business object
+func (s *EphemeralMemoryService) UpdateObject(id string, params map[string]interface{}) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -69,8 +69,8 @@ func (s *EphemeralMemoryService) UpdateBusinessObject(id string, params map[stri
 	return nil
 }
 
-// UpdateBusinessObjectStatus updates the status of a business object
-func (s *EphemeralMemoryService) UpdateBusinessObjectStatus(id string, params map[string]interface{}) error {
+// UpdateObjectStatus updates the status of a business object
+func (s *EphemeralMemoryService) UpdateObjectStatus(id string, params map[string]interface{}) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 

@@ -18,13 +18,13 @@ const SORBusinessObjectStatusSuccess = "success"
 // SOR defines an interface for system of record backends
 type SOR interface {
 	ConfigureProxy(params map[string]interface{}) error
-	CreateBusinessObject(params map[string]interface{}) (interface{}, error)
+	CreateObject(params map[string]interface{}) (interface{}, error)
 	DeleteProxyConfiguration(organizationID string) error
-	GetBusinessObjectModel(recordType string, params map[string]interface{}) (interface{}, error)
+	GetObjectModel(recordType string, params map[string]interface{}) (interface{}, error)
 	HealthCheck() error
 	ProxyHealthCheck(organizationID string) error
-	UpdateBusinessObject(id string, params map[string]interface{}) error
-	UpdateBusinessObjectStatus(id string, params map[string]interface{}) error
+	UpdateObject(id string, params map[string]interface{}) error
+	UpdateObjectStatus(id string, params map[string]interface{}) error
 }
 
 // SORFactory initializes and returns a system of record interface impl

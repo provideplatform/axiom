@@ -1,6 +1,8 @@
-package proxy
+package baseline
 
 import (
+	"encoding/json"
+	"fmt"
 	"os"
 	"strings"
 	"time"
@@ -89,4 +91,18 @@ func resolveBaselineCounterparties() {
 			}
 		}
 	}()
+}
+
+func LookupBaselineWorkgroup(identifier string) *Workgroup {
+	var workgroup *Workgroup
+
+	key := fmt.Sprintf("baseline.workgroup.%s", identifier)
+	raw, err := redisutil.Get(key)
+	if err != nil {
+		common.Log.Warningf("failed to retrieve cached baseline workgroup: %s; %s", key, err.Error())
+		return nil
+	}
+
+	json.Unmarshal([]byte(*raw), &workgroup)
+	return workgroup
 }

@@ -13,11 +13,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/kthomas/go-redisutil"
 
+	"github.com/provideapp/baseline-proxy/baseline"
 	"github.com/provideapp/baseline-proxy/common"
 	"github.com/provideapp/baseline-proxy/middleware"
-	"github.com/provideapp/baseline-proxy/proxy"
 	"github.com/provideapp/baseline-proxy/stats"
-	"github.com/provideapp/baseline-proxy/workgroup"
 	identcommon "github.com/provideapp/ident/common"
 	"github.com/provideapp/ident/token"
 
@@ -126,15 +125,17 @@ func runAPI() {
 	r.Use(provide.CORSMiddleware())
 
 	r.GET("/status", statusHandler)
-	proxy.InstallCredentialsAPI(r)
+	baseline.InstallCredentialsAPI(r)
 
 	r.Use(token.AuthMiddleware())
 	r.Use(identcommon.AccountingMiddleware())
 	r.Use(identcommon.RateLimitingMiddleware())
 
-	proxy.InstallProxyAPI(r)
+	baseline.InstallObjectsAPI(r)
+	baseline.InstallWorkflowsAPI(r)
+	baseline.InstallWorkgroupsAPI(r)
+	baseline.InstallWorkstepsAPI(r)
 	stats.InstallStatsAPI(r)
-	workgroup.InstallWorkgroupAPI(r)
 
 	srv = &http.Server{
 		Addr:    util.ListenAddr,

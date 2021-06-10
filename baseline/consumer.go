@@ -1,4 +1,4 @@
-package proxy
+package baseline
 
 import (
 	"encoding/json"
@@ -11,6 +11,9 @@ import (
 	"github.com/provideapp/baseline-proxy/common"
 	"github.com/provideservices/provide-go/api/privacy"
 )
+
+const protomsgPayloadTypeCircuit = "circuit"
+const protomsgPayloadTypeWorkflow = "workflow"
 
 const natsDispatchInvitationSubject = "baseline-proxy.invitation.outbound"
 const natsDispatchInvitationMaxInFlight = 2048
@@ -157,7 +160,7 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *stan.Msg) {
 		}
 
 		// FIXME -- use switch and attempt nack if invalid sync type...
-		if protomsg.Payload.Type != nil && *protomsg.Payload.Type == "circuit" {
+		if protomsg.Payload.Type != nil && *protomsg.Payload.Type == protomsgPayloadTypeCircuit {
 			circuit, err := privacy.CreateCircuit(*token, protomsg.Payload.Object)
 			if err != nil {
 				common.Log.Warningf("failed to handle inbound sync protocol message; failed to create circuit; %s", err.Error())
@@ -165,28 +168,25 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *stan.Msg) {
 				return
 			}
 			common.Log.Debugf("sync protocol message created circuit: %s", circuit.ID)
-		} else if protomsg.Payload.Type != nil && *protomsg.Payload.Type == "workflow" {
+		} else if protomsg.Payload.Type != nil && *protomsg.Payload.Type == protomsgPayloadTypeWorkflow {
 			workflow := &Workflow{}
 			raw, err := json.Marshal(protomsg.Payload.Object)
 			json.Unmarshal(raw, &workflow)
 
-			circuits := make([]*privacy.Circuit, 0)
-
-			for _, circuit := range workflow.Circuits {
+			for _, workstep := range workflow.Worksteps {
 				params := map[string]interface{}{}
-				rawcircuit, _ := json.Marshal(circuit)
+				rawcircuit, _ := json.Marshal(workstep.Circuit)
 				json.Unmarshal(rawcircuit, &params)
 
-				circuit, err := privacy.CreateCircuit(*token, params)
+				workstep.Circuit, err = privacy.CreateCircuit(*token, params)
 				if err != nil {
 					common.Log.Warningf("failed to handle inbound sync protocol message; failed to create circuit; %s", err.Error())
 					natsutil.AttemptNack(msg, natsBaselineProxyInboundTimeout)
 					return
 				}
-				common.Log.Debugf("sync protocol message created circuit: %s", circuit.ID)
-				circuits = append(circuits, circuit)
+				workstep.CircuitID = &workstep.Circuit.ID
+				common.Log.Debugf("sync protocol message created circuit: %s", workstep.Circuit.ID)
 			}
-			workflow.Circuits = circuits
 
 			err = workflow.Cache()
 			if err != nil {
@@ -204,7 +204,7 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *stan.Msg) {
 				}
 			}
 
-			common.Log.Debugf("cached %d-circuit workflow: %s", len(workflow.Circuits), workflow.Identifier)
+			common.Log.Debugf("cached %d-workstep workflow: %s", len(workflow.Worksteps), workflow.ID)
 		}
 
 		break

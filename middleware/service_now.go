@@ -74,16 +74,16 @@ func (s *ServiceNowService) ConfigureProxy(params map[string]interface{}) error 
 	return nil
 }
 
-// GetBusinessObjectModel retrieves a business object model by type
-func (s *ServiceNowService) GetBusinessObjectModel(recordType string, params map[string]interface{}) (interface{}, error) {
+// GetObjectModel retrieves a business object model by type
+func (s *ServiceNowService) GetObjectModel(recordType string, params map[string]interface{}) (interface{}, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	return nil, fmt.Errorf("not implemented")
 }
 
-// CreateBusinessObject is a generic way to create a business object in the ServiceNow environment
-func (s *ServiceNowService) CreateBusinessObject(params map[string]interface{}) (interface{}, error) {
+// CreateObject is a generic way to create a business object in the ServiceNow environment
+func (s *ServiceNowService) CreateObject(params map[string]interface{}) (interface{}, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -111,8 +111,8 @@ func (s *ServiceNowService) CreateBusinessObject(params map[string]interface{}) 
 	return resp, nil
 }
 
-// UpdateBusinessObject updates a business object
-func (s *ServiceNowService) UpdateBusinessObject(id string, params map[string]interface{}) error {
+// UpdateObject updates a business object
+func (s *ServiceNowService) UpdateObject(id string, params map[string]interface{}) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -136,8 +136,8 @@ func (s *ServiceNowService) UpdateBusinessObject(id string, params map[string]in
 	return nil
 }
 
-// UpdateBusinessObjectStatus updates the status of a business object
-func (s *ServiceNowService) UpdateBusinessObjectStatus(id string, params map[string]interface{}) error {
+// UpdateObjectStatus updates the status of a business object
+func (s *ServiceNowService) UpdateObjectStatus(id string, params map[string]interface{}) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 

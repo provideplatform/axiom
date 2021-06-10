@@ -36,32 +36,32 @@ func (s *Dynamics365Service) ConfigureProxy(params map[string]interface{}) error
 	return fmt.Errorf("not implemented")
 }
 
-// GetBusinessObjectModel retrieves a business object model by type
-func (s *Dynamics365Service) GetBusinessObjectModel(recordType string, params map[string]interface{}) (interface{}, error) {
+// GetObjectModel retrieves a business object model by type
+func (s *Dynamics365Service) GetObjectModel(recordType string, params map[string]interface{}) (interface{}, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	return nil, fmt.Errorf("not implemented")
 }
 
-// CreateBusinessObject is a generic way to create a business object in the D365 environment
-func (s *Dynamics365Service) CreateBusinessObject(params map[string]interface{}) (interface{}, error) {
+// CreateObject is a generic way to create a business object in the D365 environment
+func (s *Dynamics365Service) CreateObject(params map[string]interface{}) (interface{}, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	return nil, fmt.Errorf("not implemented")
 }
 
-// UpdateBusinessObject updates a business object
-func (s *Dynamics365Service) UpdateBusinessObject(id string, params map[string]interface{}) error {
+// UpdateObject updates a business object
+func (s *Dynamics365Service) UpdateObject(id string, params map[string]interface{}) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	return fmt.Errorf("not implemented")
 }
 
-// UpdateBusinessObjectStatus updates the status of a business object
-func (s *Dynamics365Service) UpdateBusinessObjectStatus(id string, params map[string]interface{}) error {
+// UpdateObjectStatus updates the status of a business object
+func (s *Dynamics365Service) UpdateObjectStatus(id string, params map[string]interface{}) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
