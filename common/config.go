@@ -9,7 +9,6 @@ import (
 
 	logger "github.com/kthomas/go-logger"
 	"github.com/provideapp/ident/common"
-	"github.com/provideservices/provide-go/api"
 	"github.com/provideservices/provide-go/api/ident"
 	"github.com/provideservices/provide-go/api/nchain"
 	"github.com/provideservices/provide-go/api/vault"
@@ -110,18 +109,8 @@ func ResolveBaselineContract() {
 		return
 	}
 
-	capabilitiesClient := &api.Client{
-		Host:   "s3.amazonaws.com",
-		Scheme: "https",
-		Path:   "static.provide.services/capabilities",
-	}
-	_, capabilities, err := capabilitiesClient.Get("provide-capabilities-manifest.json", map[string]interface{}{})
-	if err != nil {
-		Log.Warningf("failed to fetch capabilities; %s", err.Error())
-		return
-	}
-
-	if baseline, baselineOk := capabilities.(map[string]interface{})["baseline"].(map[string]interface{}); baselineOk {
+	capabilities, err := util.ResolveCapabilitiesManifest()
+	if baseline, baselineOk := capabilities["baseline"].(map[string]interface{}); baselineOk {
 		if contracts, contractsOk := baseline["contracts"].([]interface{}); contractsOk {
 			for _, contract := range contracts {
 				if name, nameOk := contract.(map[string]interface{})["name"].(string); nameOk && strings.ToLower(name) == "orgregistry" {
@@ -129,9 +118,9 @@ func ResolveBaselineContract() {
 					err := json.Unmarshal(raw, &BaselineRegistryContract)
 					if err != nil {
 						Log.Warningf("failed to parse registry contract from capabilities; %s", err.Error())
-						return
+					} else {
+						Log.Debug("resolved baseline registry contract artifact")
 					}
-					Log.Debug("resolved baseline registry contract artifact")
 				}
 			}
 		}
