@@ -10,7 +10,7 @@ require (
 	github.com/kthomas/go-logger v0.0.0-20210526080020-a63672d0724c
 	github.com/kthomas/go-natsutil v0.0.0-20200602073459-388e1f070b05
 	github.com/kthomas/go-pgputil v0.0.0-20200602073402-784e96083943
-	github.com/kthomas/go-redisutil v0.0.0-20200602073431-aa49de17e9ff
+	github.com/kthomas/go-redisutil v0.0.0-20210621163534-1f741c230b1f
 	github.com/kthomas/go.uuid v1.2.1-0.20190324131420-28d1fa77e9a4
 	github.com/nats-io/nats.go v1.10.0
 	github.com/nats-io/stan.go v0.8.3
