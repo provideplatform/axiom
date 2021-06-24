@@ -13,7 +13,7 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/kthomas/go-pgputil"
 	"github.com/provideplatform/baseline-proxy/common"
-	"github.com/provideservices/provide-go/api/vault"
+	"github.com/provideplatform/provide-go/api/vault"
 	"golang.org/x/crypto/ssh"
 )
 

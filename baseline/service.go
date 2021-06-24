@@ -11,8 +11,8 @@ import (
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideplatform/baseline-proxy/common"
 	"github.com/provideplatform/baseline-proxy/middleware"
-	provide "github.com/provideservices/provide-go/api"
-	"github.com/provideservices/provide-go/api/privacy"
+	provide "github.com/provideplatform/provide-go/api"
+	"github.com/provideplatform/provide-go/api/privacy"
 )
 
 const baselineWorkflowTypeGeneralConsistency = "general_consistency"

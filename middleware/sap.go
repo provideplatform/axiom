@@ -6,8 +6,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/provideservices/provide-go/api"
-	"github.com/provideservices/provide-go/common"
+	"github.com/provideplatform/provide-go/api"
+	"github.com/provideplatform/provide-go/common"
 )
 
 const defaultSAPHost = "s4h.rp.concircle.com"

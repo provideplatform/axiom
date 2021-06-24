@@ -10,8 +10,8 @@ import (
 	"github.com/kthomas/go-redisutil"
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideplatform/baseline-proxy/common"
-	"github.com/provideservices/provide-go/api/ident"
-	privacy "github.com/provideservices/provide-go/api/privacy"
+	"github.com/provideplatform/provide-go/api/ident"
+	privacy "github.com/provideplatform/provide-go/api/privacy"
 )
 
 const requireContractSleepInterval = time.Second * 1

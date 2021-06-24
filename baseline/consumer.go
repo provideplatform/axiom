@@ -9,7 +9,7 @@ import (
 	"github.com/nats-io/nats.go"
 	stan "github.com/nats-io/stan.go"
 	"github.com/provideplatform/baseline-proxy/common"
-	"github.com/provideservices/provide-go/api/privacy"
+	"github.com/provideplatform/provide-go/api/privacy"
 )
 
 const protomsgPayloadTypeCircuit = "circuit"

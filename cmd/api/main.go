@@ -13,15 +13,15 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/kthomas/go-redisutil"
 
-	identcommon "github.com/provideapp/ident/common"
-	"github.com/provideapp/ident/token"
 	"github.com/provideplatform/baseline-proxy/baseline"
 	"github.com/provideplatform/baseline-proxy/common"
 	"github.com/provideplatform/baseline-proxy/middleware"
 	"github.com/provideplatform/baseline-proxy/stats"
+	identcommon "github.com/provideplatform/ident/common"
+	"github.com/provideplatform/ident/token"
 
-	provide "github.com/provideservices/provide-go/common"
-	util "github.com/provideservices/provide-go/common/util"
+	provide "github.com/provideplatform/provide-go/common"
+	util "github.com/provideplatform/provide-go/common/util"
 )
 
 const runloopSleepInterval = 250 * time.Millisecond

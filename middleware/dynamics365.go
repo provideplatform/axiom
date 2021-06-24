@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/provideservices/provide-go/api"
+	"github.com/provideplatform/provide-go/api"
 )
 
 // Dynamics365Service for the D365 API

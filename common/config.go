@@ -8,11 +8,11 @@ import (
 	"time"
 
 	logger "github.com/kthomas/go-logger"
-	"github.com/provideapp/ident/common"
-	"github.com/provideservices/provide-go/api/ident"
-	"github.com/provideservices/provide-go/api/nchain"
-	"github.com/provideservices/provide-go/api/vault"
-	"github.com/provideservices/provide-go/common/util"
+	"github.com/provideplatform/ident/common"
+	"github.com/provideplatform/provide-go/api/ident"
+	"github.com/provideplatform/provide-go/api/nchain"
+	"github.com/provideplatform/provide-go/api/vault"
+	"github.com/provideplatform/provide-go/common/util"
 )
 
 var (

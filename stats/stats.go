@@ -8,8 +8,8 @@ import (
 	// FIXME
 	"github.com/gin-gonic/gin"
 	"github.com/provideplatform/baseline-proxy/common"
-	provide "github.com/provideservices/provide-go/common"
-	"github.com/provideservices/provide-go/common/util"
+	provide "github.com/provideplatform/provide-go/common"
+	"github.com/provideplatform/provide-go/common/util"
 )
 
 // InstallStatsAPI installs stats logging APIs

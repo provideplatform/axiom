@@ -16,9 +16,9 @@ require (
 	github.com/nats-io/stan.go v0.8.3
 	github.com/onsi/ginkgo v1.15.1 // indirect
 	github.com/onsi/gomega v1.11.0 // indirect
-	github.com/provideapp/ident v0.0.0-00010101000000-000000000000
-	github.com/provideservices/provide-go v0.0.0-20210617201320-d2d4986adad6
+	github.com/provideplatform/ident v0.0.0-00010101000000-000000000000
+	github.com/provideplatform/provide-go v0.0.0-20210624064849-d7328258f0d8
 	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad
 )
 
-replace github.com/provideapp/ident => ../ident
+replace github.com/provideplatform/ident => ../ident

@@ -12,8 +12,8 @@ import (
 	natsutil "github.com/kthomas/go-natsutil"
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideplatform/baseline-proxy/common"
-	provide "github.com/provideservices/provide-go/common"
-	"github.com/provideservices/provide-go/common/util"
+	provide "github.com/provideplatform/provide-go/common"
+	"github.com/provideplatform/provide-go/common/util"
 )
 
 // InstallCredentialsAPI installs public API for interacting with verifiable credentials

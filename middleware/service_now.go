@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/provideservices/provide-go/api"
-	"github.com/provideservices/provide-go/common"
+	"github.com/provideplatform/provide-go/api"
+	"github.com/provideplatform/provide-go/common"
 )
 
 const defaultServiceNowHost = "base2demo.service-now.com"

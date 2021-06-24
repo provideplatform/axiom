@@ -2,8 +2,8 @@ package baseline
 
 import (
 	uuid "github.com/kthomas/go.uuid"
-	provide "github.com/provideservices/provide-go/api"
-	privacy "github.com/provideservices/provide-go/api/privacy"
+	provide "github.com/provideplatform/provide-go/api"
+	privacy "github.com/provideplatform/provide-go/api/privacy"
 )
 
 const ProtocolMessageOpcodeBaseline = "BLINE"

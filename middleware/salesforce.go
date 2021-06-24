@@ -5,7 +5,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/provideservices/provide-go/api"
+	"github.com/provideplatform/provide-go/api"
 )
 
 const defaultSalesforceHost = "testnet.dappsuite.network"

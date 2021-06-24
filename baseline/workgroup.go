@@ -9,7 +9,7 @@ import (
 
 	"github.com/kthomas/go-redisutil"
 	"github.com/provideplatform/baseline-proxy/common"
-	"github.com/provideservices/provide-go/api/ident"
+	"github.com/provideplatform/provide-go/api/ident"
 )
 
 const requireCounterpartiesSleepInterval = time.Second * 15
