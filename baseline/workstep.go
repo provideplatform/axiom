@@ -11,7 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/common/compiler"
 	"github.com/kthomas/go-redisutil"
 	uuid "github.com/kthomas/go.uuid"
-	"github.com/provideapp/baseline-proxy/common"
+	"github.com/provideplatform/baseline-proxy/common"
 	"github.com/provideservices/provide-go/api/nchain"
 	"github.com/provideservices/provide-go/api/privacy"
 )

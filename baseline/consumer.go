@@ -8,7 +8,7 @@ import (
 	natsutil "github.com/kthomas/go-natsutil"
 	"github.com/nats-io/nats.go"
 	stan "github.com/nats-io/stan.go"
-	"github.com/provideapp/baseline-proxy/common"
+	"github.com/provideplatform/baseline-proxy/common"
 	"github.com/provideservices/provide-go/api/privacy"
 )
 

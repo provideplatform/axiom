@@ -6,7 +6,7 @@ import (
 
 	"github.com/kthomas/go-redisutil"
 	uuid "github.com/kthomas/go.uuid"
-	"github.com/provideapp/baseline-proxy/common"
+	"github.com/provideplatform/baseline-proxy/common"
 )
 
 func (r *BaselineRecord) cache() error {

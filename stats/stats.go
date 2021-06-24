@@ -7,7 +7,7 @@ import (
 	// FIXME
 	// FIXME
 	"github.com/gin-gonic/gin"
-	"github.com/provideapp/baseline-proxy/common"
+	"github.com/provideplatform/baseline-proxy/common"
 	provide "github.com/provideservices/provide-go/common"
 	"github.com/provideservices/provide-go/common/util"
 )

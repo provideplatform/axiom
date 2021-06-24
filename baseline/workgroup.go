@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/kthomas/go-redisutil"
-	"github.com/provideapp/baseline-proxy/common"
+	"github.com/provideplatform/baseline-proxy/common"
 	"github.com/provideservices/provide-go/api/ident"
 )
 

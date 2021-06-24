@@ -9,8 +9,8 @@ import (
 	mimc "github.com/consensys/gnark/crypto/hash/mimc/bn256"
 	natsutil "github.com/kthomas/go-natsutil"
 	uuid "github.com/kthomas/go.uuid"
-	"github.com/provideapp/baseline-proxy/common"
-	"github.com/provideapp/baseline-proxy/middleware"
+	"github.com/provideplatform/baseline-proxy/common"
+	"github.com/provideplatform/baseline-proxy/middleware"
 	provide "github.com/provideservices/provide-go/api"
 	"github.com/provideservices/provide-go/api/privacy"
 )

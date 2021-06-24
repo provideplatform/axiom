@@ -3,7 +3,7 @@ package baseline
 import (
 	"os"
 
-	"github.com/provideapp/baseline-proxy/common"
+	"github.com/provideplatform/baseline-proxy/common"
 )
 
 func (c *Config) apply() bool {

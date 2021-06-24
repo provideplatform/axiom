@@ -1,4 +1,4 @@
-module github.com/provideapp/baseline-proxy
+module github.com/provideplatform/baseline-proxy
 
 go 1.15
 

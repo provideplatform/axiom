@@ -13,12 +13,12 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/kthomas/go-redisutil"
 
-	"github.com/provideapp/baseline-proxy/baseline"
-	"github.com/provideapp/baseline-proxy/common"
-	"github.com/provideapp/baseline-proxy/middleware"
-	"github.com/provideapp/baseline-proxy/stats"
 	identcommon "github.com/provideapp/ident/common"
 	"github.com/provideapp/ident/token"
+	"github.com/provideplatform/baseline-proxy/baseline"
+	"github.com/provideplatform/baseline-proxy/common"
+	"github.com/provideplatform/baseline-proxy/middleware"
+	"github.com/provideplatform/baseline-proxy/stats"
 
 	provide "github.com/provideservices/provide-go/common"
 	util "github.com/provideservices/provide-go/common/util"
