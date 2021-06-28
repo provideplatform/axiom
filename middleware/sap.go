@@ -8,7 +8,7 @@ import (
 
 	"github.com/provideplatform/baseline-proxy/common"
 	"github.com/provideplatform/provide-go/api"
-	"github.com/provideplatform/provide-go/common"
+	provide "github.com/provideplatform/provide-go/common"
 )
 
 const defaultSAPHost = "s4h.rp.concircle.com"
@@ -31,8 +31,8 @@ func InitDefaultSAPService(token *string) *SAPService {
 			Path:     defaultSAPPath,
 			Scheme:   defaultSAPScheme,
 			Token:    token,
-			Username: common.StringOrNil(defaultSAPUsername),
-			Password: common.StringOrNil(defaultSAPPassword),
+			Username: provide.StringOrNil(defaultSAPUsername),
+			Password: provide.StringOrNil(defaultSAPPassword),
 		},
 		sync.Mutex{},
 	}
@@ -71,8 +71,8 @@ func InitSAPService(token *string) *SAPService {
 			Path:     path,
 			Scheme:   scheme,
 			Token:    token,
-			Username: common.StringOrNil(username),
-			Password: common.StringOrNil(password),
+			Username: provide.StringOrNil(username),
+			Password: provide.StringOrNil(password),
 		},
 		sync.Mutex{},
 	}
@@ -92,7 +92,7 @@ func (s *SAPService) Authenticate() error {
 
 	var cookies *string
 	if setCookie, setCookieOk := resp["Set-Cookie"]; setCookieOk {
-		cookies = common.StringOrNil(strings.Join(setCookie, "; "))
+		cookies = provide.StringOrNil(strings.Join(setCookie, "; "))
 	}
 	s.Cookie = cookies
 	if s.Cookie == nil {
@@ -105,7 +105,7 @@ func (s *SAPService) Authenticate() error {
 
 	var csrfToken *string
 	if len(resp["x-csrf-token"]) == 1 {
-		csrfToken = common.StringOrNil(resp["x-csrf-token"][0])
+		csrfToken = provide.StringOrNil(resp["x-csrf-token"][0])
 	}
 	if csrfToken == nil {
 		return fmt.Errorf("failed to authenticate user; no x-csrf-token header; status: %v", status)
@@ -240,7 +240,7 @@ func (s *SAPService) UpdateObjectStatus(id string, params map[string]interface{}
 	uri := fmt.Sprintf("ubc/business_objects/%s/status", id)
 	status, _, err := s.Put(uri, params)
 	if err != nil {
-		common.Log.Warningf("failed to update business object status; status: %v; %s", status, err.Error())
+		provide.Log.Warningf("failed to update business object status; status: %v; %s", status, err.Error())
 		return fmt.Errorf("failed to update business object status; status: %v; %s", status, err.Error())
 	}
 
@@ -248,7 +248,7 @@ func (s *SAPService) UpdateObjectStatus(id string, params map[string]interface{}
 		return fmt.Errorf("failed to update business object status; status: %v", status)
 	}
 
-	common.Log.Debugf("received %d status from SAP status endpoint", status)
+	provide.Log.Debugf("received %d status from SAP status endpoint", status)
 
 	return nil
 }
