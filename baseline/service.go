@@ -106,20 +106,13 @@ func (m *ProtocolMessage) baselineInbound() bool {
 		common.Log.Debugf("received response from internal system of record; %s", resp)
 
 		const defaultIDField = "id"
-		const idField = "sys_id"
-		const resultField = "result" // FIXME-- this is specific to
 
-		if id, idOk := resp.(map[string]interface{})[idField].(string); idOk {
+		if id, idOk := resp.(map[string]interface{})[defaultIDField].(string); idOk {
 			baselineRecord.ID = common.StringOrNil(id)
 			baselineRecord.cache()
-		} else if result, resultOk := resp.(map[string]interface{})[resultField].(map[string]interface{}); resultOk {
-			if id, idOk := result[idField].(string); idOk {
-				baselineRecord.ID = common.StringOrNil(id)
-				baselineRecord.cache()
-			}
-		} else if id, idOk := result[defaultIDField].(string); idOk {
-			baselineRecord.ID = common.StringOrNil(id)
-			baselineRecord.cache()
+		} else {
+			common.Log.Warningf("failed to create business object during inbound baseline; %s", err.Error())
+			return false
 		}
 	} else {
 		err := sor.UpdateObject(*baselineRecord.ID, m.Payload.Object)
