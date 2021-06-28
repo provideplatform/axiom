@@ -188,6 +188,10 @@ func requireInternalSOR() {
 	if os.Getenv("PROVIDE_SOR_URL") != "" && os.Getenv("PROVIDE_SOR_URL") != "https://" {
 		InternalSOR["url"] = os.Getenv("PROVIDE_SOR_URL")
 	}
+
+	if os.Getenv("PROVIDE_SOR_ORGANIZATION_CODE") != "" {
+		InternalSOR["organization_code"] = os.Getenv("PROVIDE_SOR_ORGANIZATION_CODE")
+	}
 }
 
 func requireOrganization() {

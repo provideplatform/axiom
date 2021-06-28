@@ -66,6 +66,7 @@ func configureSOR() {
 	}
 
 	err = sor.ConfigureProxy(map[string]interface{}{
+		"company_code":    common.InternalSOR["organization_code"],
 		"organization_id": common.OrganizationID,
 		"ident_endpoint":  fmt.Sprintf("%s://%s", os.Getenv("IDENT_API_SCHEME"), os.Getenv("IDENT_API_HOST")),
 		"proxy_endpoint":  common.OrganizationProxyEndpoint,
