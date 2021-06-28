@@ -126,6 +126,10 @@ func (s *SAPService) ConfigureProxy(params map[string]interface{}) error {
 		return err
 	}
 
+	if companyCode, companyCodeOk := common.InternalSOR["organization_code"].(string); companyCodeOk {
+		params["company_code"] = companyCode
+	}
+
 	status, _, err := s.Post("ubc/proxies", params)
 	if err != nil {
 		return err
