@@ -108,6 +108,12 @@ func (s *ServiceNowService) CreateObject(params map[string]interface{}) (interfa
 		return nil, fmt.Errorf("failed to create business object; status: %v", status)
 	}
 
+	if result, resultOk := resp.(map[string]interface{})["result"]; resultOk {
+		if sysId, sysIdOk := result.(map[string]interface{})["sys_id"].(string); sysIdOk {
+			resp.(map[string]interface{})["id"] = sysId
+		}
+	}
+
 	return resp, nil
 }
 

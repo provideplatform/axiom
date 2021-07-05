@@ -111,7 +111,7 @@ func (m *ProtocolMessage) baselineInbound() bool {
 			baselineRecord.ID = common.StringOrNil(id)
 			baselineRecord.cache()
 		} else {
-			common.Log.Warningf("failed to create business object during inbound baseline; %s", err.Error())
+			common.Log.Warning("failed to create business object during inbound baseline; no id present in response")
 			return false
 		}
 	} else {
