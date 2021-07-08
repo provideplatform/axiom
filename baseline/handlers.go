@@ -142,7 +142,7 @@ func updateObjectHandler(c *gin.Context) {
 
 	record := lookupBaselineRecordByInternalID(c.Param("id"))
 	if record == nil {
-		provide.RenderError(fmt.Sprintf("baseline record not found"), 404, c)
+		provide.RenderError("baseline record not found", 404, c)
 		return
 	}
 
