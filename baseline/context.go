@@ -94,7 +94,7 @@ func lookupBaselineContextByInternalID(id string) *BaselineContext {
 	key := fmt.Sprintf("baseline.context.id.%s", id)
 	baselineID, err := redisutil.Get(key)
 	if err != nil {
-		common.Log.Warningf("failed to retrieve cached baseline id for internal id: %s; %s", key, err.Error())
+		common.Log.Warningf("failed to retrieve cached baseline context for internal id: %s; %s", key, err.Error())
 		return nil
 	}
 
