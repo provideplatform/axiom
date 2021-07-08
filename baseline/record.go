@@ -83,7 +83,7 @@ func lookupBaselineRecord(baselineID string) *BaselineRecord {
 	return baselineRecord
 }
 
-// lookup a baseline record id using the internal system of record id
+// lookup a baseline record using the internal system of record id
 func lookupBaselineRecordByInternalID(id string) *BaselineRecord {
 	key := fmt.Sprintf("baseline.record.id.%s", id)
 	baselineID, err := redisutil.Get(key)
