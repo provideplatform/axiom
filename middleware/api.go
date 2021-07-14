@@ -34,6 +34,8 @@ func SORFactory(params map[string]interface{}, token *string) SOR {
 		return InitDynamics365Service(token)
 	case sorIdentifierEphemeralMemory:
 		return InitEphemeralMemoryService(token)
+	case sorIdentifierExcel:
+		return InitExcelService(token)
 	case sorIdentifierSAP:
 		return InitSAPService(token)
 	case sorIdentifierSalesforce:
