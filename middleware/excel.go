@@ -76,7 +76,7 @@ func (s *ExcelService) DeleteProxyConfiguration(organizationID string) error {
 	return fmt.Errorf("not implemented")
 }
 
-// HealthCheck checks the health of the D365 instance
+// HealthCheck checks the health of the instance - not implemented for Excel at this time
 func (s *ExcelService) HealthCheck() error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
