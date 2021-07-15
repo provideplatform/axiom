@@ -17,6 +17,8 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
+const defaultCredentialExperationTimeout = time.Hour * 1
+
 // IssueVC vends a verifiable credential for the given third-party; it assumes authorization
 // has already been completed successfully for the counterparty
 func IssueVC(address string, params map[string]interface{}) (*string, error) {
@@ -43,6 +45,7 @@ func IssueVC(address string, params map[string]interface{}) (*string, error) {
 
 	claims := map[string]interface{}{
 		"aud":      common.OrganizationMessagingEndpoint,
+		"exp":      issuedAt.Add(defaultCredentialExperationTimeout).Unix(),
 		"iat":      issuedAt.Unix(),
 		"iss":      fmt.Sprintf("organization:%s", *common.OrganizationID),
 		"sub":      address,
