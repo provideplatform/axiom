@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common/compiler"
@@ -56,14 +55,11 @@ func baselineWorkstepFactory(identifier *string, workflowID *string, circuit *pr
 
 // FIXME -- refactor to func (w *Workstep) requireCircuit(token *string, workflow *Workflow) error
 func requireCircuits(token *string, workflow *Workflow) error {
-	wg := &sync.WaitGroup{}
-
 	startTime := time.Now()
 	timer := time.NewTicker(requireCircuitTickerInterval)
 	defer timer.Stop()
 
 	circuits := make([]bool, len(workflow.Worksteps))
-	wg.Add(len(workflow.Worksteps))
 
 	go func() {
 		for {
@@ -92,7 +88,6 @@ func requireCircuits(token *string, workflow *Workflow) error {
 							workflow.Worksteps[i].CircuitID = &circuit.ID
 							circuits[i] = true
 
-							wg.Done()
 							break
 						}
 					}
@@ -101,8 +96,6 @@ func requireCircuits(token *string, workflow *Workflow) error {
 				if startTime.Add(requireCircuitTimeout).Before(time.Now()) {
 					msg := fmt.Sprintf("failed to provision %d workstep circuit(s)", len(workflow.Worksteps))
 					common.Log.Warning(msg)
-
-					wg.Done()
 					break
 				} else {
 					time.Sleep(requireCircuitSleepInterval)
@@ -111,7 +104,6 @@ func requireCircuits(token *string, workflow *Workflow) error {
 		}
 	}()
 
-	wg.Wait()
 	return nil
 }
 
