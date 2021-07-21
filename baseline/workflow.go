@@ -78,6 +78,9 @@ func baselineWorkflowFactory(objectType string, identifier *string) (*Workflow, 
 	// FIXME -- read all workgroup participants from cache
 	workgroupID := os.Getenv("BASELINE_WORKGROUP_ID")
 	orgs, err := ident.ListApplicationOrganizations(*token, workgroupID, map[string]interface{}{})
+	if err != nil {
+		return nil, err
+	}
 	for _, org := range orgs {
 		workflow.Participants = append(workflow.Participants, &Participant{
 			Address:           common.StringOrNil(org.Metadata["address"].(string)),
