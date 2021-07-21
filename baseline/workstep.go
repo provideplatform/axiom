@@ -61,50 +61,54 @@ func requireCircuits(token *string, workflow *Workflow) error {
 
 	circuits := make([]bool, len(workflow.Worksteps))
 
-	go func() {
-		for {
-			select {
-			case <-timer.C:
-				for i, workstep := range workflow.Worksteps {
-					if !circuits[i] {
-						circuit, err := privacy.GetCircuitDetails(*token, workstep.Circuit.ID.String())
-						if err != nil {
-							common.Log.Debugf("failed to fetch circuit details; %s", err.Error())
-							break
-						}
-						if circuit.Status != nil && *circuit.Status == workstepCircuitStatusProvisioned {
-							common.Log.Debugf("provisioned workflow circuit: %s", circuit.ID)
-							if circuit.VerifierContract != nil {
-								if source, sourceOk := circuit.VerifierContract["source"].(string); sourceOk {
-									// contractRaw, _ := json.MarshalIndent(source, "", "  ")
-									src := strings.TrimSpace(strings.ReplaceAll(source, "\\n", "\n"))
-									common.Log.Debugf("verifier contract: %s", src)
-									contractName := fmt.Sprintf("%s Verifier", *circuit.Name)
-									DeployContract([]byte(contractName), []byte(src))
-								}
+	for {
+		select {
+		case <-timer.C:
+			for i, workstep := range workflow.Worksteps {
+				if !circuits[i] {
+					circuit, err := privacy.GetCircuitDetails(*token, workstep.Circuit.ID.String())
+					if err != nil {
+						common.Log.Debugf("failed to fetch circuit details; %s", err.Error())
+						break
+					}
+					if circuit.Status != nil && *circuit.Status == workstepCircuitStatusProvisioned {
+						common.Log.Debugf("provisioned workflow circuit: %s", circuit.ID)
+						if circuit.VerifierContract != nil {
+							if source, sourceOk := circuit.VerifierContract["source"].(string); sourceOk {
+								// contractRaw, _ := json.MarshalIndent(source, "", "  ")
+								src := strings.TrimSpace(strings.ReplaceAll(source, "\\n", "\n"))
+								common.Log.Debugf("verifier contract: %s", src)
+								contractName := fmt.Sprintf("%s Verifier", *circuit.Name)
+								DeployContract([]byte(contractName), []byte(src))
 							}
-
-							workflow.Worksteps[i].Circuit = circuit
-							workflow.Worksteps[i].CircuitID = &circuit.ID
-							circuits[i] = true
-
-							break
 						}
+
+						workflow.Worksteps[i].Circuit = circuit
+						workflow.Worksteps[i].CircuitID = &circuit.ID
+						circuits[i] = true
 					}
 				}
-			default:
-				if startTime.Add(requireCircuitTimeout).Before(time.Now()) {
-					msg := fmt.Sprintf("failed to provision %d workstep circuit(s)", len(workflow.Worksteps))
-					common.Log.Warning(msg)
-					break
-				} else {
-					time.Sleep(requireCircuitSleepInterval)
+			}
+
+			x := 0
+			for i := range workflow.Worksteps {
+				if circuits[i] {
+					x++
 				}
 			}
+			if x == len(circuits) {
+				return nil
+			}
+		default:
+			if startTime.Add(requireCircuitTimeout).Before(time.Now()) {
+				msg := fmt.Sprintf("failed to provision %d workstep circuit(s)", len(workflow.Worksteps))
+				common.Log.Warning(msg)
+				return errors.New(msg)
+			} else {
+				time.Sleep(requireCircuitSleepInterval)
+			}
 		}
-	}()
-
-	return nil
+	}
 }
 
 // LookupBaselineWorkstep by id
