@@ -18,15 +18,6 @@ import (
 	"github.com/provideplatform/provide-go/common"
 )
 
-// {
-// 	"ConnectionStrings": {
-// 	  "QueueIn": "Endpoint=sb://d365r34.servicebus.windows.net/;SharedAccessKeyName=Reader;SharedAccessKey=FGpJRrI3iwKka0WUcBTX6mu1ngGHXhYDsvMGLPDCYts=;EntityPath=proxy",
-// 	  //"QueueIn": "Endpoint=sb://d365r34.servicebus.windows.net/;SharedAccessKeyName=proxyRead;SharedAccessKey=JXz0vXKUQwQN1iEGcGTXYObumXsZBwACfRj7W9VM8Ig=;EntityPath=toproxy",
-// 	  "QueueOut": "Endpoint=sb://d365r34.servicebus.windows.net/;SharedAccessKeyName=proxyWrite;SharedAccessKey=c6w7LIsjPIsGeCKZHW9mA5DCgtqLf31M+zskEHvGfNQ=;EntityPath=fromproxy"
-// 	},
-// 	"JWTSecretKey": "3SBMTbc1n6CwfYkgsJAUwk69NJZqryRS"
-//   }
-
 const defaultServiceBusInboundQueueName = "baseline.inbound"
 const defaultServiceBusOutboundQueueName = "baseline.outbound"
 const defaultServiceBusContextTimeout = 10 * time.Second
