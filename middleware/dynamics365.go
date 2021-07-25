@@ -1,26 +1,81 @@
 package middleware
 
 import (
+	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"log"
+	"os"
+	"os/signal"
 	"sync"
+	"sync/atomic"
+	"syscall"
+	"time"
 
+	servicebus "github.com/Azure/azure-service-bus-go"
 	"github.com/provideplatform/provide-go/api"
+	"github.com/provideplatform/provide-go/common"
 )
+
+// {
+// 	"ConnectionStrings": {
+// 	  "QueueIn": "Endpoint=sb://d365r34.servicebus.windows.net/;SharedAccessKeyName=Reader;SharedAccessKey=FGpJRrI3iwKka0WUcBTX6mu1ngGHXhYDsvMGLPDCYts=;EntityPath=proxy",
+// 	  //"QueueIn": "Endpoint=sb://d365r34.servicebus.windows.net/;SharedAccessKeyName=proxyRead;SharedAccessKey=JXz0vXKUQwQN1iEGcGTXYObumXsZBwACfRj7W9VM8Ig=;EntityPath=toproxy",
+// 	  "QueueOut": "Endpoint=sb://d365r34.servicebus.windows.net/;SharedAccessKeyName=proxyWrite;SharedAccessKey=c6w7LIsjPIsGeCKZHW9mA5DCgtqLf31M+zskEHvGfNQ=;EntityPath=fromproxy"
+// 	},
+// 	"JWTSecretKey": "3SBMTbc1n6CwfYkgsJAUwk69NJZqryRS"
+//   }
+
+const defaultServiceBusInboundQueueName = "baseline.inbound"
+const defaultServiceBusOutboundQueueName = "baseline.outbound"
+const defaultServiceBusContextTimeout = 10 * time.Second
+
+const subscribeTickInterval = 500 * time.Millisecond
+const subscribeSleepInterval = 250 * time.Millisecond
 
 // Dynamics365Service for the D365 API
 type Dynamics365Service struct {
-	api.Client
-	mutex sync.Mutex
+	client api.Client
+	mutex  sync.Mutex
+
+	inboundQueueName  *string
+	outboundQueueName *string
+
+	ctx    context.Context
+	cancel context.CancelFunc
+
+	ns *servicebus.Namespace
+
+	cancelF     context.CancelFunc
+	closing     uint32
+	shutdownCtx context.Context
 }
 
 // InitDynamics365Service convenience method to initialize a default `sap.Dynamics365Service` (i.e., production) instance
 func InitDynamics365Service(token *string) *Dynamics365Service {
-	return &Dynamics365Service{
-		api.Client{
+	ns, err := initServiceBusNamespace()
+	if err != nil {
+		common.Log.Warningf("failed to initialize azure service bus namespace; %s", err.Error())
+		return nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), defaultServiceBusContextTimeout)
+
+	service := &Dynamics365Service{
+		client: api.Client{
 			Token: token,
 		},
-		sync.Mutex{},
+		mutex:             sync.Mutex{},
+		inboundQueueName:  common.StringOrNil(defaultServiceBusInboundQueueName),
+		outboundQueueName: common.StringOrNil(defaultServiceBusOutboundQueueName),
+		ctx:               ctx,
+		cancel:            cancel,
+		ns:                ns,
 	}
+
+	go service.subscribe()
+	return service
 }
 
 // Authenticate a user by email address and password, returning a newly-authorized X-CSRF-Token token
@@ -32,6 +87,8 @@ func (s *Dynamics365Service) Authenticate() error {
 func (s *Dynamics365Service) ConfigureProxy(params map[string]interface{}) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+
+	// TODO: use inbound queue to send system requests to D365
 
 	return fmt.Errorf("not implemented")
 }
@@ -49,7 +106,19 @@ func (s *Dynamics365Service) CreateObject(params map[string]interface{}) (interf
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	return nil, fmt.Errorf("not implemented")
+	q, err := s.ns.NewQueue(*s.inboundQueueName)
+	if err != nil {
+		return nil, err
+	}
+
+	payload, _ := json.Marshal(params)
+
+	err = q.Send(s.ctx, servicebus.NewMessage(payload))
+	if err != nil {
+		return nil, err
+	}
+
+	return nil, nil
 }
 
 // UpdateObject updates a business object
@@ -57,7 +126,19 @@ func (s *Dynamics365Service) UpdateObject(id string, params map[string]interface
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	return fmt.Errorf("not implemented")
+	q, err := s.ns.NewQueue(*s.inboundQueueName)
+	if err != nil {
+		return err
+	}
+
+	payload, _ := json.Marshal(params)
+
+	err = q.Send(s.ctx, servicebus.NewMessage(payload))
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // UpdateObjectStatus updates the status of a business object
@@ -65,7 +146,9 @@ func (s *Dynamics365Service) UpdateObjectStatus(id string, params map[string]int
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	return fmt.Errorf("not implemented")
+	// TODO
+
+	return nil
 }
 
 // DeleteProxyConfiguration drops a proxy configuration for the given organization
@@ -90,4 +173,89 @@ func (s *Dynamics365Service) ProxyHealthCheck(organizationID string) error {
 	defer s.mutex.Unlock()
 
 	return fmt.Errorf("not implemented")
+}
+
+func initServiceBusNamespace() (*servicebus.Namespace, error) {
+	var ns *servicebus.Namespace
+	var err error
+
+	connStr := os.Getenv("AZURE_SERVICE_BUS_CONNECTION_STRING")
+	if connStr == "" {
+		msg := "failed to parse AZURE_SERVICE_BUS_CONNECTION_STRING from environment"
+		common.Log.Warning(msg)
+		return nil, errors.New(msg)
+	}
+
+	ns, err = servicebus.NewNamespace(servicebus.NamespaceWithConnectionString(connStr))
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize azure service bus namespace; %s", err.Error())
+	}
+
+	return ns, nil
+}
+
+func (s *Dynamics365Service) receive() error {
+	q, err := s.ns.NewQueue(*s.outboundQueueName)
+	if err != nil {
+		return err
+	}
+
+	err = q.ReceiveOne(
+		s.ctx,
+		servicebus.HandlerFunc(func(ctx context.Context, message *servicebus.Message) error {
+			common.Log.Debug(string(message.Data))
+			return message.Complete(ctx)
+		}),
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *Dynamics365Service) installSignalHandlers() chan os.Signal {
+	common.Log.Tracef("installing subshell signal handlers")
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	return sigs
+}
+
+func (s *Dynamics365Service) subscribe() {
+	sigs := s.installSignalHandlers()
+	s.shutdownCtx, s.cancelF = context.WithCancel(context.Background())
+
+	timer := time.NewTicker(subscribeTickInterval)
+	defer timer.Stop()
+
+	for !s.shuttingDown() {
+		select {
+		case <-timer.C:
+			err := s.receive()
+			if err != nil {
+				common.Log.Warningf("failed to receive from azure service bus queue in subscribe runloop; %s", err.Error())
+			}
+		case sig := <-sigs:
+			fmt.Printf("received signal: %s", sig)
+			s.shutdown()
+		case <-s.shutdownCtx.Done():
+			close(sigs)
+		default:
+			time.Sleep(subscribeSleepInterval)
+		}
+	}
+
+	log.Printf("exiting tunnel runloop")
+	s.cancelF()
+}
+
+func (s *Dynamics365Service) shutdown() {
+	if atomic.AddUint32(&s.closing, 1) == 1 {
+		common.Log.Tracef("shutting down")
+		s.cancelF()
+	}
+}
+
+func (s *Dynamics365Service) shuttingDown() bool {
+	return (atomic.LoadUint32(&s.closing) > 0)
 }
