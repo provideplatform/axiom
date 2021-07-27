@@ -97,7 +97,15 @@ func baselineWorkflowFactory(objectType string, identifier *string) (*Workflow, 
 
 		switch objectType {
 		case baselineWorkflowTypeGeneralConsistency:
-			circuit, err = privacy.CreateCircuit(*token, circuitParamsFactory("General Consistency", "purchase_order", nil))
+			circuit, err = privacy.CreateCircuit(
+				*token,
+				circuitParamsFactory(
+					"General Consistency",
+					"purchase_order",
+					nil,
+					nil,
+				),
+			)
 			if err != nil {
 				common.Log.Debugf("failed to deploy circuit; %s", err.Error())
 				return nil, err
@@ -106,35 +114,67 @@ func baselineWorkflowFactory(objectType string, identifier *string) (*Workflow, 
 			break
 
 		case baselineWorkflowTypeProcureToPay:
-			circuit, err := privacy.CreateCircuit(*token, circuitParamsFactory("PO", "purchase_order", nil))
+			circuit, err := privacy.CreateCircuit(*token, circuitParamsFactory("PO", "purchase_order", nil, nil))
 			if err != nil {
 				common.Log.Debugf("failed to deploy circuit; %s", err.Error())
 				return nil, err
 			}
 			workflow.Worksteps = append(workflow.Worksteps, baselineWorkstepFactory(nil, common.StringOrNil(workflow.ID.String()), circuit))
 
-			circuit, err = privacy.CreateCircuit(*token, circuitParamsFactory("SO", "sales_order", common.StringOrNil(circuit.StoreID.String())))
+			circuit, err = privacy.CreateCircuit(
+				*token,
+				circuitParamsFactory(
+					"SO",
+					"sales_order",
+					common.StringOrNil(circuit.NoteStoreID.String()),
+					common.StringOrNil(circuit.NullifierStoreID.String()),
+				),
+			)
 			if err != nil {
 				common.Log.Debugf("failed to deploy circuit; %s", err.Error())
 				return nil, err
 			}
 			workflow.Worksteps = append(workflow.Worksteps, baselineWorkstepFactory(nil, common.StringOrNil(workflow.ID.String()), circuit))
 
-			circuit, err = privacy.CreateCircuit(*token, circuitParamsFactory("SN", "shipment_notification", common.StringOrNil(circuit.StoreID.String())))
+			circuit, err = privacy.CreateCircuit(
+				*token,
+				circuitParamsFactory(
+					"SN",
+					"shipment_notification",
+					common.StringOrNil(circuit.NoteStoreID.String()),
+					common.StringOrNil(circuit.NullifierStoreID.String()),
+				),
+			)
 			if err != nil {
 				common.Log.Debugf("failed to deploy circuit; %s", err.Error())
 				return nil, err
 			}
 			workflow.Worksteps = append(workflow.Worksteps, baselineWorkstepFactory(nil, common.StringOrNil(workflow.ID.String()), circuit))
 
-			circuit, err = privacy.CreateCircuit(*token, circuitParamsFactory("GR", "goods_receipt", common.StringOrNil(circuit.StoreID.String())))
+			circuit, err = privacy.CreateCircuit(
+				*token,
+				circuitParamsFactory(
+					"GR",
+					"goods_receipt",
+					common.StringOrNil(circuit.NoteStoreID.String()),
+					common.StringOrNil(circuit.NullifierStoreID.String()),
+				),
+			)
 			if err != nil {
 				common.Log.Debugf("failed to deploy circuit; %s", err.Error())
 				return nil, err
 			}
 			workflow.Worksteps = append(workflow.Worksteps, baselineWorkstepFactory(nil, common.StringOrNil(workflow.ID.String()), circuit))
 
-			circuit, err = privacy.CreateCircuit(*token, circuitParamsFactory("Invoice", "invoice", common.StringOrNil(circuit.StoreID.String())))
+			circuit, err = privacy.CreateCircuit(
+				*token,
+				circuitParamsFactory(
+					"Invoice",
+					"invoice",
+					common.StringOrNil(circuit.NoteStoreID.String()),
+					common.StringOrNil(circuit.NullifierStoreID.String()),
+				),
+			)
 			if err != nil {
 				common.Log.Debugf("failed to deploy circuit; %s", err.Error())
 				return nil, err
@@ -189,7 +229,7 @@ func LookupBaselineWorkflowByBaselineID(baselineID string) *Workflow {
 	return LookupBaselineWorkflow(*identifier)
 }
 
-func circuitParamsFactory(name, identifier string, storeID *string) map[string]interface{} {
+func circuitParamsFactory(name, identifier string, noteStoreID, nullifierStoreID *string) map[string]interface{} {
 	params := map[string]interface{}{
 		"curve":          "BN254",
 		"identifier":     identifier,
@@ -198,8 +238,12 @@ func circuitParamsFactory(name, identifier string, storeID *string) map[string]i
 		"proving_scheme": "groth16",
 	}
 
-	if storeID != nil {
-		params["store_id"] = storeID
+	if noteStoreID != nil {
+		params["note_store_id"] = noteStoreID
+	}
+
+	if nullifierStoreID != nil {
+		params["nullifier_store_id"] = nullifierStoreID
 	}
 
 	return params
