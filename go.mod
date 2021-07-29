@@ -11,7 +11,7 @@ require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/ethereum/go-ethereum v1.9.25
 	github.com/form3tech-oss/jwt-go v3.2.3+incompatible // indirect
-	github.com/gin-gonic/gin v1.6.3
+	github.com/gin-gonic/gin v1.7.0
 	github.com/klauspost/compress v1.13.1 // indirect
 	github.com/kthomas/go-logger v0.0.0-20210526080020-a63672d0724c
 	github.com/kthomas/go-natsutil v0.0.0-20200602073459-388e1f070b05
@@ -23,10 +23,8 @@ require (
 	github.com/nats-io/stan.go v0.8.3
 	github.com/onsi/ginkgo v1.15.1 // indirect
 	github.com/onsi/gomega v1.11.0 // indirect
-	github.com/provideplatform/ident v0.0.0-00010101000000-000000000000
+	github.com/provideplatform/ident v0.9.10-0.20210727215953-cdd9940805ce
 	github.com/provideplatform/provide-go v0.0.0-20210726092427-952b0a36af58
 	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97
 	nhooyr.io/websocket v1.8.7 // indirect
 )
-
-replace github.com/provideplatform/ident => ../ident

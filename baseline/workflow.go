@@ -111,10 +111,17 @@ func baselineWorkflowFactory(objectType string, identifier *string) (*Workflow, 
 				return nil, err
 			}
 			workflow.Worksteps = append(workflow.Worksteps, baselineWorkstepFactory(nil, common.StringOrNil(workflow.ID.String()), circuit))
-			break
 
 		case baselineWorkflowTypeProcureToPay:
-			circuit, err := privacy.CreateCircuit(*token, circuitParamsFactory("PO", "purchase_order", nil, nil))
+			circuit, err := privacy.CreateCircuit(
+				*token,
+				circuitParamsFactory(
+					"PO",
+					"purchase_order",
+					nil,
+					nil,
+				),
+			)
 			if err != nil {
 				common.Log.Debugf("failed to deploy circuit; %s", err.Error())
 				return nil, err
@@ -180,16 +187,15 @@ func baselineWorkflowFactory(objectType string, identifier *string) (*Workflow, 
 				return nil, err
 			}
 			workflow.Worksteps = append(workflow.Worksteps, baselineWorkstepFactory(nil, common.StringOrNil(workflow.ID.String()), circuit))
-			break
 
 		case baselineWorkflowTypeServiceNowIncident:
-			circuit, err = privacy.CreateCircuit(*token, circuitParamsFactory("Incident", "purchase_order", nil))
+			circuit, err = privacy.CreateCircuit(*token, circuitParamsFactory("Incident", "purchase_order", nil, nil))
 			if err != nil {
 				common.Log.Debugf("failed to deploy circuit; %s", err.Error())
 				return nil, err
 			}
 			workflow.Worksteps = append(workflow.Worksteps, baselineWorkstepFactory(nil, common.StringOrNil(workflow.ID.String()), circuit))
-			break
+
 		default:
 			return nil, fmt.Errorf("failed to create workflow for type: %s", objectType)
 		}
