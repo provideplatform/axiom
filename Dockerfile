@@ -10,7 +10,7 @@ RUN make build
 
 FROM alpine
 
-RUN apk add --no-cache bash curl gcompat libc6-compat
+RUN apk add --no-cache bash curl gcompat libc6-compat musl-dev
 
 RUN mkdir -p /baseline-proxy
 WORKDIR /baseline-proxy
