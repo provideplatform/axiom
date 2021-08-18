@@ -48,13 +48,6 @@ func (w *Workflow) CacheByBaselineID(baselineID string) error {
 	})
 }
 
-func stringFromInterface(value interface{}) *string {
-	if value == nil {
-		return nil
-	}
-	return common.StringOrNil(value.(string))
-}
-
 func baselineWorkflowFactory(objectType string, identifier *string) (*Workflow, error) {
 	var identifierUUID uuid.UUID
 	if identifier != nil {
@@ -90,9 +83,9 @@ func baselineWorkflowFactory(objectType string, identifier *string) (*Workflow, 
 	}
 	for _, org := range orgs {
 		workflow.Participants = append(workflow.Participants, &Participant{
-			Address:           stringFromInterface(org.Metadata["address"]),
-			APIEndpoint:       stringFromInterface(org.Metadata["api_endpoint"]),
-			MessagingEndpoint: stringFromInterface(org.Metadata["messaging_endpoint"]),
+			Address:           common.StringFromInterface(org.Metadata["address"]),
+			APIEndpoint:       common.StringFromInterface(org.Metadata["api_endpoint"]),
+			MessagingEndpoint: common.StringFromInterface(org.Metadata["messaging_endpoint"]),
 		})
 	}
 

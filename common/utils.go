@@ -18,6 +18,24 @@ func PanicIfEmpty(val string, msg string) {
 	}
 }
 
+// StringFromInterface returns the string representation of val, if val
+// is in fact a string (or *string)
+func StringFromInterface(val interface{}) *string {
+	if val == nil {
+		return nil
+	}
+	if str, ok := val.(string); ok {
+		return &str
+	}
+	if strptr, ok := val.(*string); ok {
+		return strptr
+	}
+	if arr, ok := val.([]byte); ok {
+		return StringOrNil(string(arr))
+	}
+	return nil
+}
+
 // StringOrNil returns the given string or nil when empty
 func StringOrNil(str string) *string {
 	if str == "" {
