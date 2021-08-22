@@ -33,8 +33,8 @@ func (s *EphemeralMemoryService) ConfigureProxy(params map[string]interface{}) e
 	return nil
 }
 
-// GetObjectModel retrieves a business object model by type
-func (s *EphemeralMemoryService) GetObjectModel(recordType string, params map[string]interface{}) (interface{}, error) {
+// GetSchema retrieves a business object model by type
+func (s *EphemeralMemoryService) GetSchema(recordType string, params map[string]interface{}) (interface{}, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 

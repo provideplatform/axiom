@@ -147,8 +147,8 @@ func (s *SAPService) ConfigureProxy(params map[string]interface{}) error {
 	return nil
 }
 
-// GetObjectModel retrieves a business object data model by type
-func (s *SAPService) GetObjectModel(recordType string, params map[string]interface{}) (interface{}, error) {
+// GetSchema retrieves a business object data model by type
+func (s *SAPService) GetSchema(recordType string, params map[string]interface{}) (interface{}, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 

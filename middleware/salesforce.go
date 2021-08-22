@@ -59,8 +59,8 @@ func (s *SalesforceService) ConfigureProxy(params map[string]interface{}) error 
 	return fmt.Errorf("not implemented")
 }
 
-// GetObjectModel retrieves a business object model by type
-func (s *SalesforceService) GetObjectModel(recordType string, params map[string]interface{}) (interface{}, error) {
+// GetSchema retrieves a business object model by type
+func (s *SalesforceService) GetSchema(recordType string, params map[string]interface{}) (interface{}, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -77,14 +77,7 @@ func (s *SalesforceService) CreateObject(params map[string]interface{}) (interfa
 		return nil, err
 	}
 
-	_params := params
-	if payload, payloadOk := params["payload"].(map[string]interface{}); payloadOk {
-		if replicate, replicateOk := payload["replicate"].(map[string]interface{}); replicateOk {
-			_params = replicate
-		}
-	}
-
-	status, resp, err := s.Post("business_objects", _params)
+	status, resp, err := s.Post("objects", params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create business object; status: %v; %s", status, err.Error())
 	}
@@ -101,15 +94,8 @@ func (s *SalesforceService) UpdateObject(id string, params map[string]interface{
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	_params := params
-	if payload, payloadOk := params["payload"].(map[string]interface{}); payloadOk {
-		if replicate, replicateOk := payload["replicate"].(map[string]interface{}); replicateOk {
-			_params = replicate
-		}
-	}
-
-	uri := fmt.Sprintf("business_objects/%s", id)
-	status, _, err := s.Patch(uri, _params)
+	uri := fmt.Sprintf("objects/%s", id)
+	status, _, err := s.Patch(uri, params)
 	if err != nil {
 		return fmt.Errorf("failed to update business object; status: %v; %s", status, err.Error())
 	}

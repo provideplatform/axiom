@@ -74,8 +74,8 @@ func (s *ServiceNowService) ConfigureProxy(params map[string]interface{}) error 
 	return nil
 }
 
-// GetObjectModel retrieves a business object model by type
-func (s *ServiceNowService) GetObjectModel(recordType string, params map[string]interface{}) (interface{}, error) {
+// GetSchema retrieves a business object model by type
+func (s *ServiceNowService) GetSchema(recordType string, params map[string]interface{}) (interface{}, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
