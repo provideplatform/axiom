@@ -14,16 +14,15 @@ require (
 	github.com/gin-gonic/gin v1.7.0
 	github.com/klauspost/compress v1.13.1 // indirect
 	github.com/kthomas/go-logger v0.0.0-20210526080020-a63672d0724c
-	github.com/kthomas/go-natsutil v0.0.0-20200602073459-388e1f070b05
+	github.com/kthomas/go-natsutil v0.0.0-20210907061523-ffc21333715f
 	github.com/kthomas/go-pgputil v0.0.0-20200602073402-784e96083943
 	github.com/kthomas/go-redisutil v0.0.0-20210621163534-1f741c230b1f
 	github.com/kthomas/go.uuid v1.2.1-0.20190324131420-28d1fa77e9a4
 	github.com/mitchellh/mapstructure v1.4.1 // indirect
-	github.com/nats-io/nats.go v1.10.0
-	github.com/nats-io/stan.go v0.8.3
+	github.com/nats-io/nats.go v1.12.0
 	github.com/onsi/ginkgo v1.15.1 // indirect
 	github.com/onsi/gomega v1.11.0 // indirect
-	github.com/provideplatform/ident v0.9.10-0.20210727215953-cdd9940805ce
+	github.com/provideplatform/ident v0.9.10-0.20210903195520-28bcb83ac5d6
 	github.com/provideplatform/provide-go v0.0.0-20210823052255-cc727526a9b7
 	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97
 	nhooyr.io/websocket v1.8.7 // indirect

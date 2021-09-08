@@ -376,7 +376,8 @@ func (m *ProtocolMessage) broadcast(recipient string) error {
 	}
 
 	common.Log.Debugf("attempting to broadcast %d-byte protocol message", len(payload))
-	return natsutil.NatsStreamingPublish(natsDispatchProtocolMessageSubject, payload)
+	_, err = natsutil.NatsJetstreamPublish(natsDispatchProtocolMessageSubject, payload)
+	return err
 }
 
 func (m *Message) prove() error {

@@ -358,7 +358,7 @@ func createWorkgroupHandler(c *gin.Context) {
 	payload, _ := json.Marshal(msg)
 
 	common.Log.Debugf("attempting to broadcast %d-byte protocol message", len(payload))
-	err = natsutil.NatsStreamingPublish(natsDispatchProtocolMessageSubject, payload)
+	_, err = natsutil.NatsJetstreamPublish(natsDispatchProtocolMessageSubject, payload)
 
 	if err == nil {
 		provide.Render(nil, 204, c)
