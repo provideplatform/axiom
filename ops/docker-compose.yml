@@ -61,7 +61,7 @@ services:
       start_period: 10s
     hostname: prvd-nats
     networks:
-      - provide
+      - prvd
     ports:
       - 4221:4221
       - 4222:4222
