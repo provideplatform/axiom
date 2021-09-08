@@ -133,10 +133,9 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *nats.Msg) {
 		success := protomsg.baselineInbound()
 		if !success {
 			common.Log.Warning("failed to baseline inbound protocol message")
-			msg.Nak()
 			return
 		}
-		break
+
 	case ProtocolMessageOpcodeJoin:
 		common.Log.Warningf("JOIN opcode not yet implemented")
 		// const payload = JSON.parse(msg.payload.toString());
@@ -163,12 +162,11 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *nats.Msg) {
 		//   type: 'circuit',
 		//   payload: circuit,
 		// });
-		break
+
 	case ProtocolMessageOpcodeSync:
 		token, err := vendOrganizationAccessToken()
 		if err != nil {
 			common.Log.Warningf("failed to handle inbound sync protocol message; %s", err.Error())
-			msg.Nak()
 			return
 		}
 
@@ -177,13 +175,16 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *nats.Msg) {
 			circuit, err := privacy.CreateCircuit(*token, protomsg.Payload.Object)
 			if err != nil {
 				common.Log.Warningf("failed to handle inbound sync protocol message; failed to create circuit; %s", err.Error())
-				msg.Nak()
 				return
 			}
 			common.Log.Debugf("sync protocol message created circuit: %s", circuit.ID)
 		} else if protomsg.Payload.Type != nil && *protomsg.Payload.Type == protomsgPayloadTypeWorkflow {
 			workflow := &Workflow{}
 			raw, err := json.Marshal(protomsg.Payload.Object)
+			if err != nil {
+				common.Log.Warningf("failed to handle inbound sync protocol message; failed to marshal payload object; %s", err.Error())
+				return
+			}
 			json.Unmarshal(raw, &workflow)
 
 			for _, workstep := range workflow.Worksteps {
@@ -194,7 +195,6 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *nats.Msg) {
 				workstep.Circuit, err = privacy.CreateCircuit(*token, params)
 				if err != nil {
 					common.Log.Warningf("failed to handle inbound sync protocol message; failed to create circuit; %s", err.Error())
-					msg.Nak()
 					return
 				}
 				workstep.CircuitID = &workstep.Circuit.ID
@@ -220,7 +220,6 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *nats.Msg) {
 			common.Log.Debugf("cached %d-workstep workflow: %s", len(workflow.Worksteps), workflow.ID)
 		}
 
-		break
 	default:
 		common.Log.Warningf("inbound protocol message specified invalid opcode; %s", err.Error())
 		msg.Nak()
