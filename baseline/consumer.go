@@ -70,7 +70,14 @@ func createNatsBaselineProxySubscriptions(wg *sync.WaitGroup) {
 	conn, _ := natsutil.GetSharedNatsConnection(nil)
 	conn.Subscribe(natsBaselineProxySubject, func(msg *nats.Msg) {
 		common.Log.Debugf("consuming %d-byte NATS inbound protocol message on subject: %s", len(msg.Data), msg.Subject)
-		msg.Nak()
+		_, err := natsutil.NatsJetstreamPublish(natsBaselineProxyInboundSubject, msg.Data)
+		if err != nil {
+			common.Log.Warningf("failed to publish inbound protocol message to local jetstream consumers; %s", err.Error())
+			msg.Nak()
+			return
+		}
+
+		msg.Ack()
 	})
 }
 
