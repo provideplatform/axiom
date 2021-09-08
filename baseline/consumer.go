@@ -2,6 +2,7 @@ package baseline
 
 import (
 	"encoding/json"
+	"fmt"
 	"sync"
 	"time"
 
@@ -10,6 +11,8 @@ import (
 	"github.com/provideplatform/baseline-proxy/common"
 	"github.com/provideplatform/provide-go/api/privacy"
 )
+
+const defaultNatsStream = "baseline-proxy"
 
 const protomsgPayloadTypeCircuit = "circuit"
 const protomsgPayloadTypeWorkflow = "workflow"
@@ -30,9 +33,7 @@ const baselineProxyInboundAckWait = time.Second * 30
 const natsBaselineProxyInboundMaxDeliveries = 10
 
 const natsBaselineProxySubject = "baseline.proxy"
-const natsBaselineProxyMaxInFlight = 2048
 const baselineProxyAckWait = time.Second * 30
-const natsBaselineProxyMaxDeliveries = 10
 
 func init() {
 	if !common.ConsumeNATSStreamingSubscriptions {
@@ -43,6 +44,9 @@ func init() {
 	var waitGroup sync.WaitGroup
 
 	natsutil.EstablishSharedNatsConnection(nil)
+	natsutil.NatsCreateStream(defaultNatsStream, []string{
+		fmt.Sprintf("%s.>", defaultNatsStream),
+	})
 
 	createNatsBaselineProxySubscriptions(&waitGroup)
 	createNatsDispatchInvitationSubscriptions(&waitGroup)
