@@ -63,6 +63,11 @@ func resolveBaselineCounterparties() {
 		}
 
 		orgs, err := ident.ListApplicationOrganizations(*token.AccessToken, workgroupID, map[string]interface{}{})
+		if err != nil {
+			common.Log.Warningf("failed to list organizations for workgroup: %s; %s", workgroupID, err.Error())
+			return
+		}
+
 		for _, org := range orgs {
 			addr, addrOk := org.Metadata["address"].(string)
 			apiEndpoint, _ := org.Metadata["api_endpoint"].(string)
@@ -78,7 +83,7 @@ func resolveBaselineCounterparties() {
 		}
 
 		for _, participant := range counterparties {
-			if participant.Address != nil && strings.ToLower(*participant.Address) != strings.ToLower(*common.BaselineOrganizationAddress) {
+			if participant.Address != nil && strings.EqualFold(strings.ToLower(*participant.Address), strings.ToLower(*common.BaselineOrganizationAddress)) {
 				exists := lookupBaselineOrganization(*participant.Address) != nil
 				err := participant.Cache()
 				if err != nil {
@@ -99,7 +104,7 @@ func LookupBaselineWorkgroup(identifier string) *Workgroup {
 	key := fmt.Sprintf("baseline.workgroup.%s", identifier)
 	raw, err := redisutil.Get(key)
 	if err != nil {
-		common.Log.Warningf("failed to retrieve cached baseline workgroup: %s; %s", key, err.Error())
+		common.Log.Debugf("no baseline workgroup cached for key: %s; %s", key, err.Error())
 		return nil
 	}
 
