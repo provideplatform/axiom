@@ -383,7 +383,7 @@ func (m *ProtocolMessage) broadcast(recipient string) error {
 func (m *Message) prove() error {
 	baselineRecord := lookupBaselineRecordByInternalID(*m.ID)
 	if baselineRecord == nil {
-		common.Log.Debugf("failed to resolve baseline record id %s", *m.ID)
+		common.Log.Debugf("no baseline record resolved for internal identifier: %s", *m.ID)
 	}
 
 	token, err := vendOrganizationAccessToken()
@@ -401,7 +401,7 @@ func (m *Message) prove() error {
 		"witness": m.ProtocolMessage.Payload.Witness,
 	})
 	if err != nil {
-		common.Log.Debugf("failed to prove circuit: %s; %s", circuit.ID, err.Error())
+		common.Log.Warningf("failed to prove circuit: %s; %s", circuit.ID, err.Error())
 		return err
 	}
 
@@ -413,7 +413,7 @@ func (m *Message) prove() error {
 func (m *ProtocolMessage) verify(store bool) error {
 	baselineRecord := lookupBaselineRecord(m.BaselineID.String())
 	if baselineRecord == nil {
-		common.Log.Debugf("failed to resolve baseline record id %s", m.BaselineID.String())
+		common.Log.Debugf("no baseline record cached for baseline record id: %s", m.BaselineID.String())
 	}
 
 	token, err := vendOrganizationAccessToken()

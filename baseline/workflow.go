@@ -107,7 +107,7 @@ func baselineWorkflowFactory(objectType string, identifier *string) (*Workflow, 
 				),
 			)
 			if err != nil {
-				common.Log.Debugf("failed to deploy circuit; %s", err.Error())
+				common.Log.Errorf("failed to deploy circuit; %s", err.Error())
 				return nil, err
 			}
 			workflow.Worksteps = append(workflow.Worksteps, baselineWorkstepFactory(nil, common.StringOrNil(workflow.ID.String()), circuit))
@@ -123,7 +123,7 @@ func baselineWorkflowFactory(objectType string, identifier *string) (*Workflow, 
 				),
 			)
 			if err != nil {
-				common.Log.Debugf("failed to deploy circuit; %s", err.Error())
+				common.Log.Errorf("failed to deploy circuit; %s", err.Error())
 				return nil, err
 			}
 			workflow.Worksteps = append(workflow.Worksteps, baselineWorkstepFactory(nil, common.StringOrNil(workflow.ID.String()), circuit))
@@ -138,7 +138,7 @@ func baselineWorkflowFactory(objectType string, identifier *string) (*Workflow, 
 				),
 			)
 			if err != nil {
-				common.Log.Debugf("failed to deploy circuit; %s", err.Error())
+				common.Log.Errorf("failed to deploy circuit; %s", err.Error())
 				return nil, err
 			}
 			workflow.Worksteps = append(workflow.Worksteps, baselineWorkstepFactory(nil, common.StringOrNil(workflow.ID.String()), circuit))
@@ -153,7 +153,7 @@ func baselineWorkflowFactory(objectType string, identifier *string) (*Workflow, 
 				),
 			)
 			if err != nil {
-				common.Log.Debugf("failed to deploy circuit; %s", err.Error())
+				common.Log.Errorf("failed to deploy circuit; %s", err.Error())
 				return nil, err
 			}
 			workflow.Worksteps = append(workflow.Worksteps, baselineWorkstepFactory(nil, common.StringOrNil(workflow.ID.String()), circuit))
@@ -168,7 +168,7 @@ func baselineWorkflowFactory(objectType string, identifier *string) (*Workflow, 
 				),
 			)
 			if err != nil {
-				common.Log.Debugf("failed to deploy circuit; %s", err.Error())
+				common.Log.Errorf("failed to deploy circuit; %s", err.Error())
 				return nil, err
 			}
 			workflow.Worksteps = append(workflow.Worksteps, baselineWorkstepFactory(nil, common.StringOrNil(workflow.ID.String()), circuit))
@@ -183,7 +183,7 @@ func baselineWorkflowFactory(objectType string, identifier *string) (*Workflow, 
 				),
 			)
 			if err != nil {
-				common.Log.Debugf("failed to deploy circuit; %s", err.Error())
+				common.Log.Errorf("failed to deploy circuit; %s", err.Error())
 				return nil, err
 			}
 			workflow.Worksteps = append(workflow.Worksteps, baselineWorkstepFactory(nil, common.StringOrNil(workflow.ID.String()), circuit))
@@ -191,7 +191,7 @@ func baselineWorkflowFactory(objectType string, identifier *string) (*Workflow, 
 		case baselineWorkflowTypeServiceNowIncident:
 			circuit, err = privacy.CreateCircuit(*token, circuitParamsFactory("Incident", "purchase_order", nil, nil))
 			if err != nil {
-				common.Log.Debugf("failed to deploy circuit; %s", err.Error())
+				common.Log.Errorf("failed to deploy circuit; %s", err.Error())
 				return nil, err
 			}
 			workflow.Worksteps = append(workflow.Worksteps, baselineWorkstepFactory(nil, common.StringOrNil(workflow.ID.String()), circuit))
@@ -202,7 +202,7 @@ func baselineWorkflowFactory(objectType string, identifier *string) (*Workflow, 
 
 		err = requireCircuits(token, workflow)
 		if err != nil {
-			common.Log.Debugf("failed to provision circuit(s); %s", err.Error())
+			common.Log.Errorf("failed to provision circuit(s); %s", err.Error())
 			return nil, err
 		}
 	}
@@ -216,7 +216,7 @@ func LookupBaselineWorkflow(identifier string) *Workflow {
 	key := fmt.Sprintf("baseline.workflow.%s", identifier)
 	raw, err := redisutil.Get(key)
 	if err != nil {
-		common.Log.Warningf("failed to retrieve cached baseline workflow: %s; %s", key, err.Error())
+		common.Log.Debugf("no baseline workflow cached for key: %s; %s", key, err.Error())
 		return nil
 	}
 
@@ -228,7 +228,7 @@ func LookupBaselineWorkflowByBaselineID(baselineID string) *Workflow {
 	key := fmt.Sprintf("baseline.id.%s.workflow.identifier", baselineID)
 	identifier, err := redisutil.Get(key)
 	if err != nil {
-		common.Log.Warningf("failed to retrieve cached baseline workflow identifier for baseline id: %s; %s", key, err.Error())
+		common.Log.Debugf("no baseline workflow identifier cached for key: %s; %s", key, err.Error())
 		return nil
 	}
 

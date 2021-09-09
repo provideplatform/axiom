@@ -124,7 +124,7 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *nats.Msg) {
 
 	if protomsg.Opcode == nil {
 		common.Log.Warningf("inbound protocol message specified invalid opcode; %s", err.Error())
-		msg.Nak()
+		msg.Term()
 		return
 	}
 
@@ -222,7 +222,7 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *nats.Msg) {
 
 	default:
 		common.Log.Warningf("inbound protocol message specified invalid opcode; %s", err.Error())
-		msg.Nak()
+		msg.Term()
 		return
 	}
 
@@ -254,6 +254,12 @@ func consumeDispatchProtocolMessageSubscriptionsMsg(msg *nats.Msg) {
 	if err != nil {
 		common.Log.Warningf("failed to umarshal dispatch protocol message; %s", err.Error())
 		msg.Nak()
+		return
+	}
+
+	if protomsg.Recipient == nil {
+		common.Log.Warningf("no participant specified in protocol message; %s", err.Error())
+		msg.Term()
 		return
 	}
 

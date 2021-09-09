@@ -68,7 +68,7 @@ func requireCircuits(token *string, workflow *Workflow) error {
 				if !circuits[i] {
 					circuit, err := privacy.GetCircuitDetails(*token, workstep.Circuit.ID.String())
 					if err != nil {
-						common.Log.Debugf("failed to fetch circuit details; %s", err.Error())
+						common.Log.Warningf("failed to fetch circuit details; %s", err.Error())
 						break
 					}
 					if circuit.Status != nil && *circuit.Status == workstepCircuitStatusProvisioned {
@@ -102,7 +102,7 @@ func requireCircuits(token *string, workflow *Workflow) error {
 		default:
 			if startTime.Add(requireCircuitTimeout).Before(time.Now()) {
 				msg := fmt.Sprintf("failed to provision %d workstep circuit(s)", len(workflow.Worksteps))
-				common.Log.Warning(msg)
+				common.Log.Errorf(msg)
 				return errors.New(msg)
 			} else {
 				time.Sleep(requireCircuitSleepInterval)
