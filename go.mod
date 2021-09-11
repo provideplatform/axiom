@@ -14,7 +14,7 @@ require (
 	github.com/gin-gonic/gin v1.7.0
 	github.com/klauspost/compress v1.13.1 // indirect
 	github.com/kthomas/go-logger v0.0.0-20210526080020-a63672d0724c
-	github.com/kthomas/go-natsutil v0.0.0-20210907061523-ffc21333715f
+	github.com/kthomas/go-natsutil v0.0.0-20210911093321-41b91674d612
 	github.com/kthomas/go-pgputil v0.0.0-20200602073402-784e96083943
 	github.com/kthomas/go-redisutil v0.0.0-20210621163534-1f741c230b1f
 	github.com/kthomas/go.uuid v1.2.1-0.20190324131420-28d1fa77e9a4
