@@ -7,6 +7,7 @@ import (
 	"time"
 
 	natsutil "github.com/kthomas/go-natsutil"
+	uuid "github.com/kthomas/go.uuid"
 	"github.com/nats-io/nats.go"
 	"github.com/provideplatform/baseline-proxy/common"
 	"github.com/provideplatform/provide-go/api/privacy"
@@ -59,6 +60,7 @@ func createNatsBaselineProxySubscriptions(wg *sync.WaitGroup) {
 			baselineProxyInboundAckWait,
 			natsBaselineProxyInboundSubject,
 			natsBaselineProxyInboundSubject,
+			natsBaselineProxyInboundSubject,
 			consumeBaselineProxyInboundSubscriptionsMsg,
 			baselineProxyAckWait,
 			natsBaselineProxyInboundMaxInFlight,
@@ -87,6 +89,7 @@ func createNatsDispatchInvitationSubscriptions(wg *sync.WaitGroup) {
 			dispatchInvitationAckWait,
 			natsDispatchInvitationSubject,
 			natsDispatchInvitationSubject,
+			natsDispatchInvitationSubject,
 			consumeDispatchInvitationSubscriptionsMsg,
 			dispatchInvitationAckWait,
 			natsDispatchInvitationMaxInFlight,
@@ -100,6 +103,7 @@ func createNatsDispatchProtocolMessageSubscriptions(wg *sync.WaitGroup) {
 	for i := uint64(0); i < natsutil.GetNatsConsumerConcurrency(); i++ {
 		natsutil.RequireNatsJetstreamSubscription(wg,
 			dispatchProtocolMessageAckWait,
+			natsDispatchProtocolMessageSubject,
 			natsDispatchProtocolMessageSubject,
 			natsDispatchProtocolMessageSubject,
 			consumeDispatchProtocolMessageSubscriptionsMsg,
@@ -289,7 +293,9 @@ func consumeDispatchProtocolMessageSubscriptionsMsg(msg *nats.Msg) {
 		return
 	}
 
-	conn, err := natsutil.GetNatsConnection(*url, time.Second*10, jwt)
+	uuid, _ := uuid.NewV4()
+	name := fmt.Sprintf("%s-%s", common.BaselineOrganizationAddress, uuid.String())
+	conn, err := natsutil.GetNatsConnection(name, *url, time.Second*10, jwt)
 	if err != nil {
 		common.Log.Warningf("failed to establish NATS connection to recipient: %s; %s", *protomsg.Recipient, err.Error())
 		msg.Nak()
