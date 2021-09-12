@@ -294,7 +294,7 @@ func consumeDispatchProtocolMessageSubscriptionsMsg(msg *nats.Msg) {
 	}
 
 	uuid, _ := uuid.NewV4()
-	name := fmt.Sprintf("%s-%s", common.BaselineOrganizationAddress, uuid.String())
+	name := fmt.Sprintf("%s-%s", *common.BaselineOrganizationAddress, uuid.String())
 	conn, err := natsutil.GetNatsConnection(name, *url, time.Second*10, jwt)
 	if err != nil {
 		common.Log.Warningf("failed to establish NATS connection to recipient: %s; %s", *protomsg.Recipient, err.Error())
