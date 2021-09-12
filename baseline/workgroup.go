@@ -83,7 +83,7 @@ func resolveBaselineCounterparties() {
 		}
 
 		for _, participant := range counterparties {
-			if participant.Address != nil && strings.EqualFold(strings.ToLower(*participant.Address), strings.ToLower(*common.BaselineOrganizationAddress)) {
+			if participant.Address != nil && !strings.EqualFold(strings.ToLower(*participant.Address), strings.ToLower(*common.BaselineOrganizationAddress)) {
 				exists := lookupBaselineOrganization(*participant.Address) != nil
 				err := participant.Cache()
 				if err != nil {
