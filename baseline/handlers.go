@@ -16,6 +16,26 @@ import (
 	"github.com/provideplatform/provide-go/common/util"
 )
 
+// InstallBPIAPI installs public API for interacting with the baseline protocol abstraction
+// layer, i.e., with `Subject`, `SubjectContext` and `BPIAccount`
+func InstallBPIAPI(r *gin.Engine) {
+	r.GET("/api/v1/bpi_accounts", listBPIAccountsHandler)
+	r.GET("/api/v1/bpi_accounts/:id", bpiAccountDetailsHandler)
+	r.POST("/api/v1/bpi_accounts", createBPIAccountHandler)
+
+	r.POST("/api/v1/protocol_messages", createProtocolMessageHandler)
+
+	r.GET("/api/v1/subjects", listSubjectsHandler)
+	r.GET("/api/v1/subjects/:id", subjectDetailsHandler)
+	r.POST("/api/v1/subjects", createSubjectHandler)
+	r.PUT("/api/v1/subjects/:id", updateSubjectHandler)
+
+	r.GET("/api/v1/subjects/:id/accounts", listSubjectAccountsHandler)
+	r.GET("/api/v1/subjects/:id/accounts/:accountId", subjectAccountDetailsHandler)
+	r.POST("/api/v1/subjects/:id/accounts", createSubjectAccountsHandler)
+	r.PUT("/api/v1/subjects/:id/accounts/:accountId", updateSubjectAccountsHandler)
+}
+
 // InstallCredentialsAPI installs public API for interacting with verifiable credentials
 func InstallCredentialsAPI(r *gin.Engine) {
 	r.POST("/api/v1/credentials", issueVerifiableCredentialHandler)
@@ -49,9 +69,13 @@ func InstallWorkgroupsAPI(r *gin.Engine) {
 
 // InstallWorkstepsAPI installs workstep management APIs
 func InstallWorkstepsAPI(r *gin.Engine) {
-	r.GET("/api/v1/worksteps", listWorkstepsHandler)
-	r.GET("/api/v1/worksteps/:id", workstepDetailsHandler)
-	r.POST("/api/v1/worksteps", createWorkstepHandler)
+	// r.GET("/api/v1/worksteps", listWorkstepsHandler)
+	// r.GET("/api/v1/worksteps/:id", workstepDetailsHandler)
+	// r.POST("/api/v1/worksteps", createWorkstepHandler)
+
+	r.GET("/api/v1/workflows/:id/worksteps", listWorkstepsHandler)
+	r.GET("/api/v1/workflows/:id/worksteps/:workstepId", workstepDetailsHandler)
+	r.POST("/api/v1/workflows/:id/worksteps", createWorkstepHandler)
 }
 
 func configurationHandler(c *gin.Context) {
@@ -161,6 +185,10 @@ func updateObjectHandler(c *gin.Context) {
 		obj["errors"] = message.Errors
 		provide.Render(obj, 422, c)
 	}
+}
+
+func createProtocolMessageHandler(c *gin.Context) {
+	provide.RenderError("not implemented", 501, c)
 }
 
 func createWorkgroupHandler(c *gin.Context) {
@@ -583,4 +611,48 @@ func issueVerifiableCredentialHandler(c *gin.Context) {
 		obj["errors"] = []interface{}{} // FIXME
 		provide.Render(obj, 422, c)
 	}
+}
+
+func listBPIAccountsHandler(c *gin.Context) {
+	provide.RenderError("not implemented", 501, c)
+}
+
+func bpiAccountDetailsHandler(c *gin.Context) {
+	provide.RenderError("not implemented", 501, c)
+}
+
+func createBPIAccountHandler(c *gin.Context) {
+	provide.RenderError("not implemented", 501, c)
+}
+
+func listSubjectsHandler(c *gin.Context) {
+	provide.RenderError("not implemented", 501, c)
+}
+
+func subjectDetailsHandler(c *gin.Context) {
+	provide.RenderError("not implemented", 501, c)
+}
+
+func createSubjectHandler(c *gin.Context) {
+	provide.RenderError("not implemented", 501, c)
+}
+
+func updateSubjectHandler(c *gin.Context) {
+	provide.RenderError("not implemented", 501, c)
+}
+
+func listSubjectAccountsHandler(c *gin.Context) {
+	provide.RenderError("not implemented", 501, c)
+}
+
+func subjectAccountDetailsHandler(c *gin.Context) {
+	provide.RenderError("not implemented", 501, c)
+}
+
+func createSubjectAccountsHandler(c *gin.Context) {
+	provide.RenderError("not implemented", 501, c)
+}
+
+func updateSubjectAccountsHandler(c *gin.Context) {
+	provide.RenderError("not implemented", 501, c)
 }

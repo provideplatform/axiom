@@ -131,6 +131,7 @@ func runAPI() {
 	r.Use(identcommon.AccountingMiddleware())
 	r.Use(identcommon.RateLimitingMiddleware())
 
+	baseline.InstallBPIAPI(r)
 	baseline.InstallObjectsAPI(r)
 	baseline.InstallWorkflowsAPI(r)
 	baseline.InstallWorkgroupsAPI(r)
