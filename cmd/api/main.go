@@ -127,6 +127,9 @@ func runAPI() {
 	r.GET("/status", statusHandler)
 	baseline.InstallCredentialsAPI(r)
 
+	// public baseline workgroup...
+	baseline.InstallPublicWorkgroupAPI(r)
+
 	r.Use(token.AuthMiddleware())
 	r.Use(identcommon.AccountingMiddleware())
 	r.Use(identcommon.RateLimitingMiddleware())

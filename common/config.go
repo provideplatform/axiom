@@ -1,15 +1,14 @@
 package common
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/dgrijalva/jwt-go"
 	logger "github.com/kthomas/go-logger"
 	"github.com/provideplatform/ident/common"
-	"github.com/provideplatform/provide-go/api/ident"
 	"github.com/provideplatform/provide-go/api/nchain"
 	"github.com/provideplatform/provide-go/api/vault"
 	"github.com/provideplatform/provide-go/common/util"
@@ -18,6 +17,12 @@ import (
 var (
 	// BaselineOrganizationAddress is the baseline organization address
 	BaselineOrganizationAddress *string
+
+	// BaselinePublicWorkgroupID is the configured public workgroup id, if any
+	BaselinePublicWorkgroupID *string
+
+	// BaselinePublicWorkgroupRefreshToken is an optional refresh token credential for a public workgroup
+	BaselinePublicWorkgroupRefreshToken *string
 
 	// BaselineRegistryContractAddress is a contract address
 	BaselineRegistryContractAddress *string
@@ -64,6 +69,7 @@ func init() {
 
 	requireInternalSOR()
 	requireBaseline()
+	requireBaselinePublicWorkgroup()
 
 	ConsumeNATSStreamingSubscriptions = strings.ToLower(os.Getenv("CONSUME_NATS_STREAMING_SUBSCRIPTIONS")) == "true"
 }
@@ -102,74 +108,31 @@ func requireBaseline() {
 	ResolveBaselineContract()
 }
 
-// FIXME -- return error
-func ResolveBaselineContract() {
-	if NChainBaselineNetworkID == nil || OrganizationRefreshToken == nil {
-		Log.Warning("unable to resolve baseline contract without configured network id and organization refresh token")
+func requireBaselinePublicWorkgroup() {
+	if os.Getenv("BASELINE_PUBLIC_WORKGROUP_REFRESH_TOKEN") == "" {
+		Log.Debugf("BASELINE_PUBLIC_WORKGROUP_REFRESH_TOKEN not provided; no public workgroup configured")
 		return
 	}
 
-	capabilities, err := util.ResolveCapabilitiesManifest()
-	if baseline, baselineOk := capabilities["baseline"].(map[string]interface{}); baselineOk {
-		if contracts, contractsOk := baseline["contracts"].([]interface{}); contractsOk {
-			for _, contract := range contracts {
-				if name, nameOk := contract.(map[string]interface{})["name"].(string); nameOk && strings.ToLower(name) == "orgregistry" {
-					raw, _ := json.Marshal(contract)
-					err := json.Unmarshal(raw, &BaselineRegistryContract)
-					if err != nil {
-						Log.Warningf("failed to parse registry contract from capabilities; %s", err.Error())
-					} else {
-						Log.Debug("resolved baseline registry contract artifact")
-					}
-				}
-			}
-		}
-	}
+	BaselinePublicWorkgroupRefreshToken = common.StringOrNil(os.Getenv("BASELINE_PUBLIC_WORKGROUP_REFRESH_TOKEN"))
 
-	if BaselineRegistryContract == nil {
-		Log.Warning("failed to parse registry contract from capabilities")
-		return
-	}
-
-	token, err := ident.CreateToken(*OrganizationRefreshToken, map[string]interface{}{
-		"grant_type":      "refresh_token",
-		"organization_id": *OrganizationID,
-	})
+	var claims jwt.MapClaims
+	var jwtParser jwt.Parser
+	_, _, err := jwtParser.ParseUnverified(*BaselinePublicWorkgroupRefreshToken, claims)
 	if err != nil {
-		Log.Warningf("failed to vend organization access token; %s", err.Error())
-		return
+		common.Log.Panicf("failed to parse JWT; %s", err.Error())
 	}
 
-	contract, err := nchain.GetContractDetails(*token.AccessToken, *BaselineRegistryContractAddress, map[string]interface{}{})
-	if err != nil || contract == nil {
-		wallet, err := nchain.CreateWallet(*token.AccessToken, map[string]interface{}{
-			"purpose": 44,
-		})
-		if err != nil {
-			Log.Warningf("failed to initialize wallet for organization; %s", err.Error())
-		} else {
-			Log.Debugf("created HD wallet for organization: %s", wallet.ID)
-		}
-
-		cntrct, err := nchain.CreateContract(*token.AccessToken, map[string]interface{}{
-			"address":    *BaselineRegistryContractAddress,
-			"name":       BaselineRegistryContract.Name,
-			"network_id": NChainBaselineNetworkID,
-			"params": map[string]interface{}{
-				"argv":              []interface{}{},
-				"compiled_artifact": BaselineRegistryContract,
-				"wallet_id":         wallet.ID,
-			},
-			"type": "organization-registry",
-		})
-		if err != nil {
-			Log.Warningf("failed to initialize registry contract; %s", err.Error())
-		} else {
-			Log.Debugf("resolved baseline organization registry contract: %s", *cntrct.Address)
-		}
-	} else {
-		Log.Debugf("resolved baseline organization registry contract: %s", *contract.Address)
+	baseline := claims["baseline"].(map[string]interface{})
+	if id, identifierOk := baseline["workgroup_id"].(string); identifierOk {
+		BaselinePublicWorkgroupID = common.StringOrNil(id)
 	}
+
+	if BaselinePublicWorkgroupID != nil {
+		common.Log.Panicf("failed to parse public workgroup id from configured VC; %s", err.Error())
+	}
+
+	common.Log.Debugf("configured public workgroup: %s", *BaselinePublicWorkgroupID)
 }
 
 func requireInternalSOR() {

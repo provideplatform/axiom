@@ -12,6 +12,7 @@ import (
 	natsutil "github.com/kthomas/go-natsutil"
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideplatform/baseline-proxy/common"
+	"github.com/provideplatform/provide-go/api/ident"
 	provide "github.com/provideplatform/provide-go/common"
 	"github.com/provideplatform/provide-go/common/util"
 )
@@ -51,6 +52,11 @@ func InstallObjectsAPI(r *gin.Engine) {
 	// remain backward compatible for now...
 	r.POST("/api/v1/business_objects", createObjectHandler)
 	r.PUT("/api/v1/business_objects/:id", updateObjectHandler)
+}
+
+// InstallPublicWorkgroupAPI installs an API servicing a configured public workgroup
+func InstallPublicWorkgroupAPI(r *gin.Engine) {
+	r.POST("/api/v1/pub/invite", createPublicWorkgroupInviteHandler)
 }
 
 // InstallWorkflowsAPI installs workflow management APIs
@@ -428,6 +434,44 @@ func workgroupDetailsHandler(c *gin.Context) {
 	} else {
 		provide.RenderError("workgroup not found", 404, c)
 	}
+}
+
+func createPublicWorkgroupInviteHandler(c *gin.Context) {
+	if common.BaselinePublicWorkgroupID == nil {
+		provide.RenderError("no public workgroup configured", 501, c)
+		return
+	}
+
+	token, err := common.RefreshPublicWorkgroupAccessToken()
+	if err != nil {
+		msg := fmt.Sprintf("failed to authorize public workgroup access token; %s", err.Error())
+		common.Log.Warningf(msg)
+
+		provide.RenderError(msg, 500, c)
+		return
+	}
+
+	buf, err := c.GetRawData()
+	if err != nil {
+		provide.RenderError(err.Error(), 400, c)
+		return
+	}
+
+	params := &PublicWorkgroupInvitationRequest{}
+	err = json.Unmarshal(buf, &params)
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	ident.CreateInvitation(*token, map[string]interface{}{
+		"email":      params.Email,
+		"first_name": params.FirstName,
+		"last_name":  params.LastName,
+		"params": map[string]interface{}{
+			"organization_name": params.OrganizationName,
+		},
+	})
 }
 
 func createWorkflowHandler(c *gin.Context) {

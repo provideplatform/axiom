@@ -97,6 +97,14 @@ type ProtocolMessagePayload struct {
 	Witness interface{}            `sql:"-" json:"witness,omitempty"`
 }
 
+// PublicWorkgroupInvitationRequest represents parameters for an anonymous request to a public workgroup
+type PublicWorkgroupInvitationRequest struct {
+	Email            *string `json:"email"`
+	FirstName        *string `json:"first_name"`
+	LastName         *string `json:"last_name"`
+	OrganizationName *string `json:"organization_name"`
+}
+
 // Workgroup is a baseline workgroup context
 type Workgroup struct {
 	ID           *uuid.UUID     `sql:"-" json:"id,omitempty"`
