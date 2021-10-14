@@ -1,6 +1,6 @@
 module github.com/provideplatform/baseline-proxy
 
-go 1.16
+go 1.15
 
 require (
 	github.com/Azure/azure-service-bus-go v0.10.14
