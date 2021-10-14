@@ -6,10 +6,10 @@
 #           AWS_SECRET_ACCESS_KEY=abc \
 #           AWS_DEFAULT_REGION=us-east-1 \
 #           AWS_DEFAULT_OUTPUT=json \
-#           ECR_REPOSITORY_NAME=provide/baseline-proxy \
-#           ECS_TASK_DEFINITION_FAMILY=baseline-proxy \
+#           ECR_REPOSITORY_NAME=provide/baseline \
+#           ECS_TASK_DEFINITION_FAMILY=baseline \
 #           ECS_CLUSTER=production \
-#           ECS_SERVICE_NAME=baseline-proxy \
+#           ECS_SERVICE_NAME=baseline \
 #           '$WORKSPACE/ops/ci-process.sh'"
 set -o errexit # set -e
 set -o nounset # set -u
