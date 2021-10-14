@@ -123,9 +123,14 @@ func requireBaselinePublicWorkgroup() {
 		common.Log.Panicf("failed to parse JWT; %s", err.Error())
 	}
 
-	baseline := claims["baseline"].(map[string]interface{})
-	if id, identifierOk := baseline["workgroup_id"].(string); identifierOk {
-		BaselinePublicWorkgroupID = common.StringOrNil(id)
+	if baseline, baselineOk := claims["baseline"].(map[string]interface{}); baselineOk {
+		if id, identifierOk := baseline["workgroup_id"].(string); identifierOk {
+			BaselinePublicWorkgroupID = common.StringOrNil(id)
+		}
+	} else if prvd, prvdOk := claims["prvd"].(map[string]interface{}); prvdOk {
+		if id, identifierOk := prvd["application_id"].(string); identifierOk {
+			BaselinePublicWorkgroupID = common.StringOrNil(id)
+		}
 	}
 
 	if BaselinePublicWorkgroupID != nil {
