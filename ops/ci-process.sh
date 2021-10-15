@@ -42,8 +42,8 @@ setup_go()
     export GOBIN=$GOPATH/bin
     export PATH=~/.local/bin:$GOBIN:$PATH
     echo "PATH is: '$PATH'"
-    # mkdir -p $GOPATH/src/github.com/provideplatform
-    # mkdir -p $GOBIN
+    mkdir -p $GOPATH/src/github.com/provideplatform
+    mkdir -p $GOBIN
 
     go env
 }
@@ -73,7 +73,7 @@ make mod
 
 make lint > reports/linters/golint.txt # TODO: add -set_exit_status once we clean current issues up. 
 
-# make test
+#make test
 
 if [ "$RUN_INTEGRATION_SUITE" = "true" ]; then
   make integration
