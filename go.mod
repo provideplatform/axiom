@@ -1,4 +1,4 @@
-module github.com/provideplatform/baseline-proxy
+module github.com/provideplatform/baseline
 
 go 1.15
 
@@ -23,7 +23,7 @@ require (
 	github.com/onsi/ginkgo v1.15.1 // indirect
 	github.com/onsi/gomega v1.11.0 // indirect
 	github.com/provideplatform/ident v0.9.10-0.20210903195520-28bcb83ac5d6
-	github.com/provideplatform/provide-go v0.0.0-20210823052255-cc727526a9b7
+	github.com/provideplatform/provide-go v0.0.0-20211028203757-aad6bf7d0531
 	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97
 	nhooyr.io/websocket v1.8.7 // indirect
 )

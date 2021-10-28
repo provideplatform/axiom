@@ -6,7 +6,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/provideplatform/baseline-proxy/common"
+	"github.com/provideplatform/baseline/common"
 	"github.com/provideplatform/provide-go/api"
 	provide "github.com/provideplatform/provide-go/common"
 )

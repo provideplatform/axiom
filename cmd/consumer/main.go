@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/kthomas/go-redisutil"
-	_ "github.com/provideplatform/baseline-proxy/baseline" // Baseline package
-	"github.com/provideplatform/baseline-proxy/common"
+	_ "github.com/provideplatform/baseline/baseline" // Baseline package
+	"github.com/provideplatform/baseline/common"
 )
 
 const natsStreamingSubscriptionStatusTickerInterval = 5 * time.Second

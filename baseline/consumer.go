@@ -9,7 +9,8 @@ import (
 	natsutil "github.com/kthomas/go-natsutil"
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/nats-io/nats.go"
-	"github.com/provideplatform/baseline-proxy/common"
+	"github.com/provideplatform/baseline/common"
+	"github.com/provideplatform/provide-go/api/baseline"
 	"github.com/provideplatform/provide-go/api/privacy"
 )
 
@@ -35,6 +36,18 @@ const natsBaselineProxyInboundMaxDeliveries = 10
 
 const natsBaselineProxySubject = "baseline.proxy"
 const baselineProxyAckWait = time.Second * 30
+
+// Message is a proxy-internal wrapper for protocol message handling
+type Message struct {
+	baseline.Message
+	ProtocolMessage *ProtocolMessage `sql:"-" json:"protocol_message,omitempty"`
+}
+
+// ProtocolMessage is a baseline protocol message
+// see https://github.com/ethereum-oasis/baseline/blob/master/core/types/src/protocol.ts
+type ProtocolMessage struct {
+	baseline.ProtocolMessage
+}
 
 func init() {
 	if !common.ConsumeNATSStreamingSubscriptions {
@@ -133,14 +146,14 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *nats.Msg) {
 	}
 
 	switch *protomsg.Opcode {
-	case ProtocolMessageOpcodeBaseline:
+	case baseline.ProtocolMessageOpcodeBaseline:
 		success := protomsg.baselineInbound()
 		if !success {
 			common.Log.Warning("failed to baseline inbound protocol message")
 			return
 		}
 
-	case ProtocolMessageOpcodeJoin:
+	case baseline.ProtocolMessageOpcodeJoin:
 		common.Log.Warningf("JOIN opcode not yet implemented")
 		// const payload = JSON.parse(msg.payload.toString());
 		// const messagingEndpoint = await this.resolveMessagingEndpoint(payload.address);
@@ -167,7 +180,7 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *nats.Msg) {
 		//   payload: circuit,
 		// });
 
-	case ProtocolMessageOpcodeSync:
+	case baseline.ProtocolMessageOpcodeSync:
 		token, err := vendOrganizationAccessToken()
 		if err != nil {
 			common.Log.Warningf("failed to handle inbound sync protocol message; %s", err.Error())
@@ -183,7 +196,7 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *nats.Msg) {
 			}
 			common.Log.Debugf("sync protocol message created circuit: %s", circuit.ID)
 		} else if protomsg.Payload.Type != nil && *protomsg.Payload.Type == protomsgPayloadTypeWorkflow {
-			workflow := &Workflow{}
+			workflow := &WorkflowInstance{}
 			raw, err := json.Marshal(protomsg.Payload.Object)
 			if err != nil {
 				common.Log.Warningf("failed to handle inbound sync protocol message; failed to marshal payload object; %s", err.Error())

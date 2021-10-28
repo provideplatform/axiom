@@ -3,8 +3,15 @@ package baseline
 import (
 	"os"
 
-	"github.com/provideplatform/baseline-proxy/common"
+	"github.com/provideplatform/baseline/common"
+	"github.com/provideplatform/provide-go/api/baseline"
 )
+
+// Config represents the proxy configuration
+type Config struct {
+	baseline.Config
+	Counterparties []*Participant `sql:"-" json:"counterparties,omitempty"`
+}
 
 func (c *Config) apply() bool {
 	if c.NetworkID != nil {

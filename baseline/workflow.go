@@ -9,7 +9,8 @@ import (
 
 	"github.com/kthomas/go-redisutil"
 	uuid "github.com/kthomas/go.uuid"
-	"github.com/provideplatform/baseline-proxy/common"
+	"github.com/provideplatform/baseline/common"
+	"github.com/provideplatform/provide-go/api/baseline"
 	"github.com/provideplatform/provide-go/api/ident"
 	privacy "github.com/provideplatform/provide-go/api/privacy"
 )
@@ -22,13 +23,26 @@ const requireCircuitTickerInterval = time.Second * 5
 const requireCircuitSleepInterval = time.Millisecond * 500
 const requireCircuitTimeout = time.Minute * 5
 
+// Workflow is a baseline workflow prototype
+type Workflow struct {
+	baseline.Workflow
+	Participants []*Participant `gorm:"many2many:workflows_participants" json:"participants"`
+	Worksteps    []*Workstep    `gorm:"many2many:workflows_worksteps" json:"worksteps,omitempty"`
+}
+
+// WorkflowInstance is a baseline workflow instance
+type WorkflowInstance struct {
+	baseline.WorkflowInstance
+	Worksteps []*baseline.WorkstepInstance `gorm:"many2many:workflowinstances_worksteps" json:"worksteps,omitempty"`
+}
+
 // Cache a workflow instance
-func (w *Workflow) Cache() error {
-	if w.ID == nil {
+func (w *WorkflowInstance) Cache() error {
+	if w.ID == uuid.Nil {
 		return errors.New("failed to cache workflow with nil identifier")
 	}
 
-	key := fmt.Sprintf("baseline.workflow.%s", *w.ID)
+	key := fmt.Sprintf("baseline.workflow.%s", w.ID)
 	return redisutil.WithRedlock(key, func() error {
 		raw, _ := json.Marshal(w)
 		return redisutil.Set(key, raw, nil)
@@ -36,8 +50,8 @@ func (w *Workflow) Cache() error {
 }
 
 // CacheByBaselineID caches a workflow identifier, indexed by baseline id for convenient lookup
-func (w *Workflow) CacheByBaselineID(baselineID string) error {
-	if w.ID == nil {
+func (w *WorkflowInstance) CacheByBaselineID(baselineID string) error {
+	if w.ID == uuid.Nil {
 		return errors.New("failed to cache workflow with nil identifier")
 	}
 
@@ -48,7 +62,7 @@ func (w *Workflow) CacheByBaselineID(baselineID string) error {
 	})
 }
 
-func baselineWorkflowFactory(objectType string, identifier *string) (*Workflow, error) {
+func baselineWorkflowFactory(objectType string, identifier *string) (*WorkflowInstance, error) {
 	var identifierUUID uuid.UUID
 	if identifier != nil {
 		identifierUUID, _ = uuid.FromString(*identifier)
@@ -56,15 +70,16 @@ func baselineWorkflowFactory(objectType string, identifier *string) (*Workflow, 
 		identifierUUID, _ = uuid.NewV4()
 	}
 
-	workflow := &Workflow{
-		ID:           &identifierUUID,
-		Participants: make([]*Participant, 0),
-		Shield:       nil,
-		Worksteps:    make([]*Workstep, 0),
+	workflow := &WorkflowInstance{
+		baseline.WorkflowInstance{
+			Shield:    nil, // FIXME
+			Worksteps: make([]*baseline.WorkstepInstance, 0),
+		},
+		make([]*baseline.WorkstepInstance, 0),
 	}
 
 	for _, party := range common.DefaultCounterparties {
-		workflow.Participants = append(workflow.Participants, &Participant{
+		workflow.Participants = append(workflow.Participants, &baseline.Participant{
 			Address:           common.StringOrNil(party["address"]),
 			MessagingEndpoint: common.StringOrNil(party["messaging_endpoint"]),
 		})
@@ -82,7 +97,7 @@ func baselineWorkflowFactory(objectType string, identifier *string) (*Workflow, 
 		return nil, err
 	}
 	for _, org := range orgs {
-		workflow.Participants = append(workflow.Participants, &Participant{
+		workflow.Participants = append(workflow.Participants, &baseline.Participant{
 			Address:           common.StringFromInterface(org.Metadata["address"]),
 			APIEndpoint:       common.StringFromInterface(org.Metadata["api_endpoint"]),
 			MessagingEndpoint: common.StringFromInterface(org.Metadata["messaging_endpoint"]),
@@ -210,8 +225,8 @@ func baselineWorkflowFactory(objectType string, identifier *string) (*Workflow, 
 	return workflow, nil
 }
 
-func LookupBaselineWorkflow(identifier string) *Workflow {
-	var workflow *Workflow
+func LookupBaselineWorkflow(identifier string) *WorkflowInstance {
+	var workflow *WorkflowInstance
 
 	key := fmt.Sprintf("baseline.workflow.%s", identifier)
 	raw, err := redisutil.Get(key)
@@ -224,7 +239,7 @@ func LookupBaselineWorkflow(identifier string) *Workflow {
 	return workflow
 }
 
-func LookupBaselineWorkflowByBaselineID(baselineID string) *Workflow {
+func LookupBaselineWorkflowByBaselineID(baselineID string) *WorkflowInstance {
 	key := fmt.Sprintf("baseline.id.%s.workflow.identifier", baselineID)
 	identifier, err := redisutil.Get(key)
 	if err != nil {

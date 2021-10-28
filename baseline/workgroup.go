@@ -8,12 +8,20 @@ import (
 	"time"
 
 	"github.com/kthomas/go-redisutil"
-	"github.com/provideplatform/baseline-proxy/common"
+	"github.com/provideplatform/baseline/common"
+	"github.com/provideplatform/provide-go/api/baseline"
 	"github.com/provideplatform/provide-go/api/ident"
 )
 
 const requireCounterpartiesSleepInterval = time.Second * 15
 const requireCounterpartiesTickerInterval = time.Second * 30 // HACK
+
+// Workgroup is a baseline workgroup prototype
+type Workgroup struct {
+	baseline.Workgroup
+	Participants []*Participant `gorm:"many2many:workgroups_participants" json:"participants,omitempty"`
+	Workflows    []*Workflow    `gorm:"many2many:workgroups_workflows" json:"workflows,omitempty"`
+}
 
 func init() {
 	redisutil.RequireRedis()
@@ -56,9 +64,11 @@ func resolveBaselineCounterparties() {
 
 		for _, party := range common.DefaultCounterparties {
 			counterparties = append(counterparties, &Participant{
-				Address:           common.StringOrNil(party["address"]),
-				APIEndpoint:       common.StringOrNil(party["api_endpoint"]),
-				MessagingEndpoint: common.StringOrNil(party["messaging_endpoint"]),
+				baseline.Participant{
+					Address:           common.StringOrNil(party["address"]),
+					APIEndpoint:       common.StringOrNil(party["api_endpoint"]),
+					MessagingEndpoint: common.StringOrNil(party["messaging_endpoint"]),
+				},
 			})
 		}
 
@@ -75,9 +85,11 @@ func resolveBaselineCounterparties() {
 
 			if addrOk {
 				counterparties = append(counterparties, &Participant{
-					Address:           common.StringOrNil(addr),
-					APIEndpoint:       common.StringOrNil(apiEndpoint),
-					MessagingEndpoint: common.StringOrNil(messagingEndpoint),
+					baseline.Participant{
+						Address:           common.StringOrNil(addr),
+						APIEndpoint:       common.StringOrNil(apiEndpoint),
+						MessagingEndpoint: common.StringOrNil(messagingEndpoint),
+					},
 				})
 			}
 		}

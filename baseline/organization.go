@@ -9,8 +9,9 @@ import (
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/kthomas/go-redisutil"
-	"github.com/provideplatform/baseline-proxy/common"
+	"github.com/provideplatform/baseline/common"
 	"github.com/provideplatform/provide-go/api"
+	"github.com/provideplatform/provide-go/api/baseline"
 	"github.com/provideplatform/provide-go/api/ident"
 	"github.com/provideplatform/provide-go/api/nchain"
 	"github.com/provideplatform/provide-go/api/vault"
@@ -221,8 +222,10 @@ func lookupBaselineOrganizationMessagingEndpoint(recipient string) *string {
 				return nil
 			}
 			org := &Participant{
-				Address:           common.StringOrNil(recipient),
-				MessagingEndpoint: common.StringOrNil(string(endpoint)),
+				baseline.Participant{
+					Address:           common.StringOrNil(recipient),
+					MessagingEndpoint: common.StringOrNil(string(endpoint)),
+				},
 			}
 
 			err = org.Cache()

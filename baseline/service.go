@@ -9,9 +9,10 @@ import (
 	mimc "github.com/consensys/gnark/crypto/hash/mimc/bn256"
 	natsutil "github.com/kthomas/go-natsutil"
 	uuid "github.com/kthomas/go.uuid"
-	"github.com/provideplatform/baseline-proxy/common"
-	"github.com/provideplatform/baseline-proxy/middleware"
+	"github.com/provideplatform/baseline/common"
+	"github.com/provideplatform/baseline/middleware"
 	provide "github.com/provideplatform/provide-go/api"
+	"github.com/provideplatform/provide-go/api/baseline"
 	"github.com/provideplatform/provide-go/api/privacy"
 )
 
@@ -24,7 +25,7 @@ func (m *ProtocolMessage) baselineInbound() bool {
 
 	baselineRecord := lookupBaselineRecord(m.BaselineID.String())
 	if baselineRecord == nil {
-		var workflow *Workflow
+		var workflow *WorkflowInstance
 		var err error
 
 		if m.Identifier != nil {
@@ -57,22 +58,27 @@ func (m *ProtocolMessage) baselineInbound() bool {
 
 			baselineContextID, _ := uuid.NewV4()
 			baselineContext = &BaselineContext{
-				ID:         &baselineContextID,
-				BaselineID: m.BaselineID,
-				Records:    make([]*BaselineRecord, 0),
+				baseline.BaselineContext{
+					ID:         &baselineContextID,
+					BaselineID: m.BaselineID,
+				},
+				make([]*BaselineRecord, 0),
+				nil,
 			}
 
 			if workflow != nil {
 				baselineContext.Workflow = workflow
-				baselineContext.WorkflowID = workflow.ID
+				baselineContext.WorkflowID = &workflow.ID
 			}
 		}
 
 		baselineRecord = &BaselineRecord{
-			BaselineID: m.BaselineID,
-			Context:    baselineContext,
-			ContextID:  baselineContext.ID,
-			Type:       m.Type,
+			baseline.BaselineRecord{
+				BaselineID: m.BaselineID,
+				ContextID:  baselineContext.ID,
+				Type:       m.Type,
+			},
+			baselineContext,
 		}
 
 		err = baselineRecord.cache()
@@ -155,7 +161,7 @@ func (m *Message) baselineOutbound() bool {
 	}
 
 	if baselineRecord == nil {
-		var workflow *Workflow
+		var workflow *WorkflowInstance
 		var err error
 
 		if m.BaselineID != nil {
@@ -176,14 +182,17 @@ func (m *Message) baselineOutbound() bool {
 
 				baselineContextID, _ := uuid.NewV4()
 				baselineContext = &BaselineContext{
-					ID:         &baselineContextID,
-					BaselineID: m.BaselineID,
-					Records:    make([]*BaselineRecord, 0),
+					baseline.BaselineContext{
+						ID:         &baselineContextID,
+						BaselineID: m.BaselineID,
+					},
+					make([]*BaselineRecord, 0),
+					nil,
 				}
 
 				if workflow != nil {
 					baselineContext.Workflow = workflow
-					baselineContext.WorkflowID = workflow.ID
+					baselineContext.WorkflowID = &workflow.ID
 				}
 			}
 		}
@@ -204,10 +213,12 @@ func (m *Message) baselineOutbound() bool {
 
 		// map internal record id -> baseline record id
 		baselineRecord = &BaselineRecord{
-			ID:        m.ID,
-			Context:   baselineContext,
-			ContextID: baselineContext.ID,
-			Type:      m.Type,
+			baseline.BaselineRecord{
+				ID:        m.ID,
+				ContextID: baselineContext.ID,
+				Type:      m.Type,
+			},
+			baselineContext,
 		}
 
 		err = baselineRecord.cache()
@@ -240,21 +251,23 @@ func (m *Message) baselineOutbound() bool {
 
 		for _, recipient := range workflow.Participants {
 			msg := &ProtocolMessage{
-				BaselineID: baselineRecord.BaselineID,
-				Opcode:     common.StringOrNil(ProtocolMessageOpcodeSync),
-				Identifier: baselineRecord.Context.WorkflowID,
-				Payload: &ProtocolMessagePayload{
-					Object: map[string]interface{}{
-						"id":           workflow.ID,
-						"participants": workflow.Participants,
-						"shield":       workflow.Shield,
-						"worksteps":    workflow.Worksteps,
+				baseline.ProtocolMessage{
+					BaselineID: baselineRecord.BaselineID,
+					Opcode:     common.StringOrNil(baseline.ProtocolMessageOpcodeSync),
+					Identifier: baselineRecord.Context.WorkflowID,
+					Payload: &baseline.ProtocolMessagePayload{
+						Object: map[string]interface{}{
+							"id":           workflow.ID,
+							"participants": workflow.Participants,
+							"shield":       workflow.Shield,
+							"worksteps":    workflow.Worksteps,
+						},
+						Type: common.StringOrNil(protomsgPayloadTypeWorkflow),
 					},
-					Type: common.StringOrNil(protomsgPayloadTypeWorkflow),
+					Recipient: recipient.Address,
+					Sender:    nil, // FIXME
+					Type:      m.Type,
 				},
-				Recipient: recipient.Address,
-				Sender:    nil, // FIXME
-				Type:      m.Type,
 			}
 
 			if recipient.Address != nil {
@@ -286,19 +299,21 @@ func (m *Message) baselineOutbound() bool {
 	hashString := i.SetBytes(hash).String()
 
 	m.ProtocolMessage = &ProtocolMessage{
-		BaselineID: baselineRecord.BaselineID,
-		Opcode:     common.StringOrNil(ProtocolMessageOpcodeBaseline),
-		Identifier: baselineRecord.Context.WorkflowID,
-		Payload: &ProtocolMessagePayload{
-			Object: m.Payload.(map[string]interface{}),
-			Type:   m.Type,
-			Witness: map[string]interface{}{
-				"Document.Hash":     hashString,
-				"Document.Preimage": preImageString,
+		baseline.ProtocolMessage{
+			BaselineID: baselineRecord.BaselineID,
+			Opcode:     common.StringOrNil(baseline.ProtocolMessageOpcodeBaseline),
+			Identifier: baselineRecord.Context.WorkflowID,
+			Payload: &baseline.ProtocolMessagePayload{
+				Object: m.Payload.(map[string]interface{}),
+				Type:   m.Type,
+				Witness: map[string]interface{}{
+					"Document.Hash":     hashString,
+					"Document.Preimage": preImageString,
+				},
 			},
+			Shield: baselineRecord.Context.Workflow.Shield,
+			Type:   m.Type,
 		},
-		Shield: baselineRecord.Context.Workflow.Shield,
-		Type:   m.Type,
 	}
 
 	err := m.prove()
@@ -318,7 +333,7 @@ func (m *Message) baselineOutbound() bool {
 		return false
 	}
 
-	recipients := make([]*Participant, 0)
+	recipients := make([]*baseline.Participant, 0)
 	if len(m.Recipients) > 0 {
 		for _, recipient := range m.Recipients {
 			recipients = append(recipients, recipient)
@@ -363,15 +378,17 @@ func (m *ProtocolMessage) broadcast(recipient string) error {
 	}
 
 	payload, err := json.Marshal(&ProtocolMessage{
-		BaselineID: m.BaselineID,
-		Opcode:     m.Opcode,
-		Sender:     m.Shield,
-		Recipient:  common.StringOrNil(recipient),
-		Shield:     m.Shield,
-		Identifier: m.Identifier,
-		Signature:  m.Signature,
-		Type:       m.Type,
-		Payload:    m.Payload,
+		baseline.ProtocolMessage{
+			BaselineID: m.BaselineID,
+			Opcode:     m.Opcode,
+			Sender:     m.Shield,
+			Recipient:  common.StringOrNil(recipient),
+			Shield:     m.Shield,
+			Identifier: m.Identifier,
+			Signature:  m.Signature,
+			Type:       m.Type,
+			Payload:    m.Payload,
+		},
 	})
 
 	if err != nil {

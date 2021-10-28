@@ -11,7 +11,8 @@ import (
 	"github.com/gin-gonic/gin"
 	natsutil "github.com/kthomas/go-natsutil"
 	uuid "github.com/kthomas/go.uuid"
-	"github.com/provideplatform/baseline-proxy/common"
+	"github.com/provideplatform/baseline/common"
+	"github.com/provideplatform/provide-go/api/baseline"
 	"github.com/provideplatform/provide-go/api/ident"
 	provide "github.com/provideplatform/provide-go/common"
 	"github.com/provideplatform/provide-go/common/util"
@@ -260,10 +261,10 @@ func createWorkgroupHandler(c *gin.Context) {
 	claims := token.Claims.(jwt.MapClaims)
 	// prvd := claims["prvd"].(map[string]interface{})
 	// data := prvd["data"].(map[string]interface{})
-	baseline := claims["baseline"].(map[string]interface{})
+	baselineClaim := claims["baseline"].(map[string]interface{})
 
 	var identifier *string
-	if id, identifierOk := baseline["workgroup_id"].(string); identifierOk {
+	if id, identifierOk := baselineClaim["workgroup_id"].(string); identifierOk {
 		identifier = common.StringOrNil(id)
 	}
 
@@ -276,7 +277,7 @@ func createWorkgroupHandler(c *gin.Context) {
 	}
 
 	var invitorAddress *string
-	if addr, invitorAddressOk := baseline["invitor_organization_address"].(string); invitorAddressOk {
+	if addr, invitorAddressOk := baselineClaim["invitor_organization_address"].(string); invitorAddressOk {
 		invitorAddress = common.StringOrNil(addr)
 	} else {
 		msg := "no invitor address provided in vc"
@@ -286,7 +287,7 @@ func createWorkgroupHandler(c *gin.Context) {
 	}
 
 	var registryContractAddress *string
-	if addr, registryContractAddressOk := baseline["registry_contract_address"].(string); registryContractAddressOk {
+	if addr, registryContractAddressOk := baselineClaim["registry_contract_address"].(string); registryContractAddressOk {
 		registryContractAddress = common.StringOrNil(addr)
 	} else {
 		msg := fmt.Sprintf("no registry contract address provided by invitor: %s", *invitorAddress)
@@ -308,7 +309,9 @@ func createWorkgroupHandler(c *gin.Context) {
 	}
 
 	invitor := &Participant{
-		Address: invitorAddress,
+		baseline.Participant{
+			Address: invitorAddress,
+		},
 	}
 	invitor.Cache()
 
@@ -380,12 +383,14 @@ func createWorkgroupHandler(c *gin.Context) {
 	var authorizedVC *string // TODO: vend NATS bearer token
 
 	msg := &ProtocolMessage{
-		Opcode:     common.StringOrNil(ProtocolMessageOpcodeJoin),
-		Identifier: &identifierUUID,
-		Payload: &ProtocolMessagePayload{
-			Object: map[string]interface{}{
-				"address":                 *common.BaselineOrganizationAddress,
-				"authorized_bearer_token": authorizedVC,
+		baseline.ProtocolMessage{
+			Opcode:     common.StringOrNil(baseline.ProtocolMessageOpcodeJoin),
+			Identifier: &identifierUUID,
+			Payload: &baseline.ProtocolMessagePayload{
+				Object: map[string]interface{}{
+					"address":                 *common.BaselineOrganizationAddress,
+					"authorized_bearer_token": authorizedVC,
+				},
 			},
 		},
 	}
@@ -457,7 +462,7 @@ func createPublicWorkgroupInviteHandler(c *gin.Context) {
 		return
 	}
 
-	params := &PublicWorkgroupInvitationRequest{}
+	params := &baseline.PublicWorkgroupInvitationRequest{}
 	err = json.Unmarshal(buf, &params)
 	if err != nil {
 		provide.RenderError(err.Error(), 422, c)
@@ -583,7 +588,7 @@ func workstepDetailsHandler(c *gin.Context) {
 }
 
 func issueVerifiableCredentialHandler(c *gin.Context) {
-	issueVCRequest := &IssueVerifiableCredentialRequest{}
+	issueVCRequest := &baseline.IssueVerifiableCredentialRequest{}
 
 	buf, err := c.GetRawData()
 	if err != nil {
@@ -647,7 +652,7 @@ func issueVerifiableCredentialHandler(c *gin.Context) {
 	credential, err := IssueVC(*issueVCRequest.Address, map[string]interface{}{})
 
 	if err == nil {
-		provide.Render(&IssueVerifiableCredentialResponse{
+		provide.Render(&baseline.IssueVerifiableCredentialResponse{
 			VC: credential,
 		}, 201, c)
 	} else {

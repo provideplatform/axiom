@@ -10,27 +10,34 @@ import (
 	"github.com/ethereum/go-ethereum/common/compiler"
 	"github.com/kthomas/go-redisutil"
 	uuid "github.com/kthomas/go.uuid"
-	"github.com/provideplatform/baseline-proxy/common"
+	"github.com/provideplatform/baseline/common"
+	"github.com/provideplatform/provide-go/api/baseline"
 	"github.com/provideplatform/provide-go/api/nchain"
 	"github.com/provideplatform/provide-go/api/privacy"
 )
 
 const workstepCircuitStatusProvisioned = "provisioned"
 
+// Workstep is a baseline workstep prototype
+type Workstep struct {
+	baseline.Workstep
+	Participants []*Participant `gorm:"many2many:worksteps_participants" json:"participants,omitempty"`
+}
+
 // Cache a workstep instance
 func (w *Workstep) Cache() error {
-	if w.ID == nil {
+	if w.ID == uuid.Nil {
 		return errors.New("failed to cache workstep with nil identifier")
 	}
 
-	key := fmt.Sprintf("baseline.workstep.%s", *w.ID)
+	key := fmt.Sprintf("baseline.workstep.%s", w.ID)
 	return redisutil.WithRedlock(key, func() error {
 		raw, _ := json.Marshal(w)
 		return redisutil.Set(key, raw, nil)
 	})
 }
 
-func baselineWorkstepFactory(identifier *string, workflowID *string, circuit *privacy.Circuit) *Workstep {
+func baselineWorkstepFactory(identifier *string, workflowID *string, circuit *privacy.Circuit) *baseline.WorkstepInstance {
 	var identifierUUID uuid.UUID
 	if identifier != nil {
 		identifierUUID, _ = uuid.FromString(*identifier)
@@ -43,18 +50,22 @@ func baselineWorkstepFactory(identifier *string, workflowID *string, circuit *pr
 		workflowUUID, _ = uuid.FromString(*workflowID)
 	}
 
-	workstep := &Workstep{
-		ID:           &identifierUUID,
-		Circuit:      circuit,
-		Participants: make([]*Participant, 0),
-		WorkflowID:   &workflowUUID,
+	workstep := &baseline.WorkstepInstance{
+		baseline.Workstep{
+			Circuit:      circuit,
+			Participants: make([]*baseline.Participant, 0), // FIXME
+			WorkflowID:   &workflowUUID,
+		},
+		nil,
+		nil,
 	}
 
+	workstep.ID = identifierUUID
 	return workstep
 }
 
 // FIXME -- refactor to func (w *Workstep) requireCircuit(token *string, workflow *Workflow) error
-func requireCircuits(token *string, workflow *Workflow) error {
+func requireCircuits(token *string, workflow *WorkflowInstance) error {
 	startTime := time.Now()
 	timer := time.NewTicker(requireCircuitTickerInterval)
 	defer timer.Stop()
@@ -112,8 +123,8 @@ func requireCircuits(token *string, workflow *Workflow) error {
 }
 
 // LookupBaselineWorkstep by id
-func LookupBaselineWorkstep(identifier string) *Workstep {
-	var workstep *Workstep
+func LookupBaselineWorkstep(identifier string) *baseline.WorkstepInstance {
+	var workstep *baseline.WorkstepInstance
 
 	key := fmt.Sprintf("baseline.workstep.%s", identifier)
 	raw, err := redisutil.Get(key)

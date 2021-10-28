@@ -6,7 +6,13 @@ import (
 	"fmt"
 
 	"github.com/kthomas/go-redisutil"
+	"github.com/provideplatform/provide-go/api/baseline"
 )
+
+// Participant is a party to a baseline workgroup or workflow context
+type Participant struct {
+	baseline.Participant
+}
 
 func (p *Participant) Cache() error {
 	if p.Address == nil {

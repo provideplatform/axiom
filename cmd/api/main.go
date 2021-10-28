@@ -13,10 +13,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/kthomas/go-redisutil"
 
-	"github.com/provideplatform/baseline-proxy/baseline"
-	"github.com/provideplatform/baseline-proxy/common"
-	"github.com/provideplatform/baseline-proxy/middleware"
-	"github.com/provideplatform/baseline-proxy/stats"
+	"github.com/provideplatform/baseline/baseline"
+	"github.com/provideplatform/baseline/common"
+	"github.com/provideplatform/baseline/middleware"
+	"github.com/provideplatform/baseline/stats"
 	identcommon "github.com/provideplatform/ident/common"
 	"github.com/provideplatform/ident/token"
 

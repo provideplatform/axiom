@@ -1,6 +1,6 @@
 package middleware
 
-import "github.com/provideplatform/baseline-proxy/common"
+import "github.com/provideplatform/baseline/common"
 
 const sorIdentifierDynamics365 = "dynamics365"
 const sorIdentifierEphemeralMemory = "ephemeral"
