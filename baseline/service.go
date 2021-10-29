@@ -298,6 +298,11 @@ func (m *Message) baselineOutbound() bool {
 	hash, _ := mimc.Sum("seed", preImage)
 	hashString := i.SetBytes(hash).String()
 
+	var shieldAddress *string
+	if baselineRecord.Context.Workflow != nil {
+		shieldAddress = baselineRecord.Context.Workflow.Shield
+	}
+
 	m.ProtocolMessage = &ProtocolMessage{
 		baseline.ProtocolMessage{
 			BaselineID: baselineRecord.BaselineID,
@@ -311,7 +316,7 @@ func (m *Message) baselineOutbound() bool {
 					"Document.Preimage": preImageString,
 				},
 			},
-			Shield: baselineRecord.Context.Workflow.Shield,
+			Shield: shieldAddress,
 			Type:   m.Type,
 		},
 	}
