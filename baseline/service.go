@@ -51,6 +51,8 @@ func (m *ProtocolMessage) baselineInbound() bool {
 				common.Log.Warningf("failed to initialize baseline workflow: %s", *m.Identifier)
 				return false
 			}
+
+			workflow.Worksteps = make([]*baseline.WorkstepInstance, 0)
 		}
 
 		if baselineContext == nil {
@@ -340,13 +342,9 @@ func (m *Message) baselineOutbound() bool {
 
 	recipients := make([]*baseline.Participant, 0)
 	if len(m.Recipients) > 0 {
-		for _, recipient := range m.Recipients {
-			recipients = append(recipients, recipient)
-		}
+		recipients = append(recipients, m.Recipients...)
 	} else {
-		for _, recipient := range baselineRecord.Context.Workflow.Participants {
-			recipients = append(recipients, recipient)
-		}
+		recipients = append(recipients, baselineRecord.Context.Workflow.Participants...)
 	}
 
 	common.Log.Debugf("dispatching outbound protocol message intended for %d recipients", len(recipients))
