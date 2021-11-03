@@ -77,7 +77,7 @@ func baselineWorkflowFactory(objectType string, identifier *string) (*WorkflowIn
 		},
 		make([]*baseline.WorkstepInstance, 0),
 	}
-	// FIXME?? set workflow identifier here?
+	workflow.ID = identifierUUID
 
 	for _, party := range common.DefaultCounterparties {
 		workflow.Participants = append(workflow.Participants, &baseline.Participant{
