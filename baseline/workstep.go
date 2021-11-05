@@ -141,8 +141,8 @@ func LookupBaselineWorkstep(identifier string) *baseline.WorkstepInstance {
 // FIXME -- this presence of this as a dependency here should cause
 // a check to happen during boot that ensures `which solc` resolves...
 func DeployContract(name, raw []byte) (*nchain.Contract, error) {
-	rawSoliditySource := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(string(raw), "^0.5.0", "^0.7.3"), "view", ""), "gas,", "gas(),"), "\\n", "\n"), "uint256[0]", "uint256[]") // HACK...
-	artifact, err := compiler.CompileSolidityString("solc", rawSoliditySource)                                                                                                                                                     // FIXME... parse pragma?
+	rawSoliditySource := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(string(raw), "^0.5.0", "^0.7.3"), "view", ""), "gas,", "gas(),"), "uint256[0]", "uint256[]") // HACK...
+	artifact, err := compiler.CompileSolidityString("solc", rawSoliditySource)                                                                                                                    // FIXME... parse pragma?
 	if err != nil {
 		common.Log.Warningf("failed to compile solidity contract: %s; %s", name, err.Error())
 		return nil, err
