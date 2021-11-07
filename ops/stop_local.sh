@@ -1,4 +1,4 @@
 #!/bin/bash
 
-pkill baselineproxy_api || true
-pkill baselineproxy_consumer || true
+pkill baseline_api || true
+pkill baseline_consumer || true

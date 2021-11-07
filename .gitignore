@@ -28,8 +28,8 @@ _cgo_export.*
 .gocore-id_rsa
 
 baseline-proxy
-baselineproxy_api
-baselineproxy_consumer
+baseline_api
+baseline_consumer
 
 # Miscellaneous
 .DS_Store

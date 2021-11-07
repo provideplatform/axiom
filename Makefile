@@ -1,4 +1,4 @@
-.PHONY: build clean ecs_deploy install integration lint mod run_api run_api_accountant run_consumer run_local run_local_dependencies stop_local_dependencies stop_local test
+.PHONY: build clean ecs_deploy install integration lint migrate mod run_api run_api_accountant run_consumer run_local run_local_dependencies stop_local_dependencies stop_local test
 
 clean:
 	rm -rf ./.bin 2>/dev/null || true
@@ -8,8 +8,9 @@ clean:
 
 build: clean mod
 	go fmt ./...
-	go build -v -o ./.bin/baselineproxy_api ./cmd/api
-	go build -v -o ./.bin/baselineproxy_consumer ./cmd/consumer
+	go build -v -o ./.bin/baseline_api ./cmd/api
+	go build -v -o ./.bin/baseline_consumer ./cmd/consumer
+	go build -v -o ./.bin/baseline_migrate ./cmd/migrate
 
 ecs_deploy:
 	./ops/ecs_deploy.sh
@@ -19,6 +20,11 @@ install: clean
 
 lint:
 	./ops/lint.sh
+
+migrate: mod
+	rm -rf ./.bin/baseline_migrate 2>/dev/null || true
+	go build -v -o ./.bin/baseline_migrate ./cmd/migrate
+	./ops/migrate.sh
 
 mod:
 	go mod init 2>/dev/null || true

@@ -57,7 +57,6 @@ func baselineWorkstepFactory(identifier *string, workflowID *string, circuit *pr
 			WorkflowID:   &workflowUUID,
 		},
 		nil,
-		nil,
 	}
 
 	workstep.ID = identifierUUID
