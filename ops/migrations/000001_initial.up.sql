@@ -83,6 +83,8 @@ SET default_with_oids = false;
 CREATE TABLE public.workgroups (
     id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
     created_at timestamp with time zone NOT NULL,
+    name text NOT NULL,
+    description text,
     privacy_policy bytea,
     security_policy bytea,
     tokenization_policy bytea
@@ -115,6 +117,8 @@ ALTER TABLE ONLY public.workgroups_participants
 CREATE TABLE public.workflows (
     id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
     created_at timestamp with time zone NOT NULL,
+    name text NOT NULL,
+    description text,
     shield text,
     status text NOT NULL,
     version text,
@@ -154,6 +158,8 @@ ALTER TABLE ONLY public.workflows_participants
 
 CREATE TABLE public.worksteps (
     id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    name text NOT NULL,
+    description text,
     circuit_id uuid,
     created_at timestamp with time zone NOT NULL,
     require_finality boolean default false NOT NULL,
