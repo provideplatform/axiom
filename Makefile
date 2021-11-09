@@ -8,15 +8,15 @@ clean:
 
 build: clean mod
 	go fmt ./...
-	go build -v -o ./.bin/baseline_api ./cmd/api
-	go build -v -o ./.bin/baseline_consumer ./cmd/consumer
-	go build -v -o ./.bin/baseline_migrate ./cmd/migrate
+	CGO_CFLAGS=-Wno-undef-prefix go build -v -o ./.bin/baseline_api ./cmd/api
+	CGO_CFLAGS=-Wno-undef-prefix go build -v -o ./.bin/baseline_consumer ./cmd/consumer
+	CGO_CFLAGS=-Wno-undef-prefix go build -v -o ./.bin/baseline_migrate ./cmd/migrate
 
 ecs_deploy:
 	./ops/ecs_deploy.sh
 
 install: clean
-	go install ./...
+	CGO_CFLAGS=-Wno-undef-prefix go install ./...
 
 lint:
 	./ops/lint.sh
