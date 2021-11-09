@@ -1,6 +1,6 @@
 #!/bin/bash
 
-docker-compose -f ./ops/docker-compose.yml build --no-cache baseline-proxy
+docker-compose -f ./ops/docker-compose.yml build --no-cache baseline
 docker-compose -f ./ops/docker-compose.yml up -d
 TAGS=integration ./ops/run_local_tests_long.sh
 docker-compose -f ./ops/docker-compose.yml logs

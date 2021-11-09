@@ -27,7 +27,6 @@ _cgo_export.*
 .bin/
 .gocore-id_rsa
 
-baseline-proxy
 baseline_api
 baseline_consumer
 

@@ -2,21 +2,20 @@
 
 clean:
 	rm -rf ./.bin 2>/dev/null || true
-	rm ./baseline-proxy 2>/dev/null || true
 	go fix ./...
 	go clean -i ./...
 
 build: clean mod
 	go fmt ./...
-	CGO_CFLAGS=-Wno-undef-prefix go build -v -o ./.bin/baseline_api ./cmd/api
-	CGO_CFLAGS=-Wno-undef-prefix go build -v -o ./.bin/baseline_consumer ./cmd/consumer
-	CGO_CFLAGS=-Wno-undef-prefix go build -v -o ./.bin/baseline_migrate ./cmd/migrate
+	go build -v -o ./.bin/baseline_api ./cmd/api
+	go build -v -o ./.bin/baseline_consumer ./cmd/consumer
+	go build -v -o ./.bin/baseline_migrate ./cmd/migrate
 
 ecs_deploy:
 	./ops/ecs_deploy.sh
 
 install: clean
-	CGO_CFLAGS=-Wno-undef-prefix go install ./...
+	go install ./...
 
 lint:
 	./ops/lint.sh

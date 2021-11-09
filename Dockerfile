@@ -12,11 +12,11 @@ FROM alpine
 
 RUN apk add --no-cache bash curl gcompat libc6-compat musl
 
-RUN mkdir -p /baseline-proxy
-WORKDIR /baseline-proxy
+RUN mkdir -p /baseline
+WORKDIR /baseline
 
-COPY --from=builder /go/src/github.com/provideplatform/baseline/.bin /baseline-proxy/.bin
-COPY --from=builder /go/src/github.com/provideplatform/baseline/ops /baseline-proxy/ops
+COPY --from=builder /go/src/github.com/provideplatform/baseline/.bin /baseline/.bin
+COPY --from=builder /go/src/github.com/provideplatform/baseline/ops /baseline/ops
 
 COPY --from=builder /solc /usr/bin/solc
 RUN chmod +x /usr/bin/solc
