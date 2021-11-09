@@ -150,7 +150,7 @@ CREATE TABLE public.workflows_participants (
 CREATE INDEX idx_workflows_participants_workflow_id_participant ON public.workflows_participants USING btree (workflow_id, participant);
 
 ALTER TABLE ONLY public.workflows_participants
-  ADD CONSTRAINT workflows_participants_workgroup_id_foreign FOREIGN KEY (workflows_id) REFERENCES public.workflows(id) ON UPDATE CASCADE ON DELETE CASCADE;
+  ADD CONSTRAINT workflows_participants_workgroup_id_foreign FOREIGN KEY (workflow_id) REFERENCES public.workflows(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 --
 -- Name: worksteps; Type: TABLE; Schema: public; Owner: baseline
