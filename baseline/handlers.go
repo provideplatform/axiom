@@ -72,6 +72,10 @@ func InstallWorkgroupsAPI(r *gin.Engine) {
 	r.GET("/api/v1/workgroups", listWorkgroupsHandler)
 	r.GET("/api/v1/workgroups/:id", workgroupDetailsHandler)
 	r.POST("/api/v1/workgroups", createWorkgroupHandler)
+
+	r.GET("/api/v1/workgroups/:id/mappings", listWorkgroupMappingsHandler)
+	r.POST("/api/v1/workgroups/:id/mappings", createWorkgroupMappingHandler)
+	r.PUT("/api/v1/workgroups/:id/mappings/:mappingId", updateWorkgroupMappingHandler)
 }
 
 // InstallWorkstepsAPI installs workstep management APIs
@@ -477,6 +481,70 @@ func createPublicWorkgroupInviteHandler(c *gin.Context) {
 			"organization_name": params.OrganizationName,
 		},
 	})
+}
+
+func listWorkgroupMappingsHandler(c *gin.Context) {
+	organizationID := util.AuthorizedSubjectID(c, "organization")
+	if organizationID == nil {
+		provide.RenderError("unauthorized", 401, c)
+		return
+	} else if common.OrganizationID != nil && organizationID.String() != *common.OrganizationID {
+		provide.RenderError("forbidden", 403, c)
+		return
+	}
+
+	var mappings []*Mapping
+	provide.Render(mappings, 200, c)
+}
+
+func createWorkgroupMappingHandler(c *gin.Context) {
+	organizationID := util.AuthorizedSubjectID(c, "organization")
+	if organizationID == nil {
+		provide.RenderError("unauthorized", 401, c)
+		return
+	} else if common.OrganizationID != nil && organizationID.String() != *common.OrganizationID {
+		provide.RenderError("forbidden", 403, c)
+		return
+	}
+
+	var mapping *Mapping
+	provide.Render(mapping, 201, c)
+}
+
+func updateWorkgroupMappingHandler(c *gin.Context) {
+	organizationID := util.AuthorizedSubjectID(c, "organization")
+	if organizationID == nil {
+		provide.RenderError("unauthorized", 401, c)
+		return
+	} else if common.OrganizationID != nil && organizationID.String() != *common.OrganizationID {
+		provide.RenderError("forbidden", 403, c)
+		return
+	}
+
+	buf, err := c.GetRawData()
+	if err != nil {
+		provide.RenderError(err.Error(), 400, c)
+		return
+	}
+
+	var mapping *Mapping
+	err = json.Unmarshal(buf, mapping)
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	provide.RenderError("not implemented", 501, c)
+
+	// TODO: verify permissions
+
+	// if mapping.save() {
+	// 	provide.Render(nil, 204, c)
+	// } else {
+	// 	obj := map[string]interface{}{}
+	// 	obj["errors"] = message.Errors
+	// 	provide.Render(obj, 422, c)
+	// }
 }
 
 func createWorkflowHandler(c *gin.Context) {
