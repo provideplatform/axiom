@@ -67,7 +67,7 @@ func resolveBaselineCounterparties() {
 	if workgroup == nil {
 		common.Log.Debugf("persisting workgroup: %s", workgroupID)
 		workgroup = &Workgroup{}
-		workgroup.Workgroup.Name = fmt.Sprintf("Baseline workgroup %s", workgroupID)
+		workgroup.Name = common.StringOrNil(fmt.Sprintf("Baseline workgroup %s", workgroupID))
 
 		if !workgroup.Create() {
 			common.Log.Warningf("failed to persist workgroup")
