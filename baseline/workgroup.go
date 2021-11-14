@@ -22,6 +22,7 @@ const requireCounterpartiesTickerInterval = time.Second * 30 // HACK
 // Workgroup is a baseline workgroup prototype
 type Workgroup struct {
 	baseline.Workgroup
+	Name         *string        `json:"name"`
 	Participants []*Participant `gorm:"many2many:workgroups_participants" json:"participants,omitempty"`
 	Workflows    []*Workflow    `gorm:"many2many:workgroups_workflows" json:"workflows,omitempty"`
 }
@@ -66,6 +67,8 @@ func resolveBaselineCounterparties() {
 	if workgroup == nil {
 		common.Log.Debugf("persisting workgroup: %s", workgroupID)
 		workgroup = &Workgroup{}
+		workgroup.Workgroup.Name = fmt.Sprintf("Baseline workgroup %s", workgroupID)
+
 		if !workgroup.Create() {
 			common.Log.Warningf("failed to persist workgroup")
 		}
