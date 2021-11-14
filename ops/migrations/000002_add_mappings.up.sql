@@ -48,7 +48,7 @@ CREATE TABLE public.mappingfields (
     is_primary_key bool NOT NULL DEFAULT false
 );
 
-CREATE INDEX idx_mappingmields_mappingmodel_id ON public.mappingfields USING btree (mappingmodel_id);
+CREATE INDEX idx_mappingfields_mappingmodel_id ON public.mappingfields USING btree (mappingmodel_id);
 
 ALTER TABLE ONLY public.mappingfields
   ADD CONSTRAINT mappingfields_mappingmodel_id_foreign FOREIGN KEY (mappingmodel_id) REFERENCES public.mappingmodels(id) ON UPDATE CASCADE ON DELETE CASCADE;
