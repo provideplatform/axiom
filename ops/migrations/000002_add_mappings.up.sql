@@ -32,6 +32,11 @@ CREATE TABLE public.mappingmodels (
     description text
 );
 
+ALTER TABLE public.mappingmodels OWNER TO baseline;
+
+ALTER TABLE ONLY public.mappingmodels
+    ADD CONSTRAINT mappingmodels_pkey PRIMARY KEY (id);
+
 CREATE INDEX idx_mappingmodels_type ON public.mappingmodels USING btree (type);
 CREATE INDEX idx_mappingmodels_mapping_id ON public.mappingmodels USING btree (mapping_id);
 
@@ -47,6 +52,11 @@ CREATE TABLE public.mappingfields (
     default_value varchar(64),
     is_primary_key bool NOT NULL DEFAULT false
 );
+
+ALTER TABLE public.mappingfields OWNER TO baseline;
+
+ALTER TABLE ONLY public.mappingfields
+    ADD CONSTRAINT mappingfields_pkey PRIMARY KEY (id);
 
 CREATE INDEX idx_mappingfields_mappingmodel_id ON public.mappingfields USING btree (mappingmodel_id);
 
