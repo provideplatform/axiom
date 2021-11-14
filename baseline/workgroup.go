@@ -67,7 +67,7 @@ func resolveBaselineCounterparties() {
 		common.Log.Debugf("persisting workgroup: %s", workgroupID)
 		workgroup = &Workgroup{}
 		if !workgroup.Create() {
-			common.Log.Panicf("failed to persist workgroup; %s", err.Error())
+			common.Log.Warningf("failed to persist workgroup")
 		}
 	}
 
@@ -98,7 +98,6 @@ func resolveBaselineCounterparties() {
 			}
 
 			counterparties = append(counterparties, p)
-			participants.Append(&p)
 		}
 
 		orgs, err := ident.ListApplicationOrganizations(*token.AccessToken, workgroupID.String(), map[string]interface{}{})
@@ -113,19 +112,23 @@ func resolveBaselineCounterparties() {
 			messagingEndpoint, _ := org.Metadata["messaging_endpoint"].(string)
 
 			if addrOk {
-				counterparties = append(counterparties, &Participant{
+				p := &Participant{
 					baseline.Participant{
 						Address:           common.StringOrNil(addr),
 						APIEndpoint:       common.StringOrNil(apiEndpoint),
 						MessagingEndpoint: common.StringOrNil(messagingEndpoint),
 					},
-				})
+				}
+
+				counterparties = append(counterparties, p)
 			}
 		}
 
 		for _, participant := range counterparties {
 			if participant.Address != nil && !strings.EqualFold(strings.ToLower(*participant.Address), strings.ToLower(*common.BaselineOrganizationAddress)) {
 				exists := lookupBaselineOrganization(*participant.Address) != nil
+
+				participants.Append(&participant)
 				err := participant.Cache()
 				if err != nil {
 					common.Log.Warningf("failed to cache counterparty; %s", err.Error())
