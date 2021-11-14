@@ -7,9 +7,11 @@ import (
 	"os"
 	"time"
 
+	dbconf "github.com/kthomas/go-db-config"
 	"github.com/kthomas/go-redisutil"
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideplatform/baseline/common"
+	provide "github.com/provideplatform/provide-go/api"
 	"github.com/provideplatform/provide-go/api/baseline"
 	"github.com/provideplatform/provide-go/api/ident"
 	privacy "github.com/provideplatform/provide-go/api/privacy"
@@ -34,6 +36,28 @@ type Workflow struct {
 type WorkflowInstance struct {
 	baseline.WorkflowInstance
 	Worksteps []*baseline.WorkstepInstance `gorm:"many2many:workflowinstances_worksteps" json:"worksteps,omitempty"`
+}
+
+// FindWorkflowByID retrieves a workflow instance for the given id
+func FindWorkflowByID(id uuid.UUID) *Workflow {
+	db := dbconf.DatabaseConnection()
+	workflow := &Workflow{}
+	db.Where("id = ?", id.String()).Find(&id)
+	if workflow == nil || workflow.ID == uuid.Nil {
+		return nil
+	}
+	return workflow
+}
+
+// FindWorkflowInstanceByID retrieves a workflow instance for the given id
+func FindWorkflowInstanceByID(id uuid.UUID) *WorkflowInstance {
+	db := dbconf.DatabaseConnection()
+	instance := &WorkflowInstance{}
+	db.Where("id = ? AND workflow_id IS NOT NULL", id.String()).Find(&id)
+	if instance == nil || instance.ID == uuid.Nil {
+		return nil
+	}
+	return instance
 }
 
 // Cache a workflow instance
@@ -269,4 +293,35 @@ func circuitParamsFactory(name, identifier string, noteStoreID, nullifierStoreID
 	}
 
 	return params
+}
+
+func (w *Workflow) Create() bool {
+	if !w.Validate() {
+		return false
+	}
+
+	db := dbconf.DatabaseConnection()
+
+	success := false
+	if db.NewRecord(w) {
+		result := db.Create(&w)
+		rowsAffected := result.RowsAffected
+		errors := result.GetErrors()
+		if len(errors) > 0 {
+			for _, err := range errors {
+				w.Errors = append(w.Errors, &provide.Error{
+					Message: common.StringOrNil(err.Error()),
+				})
+			}
+		}
+		if !db.NewRecord(w) {
+			success = rowsAffected > 0
+		}
+	}
+
+	return success
+}
+
+func (w *Workflow) Validate() bool {
+	return true
 }

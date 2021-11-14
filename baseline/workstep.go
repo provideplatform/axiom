@@ -8,9 +8,11 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common/compiler"
+	dbconf "github.com/kthomas/go-db-config"
 	"github.com/kthomas/go-redisutil"
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideplatform/baseline/common"
+	provide "github.com/provideplatform/provide-go/api"
 	"github.com/provideplatform/provide-go/api/baseline"
 	"github.com/provideplatform/provide-go/api/nchain"
 	"github.com/provideplatform/provide-go/api/privacy"
@@ -22,6 +24,33 @@ const workstepCircuitStatusProvisioned = "provisioned"
 type Workstep struct {
 	baseline.Workstep
 	Participants []*Participant `gorm:"many2many:worksteps_participants" json:"participants,omitempty"`
+}
+
+// WorkstepInstance is a baseline workstep instance
+type WorkstepInstance struct {
+	baseline.WorkstepInstance
+}
+
+// FindWorkstepByID retrieves a workstep for the given id
+func FindWorkstepByID(id uuid.UUID) *Workstep {
+	db := dbconf.DatabaseConnection()
+	workstep := &Workstep{}
+	db.Where("id = ?", id.String()).Find(&id)
+	if workstep == nil || workstep.ID == uuid.Nil {
+		return nil
+	}
+	return workstep
+}
+
+// FindWorkstepInstanceByID retrieves a workflow instance for the given id
+func FindWorkstepInstanceByID(id uuid.UUID) *WorkstepInstance {
+	db := dbconf.DatabaseConnection()
+	instance := &WorkstepInstance{}
+	db.Where("id = ? AND workstep_id IS NOT NULL", id.String()).Find(&id)
+	if instance == nil || instance.ID == uuid.Nil {
+		return nil
+	}
+	return instance
 }
 
 // Cache a workstep instance
@@ -253,4 +282,35 @@ func etherscanBaseURL(networkID string) *string {
 	default:
 		return nil
 	}
+}
+
+func (w *Workstep) Create() bool {
+	if !w.Validate() {
+		return false
+	}
+
+	db := dbconf.DatabaseConnection()
+
+	success := false
+	if db.NewRecord(w) {
+		result := db.Create(&w)
+		rowsAffected := result.RowsAffected
+		errors := result.GetErrors()
+		if len(errors) > 0 {
+			for _, err := range errors {
+				w.Errors = append(w.Errors, &provide.Error{
+					Message: common.StringOrNil(err.Error()),
+				})
+			}
+		}
+		if !db.NewRecord(w) {
+			success = rowsAffected > 0
+		}
+	}
+
+	return success
+}
+
+func (w *Workstep) Validate() bool {
+	return true
 }

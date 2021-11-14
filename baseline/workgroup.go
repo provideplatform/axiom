@@ -7,8 +7,11 @@ import (
 	"strings"
 	"time"
 
+	dbconf "github.com/kthomas/go-db-config"
 	"github.com/kthomas/go-redisutil"
+	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideplatform/baseline/common"
+	provide "github.com/provideplatform/provide-go/api"
 	"github.com/provideplatform/provide-go/api/baseline"
 	"github.com/provideplatform/provide-go/api/ident"
 )
@@ -21,6 +24,17 @@ type Workgroup struct {
 	baseline.Workgroup
 	Participants []*Participant `gorm:"many2many:workgroups_participants" json:"participants,omitempty"`
 	Workflows    []*Workflow    `gorm:"many2many:workgroups_workflows" json:"workflows,omitempty"`
+}
+
+// FindWorkgroupByID retrieves a workgroup for the given id
+func FindWorkgroupByID(id uuid.UUID) *Workgroup {
+	db := dbconf.DatabaseConnection()
+	workgroup := &Workgroup{}
+	db.Where("id = ?", id.String()).Find(&id)
+	if workgroup == nil || workgroup.ID == uuid.Nil {
+		return nil
+	}
+	return workgroup
 }
 
 func init() {
@@ -43,10 +57,22 @@ func init() {
 }
 
 func resolveBaselineCounterparties() {
-	workgroupID := os.Getenv("BASELINE_WORKGROUP_ID")
-	if workgroupID == "" {
-		common.Log.Panicf("failed to read BASELINE_WORKGROUP_ID from environment")
+	workgroupID, err := uuid.FromString(os.Getenv("BASELINE_WORKGROUP_ID"))
+	if err != nil {
+		common.Log.Panicf("failed to read BASELINE_WORKGROUP_ID from environment; %s", err.Error())
 	}
+
+	workgroup := FindWorkgroupByID(workgroupID)
+	if workgroup == nil {
+		common.Log.Debugf("persisting workgroup: %s", workgroupID)
+		workgroup = &Workgroup{}
+		if !workgroup.Create() {
+			common.Log.Panicf("failed to persist workgroup; %s", err.Error())
+		}
+	}
+
+	db := dbconf.DatabaseConnection()
+	participants := db.Model(workgroup).Association("Participants")
 
 	go func() {
 		common.Log.Trace("attempting to resolve baseline counterparties")
@@ -63,16 +89,19 @@ func resolveBaselineCounterparties() {
 		counterparties := make([]*Participant, 0)
 
 		for _, party := range common.DefaultCounterparties {
-			counterparties = append(counterparties, &Participant{
+			p := &Participant{
 				baseline.Participant{
 					Address:           common.StringOrNil(party["address"]),
 					APIEndpoint:       common.StringOrNil(party["api_endpoint"]),
 					MessagingEndpoint: common.StringOrNil(party["messaging_endpoint"]),
 				},
-			})
+			}
+
+			counterparties = append(counterparties, p)
+			participants.Append(&p)
 		}
 
-		orgs, err := ident.ListApplicationOrganizations(*token.AccessToken, workgroupID, map[string]interface{}{})
+		orgs, err := ident.ListApplicationOrganizations(*token.AccessToken, workgroupID.String(), map[string]interface{}{})
 		if err != nil {
 			common.Log.Warningf("failed to list organizations for workgroup: %s; %s", workgroupID, err.Error())
 			return
@@ -122,4 +151,35 @@ func LookupBaselineWorkgroup(identifier string) *Workgroup {
 
 	json.Unmarshal([]byte(*raw), &workgroup)
 	return workgroup
+}
+
+func (w *Workgroup) Create() bool {
+	if !w.Validate() {
+		return false
+	}
+
+	db := dbconf.DatabaseConnection()
+
+	success := false
+	if db.NewRecord(w) {
+		result := db.Create(&w)
+		rowsAffected := result.RowsAffected
+		errors := result.GetErrors()
+		if len(errors) > 0 {
+			for _, err := range errors {
+				w.Errors = append(w.Errors, &provide.Error{
+					Message: common.StringOrNil(err.Error()),
+				})
+			}
+		}
+		if !db.NewRecord(w) {
+			success = rowsAffected > 0
+		}
+	}
+
+	return success
+}
+
+func (w *Workgroup) Validate() bool {
+	return true
 }
