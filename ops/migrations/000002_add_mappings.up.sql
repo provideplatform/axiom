@@ -1,0 +1,49 @@
+--
+-- Name: mappings; Type: TABLE; Schema: public; Owner: baseline
+--
+
+CREATE TABLE public.mappings (
+    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    name text NOT NULL,
+    description text,
+    metadata json DEFAULT '{}',
+    type varchar(64)
+);
+
+ALTER TABLE public.mappings OWNER TO baseline;
+
+ALTER TABLE ONLY public.mappings
+    ADD CONSTRAINT mappings_pkey PRIMARY KEY (id);
+
+CREATE INDEX idx_mappings_type ON public.mappings USING btree (type);
+
+CREATE TABLE public.mappingmodels (
+    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    mapping_id uuid NOT NULL,
+    type text NOT NULL,
+    primary_key text NOT NULL,
+    description text
+);
+
+CREATE INDEX idx_mappingmodels_type ON public.mappingmodels USING btree (type);
+CREATE INDEX idx_mappingmodels_mapping_id ON public.mappingmodels USING btree (mapping_id);
+
+ALTER TABLE ONLY public.mappingmodels
+  ADD CONSTRAINT mappingmodels_mapping_id_foreign FOREIGN KEY (mapping_id) REFERENCES public.mappings(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+CREATE TABLE public.mappingfields (
+    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    mappingmodel_id uuid NOT NULL,
+    name text NOT NULL,
+    description text,
+    default_value varchar(64),
+    is_primary_key bool NOT NULL DEFAULT false
+);
+
+CREATE INDEX idx_mappingmields_mappingmodel_id ON public.mappingfields USING btree (mappingmodel_id);
+
+ALTER TABLE ONLY public.mappingfields
+  ADD CONSTRAINT mappingfields_mappingmodel_id_foreign FOREIGN KEY (mappingmodel_id) REFERENCES public.mappingmodels(id) ON UPDATE CASCADE ON DELETE CASCADE;

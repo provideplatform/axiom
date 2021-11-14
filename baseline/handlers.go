@@ -507,8 +507,26 @@ func createWorkgroupMappingHandler(c *gin.Context) {
 		return
 	}
 
+	buf, err := c.GetRawData()
+	if err != nil {
+		provide.RenderError(err.Error(), 400, c)
+		return
+	}
+
 	var mapping *Mapping
-	provide.Render(mapping, 201, c)
+	err = json.Unmarshal(buf, mapping)
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	if mapping.Create() {
+		provide.Render(mapping, 201, c)
+	} else {
+		obj := map[string]interface{}{}
+		obj["errors"] = mapping.Errors
+		provide.Render(obj, 422, c)
+	}
 }
 
 func updateWorkgroupMappingHandler(c *gin.Context) {
@@ -527,24 +545,38 @@ func updateWorkgroupMappingHandler(c *gin.Context) {
 		return
 	}
 
-	var mapping *Mapping
-	err = json.Unmarshal(buf, mapping)
+	mappingIDStr := c.Param("mappingId")
+	mappingID, err := uuid.FromString(mappingIDStr)
 	if err != nil {
 		provide.RenderError(err.Error(), 422, c)
 		return
 	}
 
-	provide.RenderError("not implemented", 501, c)
+	mapping := FindMappingByID(mappingID)
+	if mapping == nil {
+		provide.RenderError("not found", 404, c)
+		return
+	}
 
-	// TODO: verify permissions
+	var _mapping *Mapping
+	err = json.Unmarshal(buf, _mapping)
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
 
-	// if mapping.save() {
-	// 	provide.Render(nil, 204, c)
-	// } else {
-	// 	obj := map[string]interface{}{}
-	// 	obj["errors"] = message.Errors
-	// 	provide.Render(obj, 422, c)
-	// }
+	if _mapping.ID != uuid.Nil && mapping.ID != _mapping.ID {
+		provide.RenderError("cannot modify mapping id", 400, c)
+		return
+	}
+
+	if mapping.Update(_mapping) {
+		provide.Render(nil, 204, c)
+	} else {
+		obj := map[string]interface{}{}
+		obj["errors"] = mapping.Errors
+		provide.Render(obj, 422, c)
+	}
 }
 
 func createWorkflowHandler(c *gin.Context) {
@@ -577,6 +609,9 @@ func listWorkflowsHandler(c *gin.Context) {
 		provide.RenderError("forbidden", 403, c)
 		return
 	}
+
+	// filterInstances := strings.ToLower(c.Param("filter_instances")) == "true"
+	// filterPrototypes := strings.ToLower(c.Param("filter_prototypes")) == "true"
 
 	var workflows []*Workflow
 	provide.Render(workflows, 200, c)
