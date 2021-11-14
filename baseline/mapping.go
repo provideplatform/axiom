@@ -132,6 +132,7 @@ func (m *Mapping) Update(mapping *Mapping) bool {
 			return false
 		}
 	}
+	m.Models = FindMappingModelsByMappingID(m.ID)
 
 	result := tx.Save(&m)
 	rowsAffected := result.RowsAffected
