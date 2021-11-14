@@ -14,27 +14,27 @@ import (
 	"github.com/provideplatform/provide-go/api/privacy"
 )
 
-const defaultNatsStream = "baseline-proxy"
+const defaultNatsStream = "baseline"
 
 const protomsgPayloadTypeCircuit = "circuit"
 const protomsgPayloadTypeWorkflow = "workflow"
 
-const natsDispatchInvitationSubject = "baseline-proxy.invitation.outbound"
+const natsDispatchInvitationSubject = "baseline.invitation.outbound"
 const natsDispatchInvitationMaxInFlight = 2048
 const dispatchInvitationAckWait = time.Second * 30
 const natsDispatchInvitationMaxDeliveries = 10
 
-const natsDispatchProtocolMessageSubject = "baseline-proxy.protocolmessage.outbound"
+const natsDispatchProtocolMessageSubject = "baseline.protocolmessage.outbound"
 const natsDispatchProtocolMessageMaxInFlight = 2048
 const dispatchProtocolMessageAckWait = time.Second * 30
 const natsDispatchProtocolMessageMaxDeliveries = 10
 
-const natsBaselineProxyInboundSubject = "baseline-proxy.inbound"
+const natsBaselineProxyInboundSubject = "baseline.inbound"
 const natsBaselineProxyInboundMaxInFlight = 2048
 const baselineProxyInboundAckWait = time.Second * 30
 const natsBaselineProxyInboundMaxDeliveries = 10
 
-const natsBaselineProxySubject = "baseline.proxy"
+const natsBaselineSubject = "baseline"
 const baselineProxyAckWait = time.Second * 30
 
 // Message is a proxy-internal wrapper for protocol message handling
@@ -83,7 +83,7 @@ func createNatsBaselineProxySubscriptions(wg *sync.WaitGroup) {
 	}
 
 	conn, _ := natsutil.GetSharedNatsConnection(nil)
-	conn.Subscribe(natsBaselineProxySubject, func(msg *nats.Msg) {
+	conn.Subscribe(natsBaselineSubject, func(msg *nats.Msg) {
 		common.Log.Debugf("consuming %d-byte NATS inbound protocol message on subject: %s", len(msg.Data), msg.Subject)
 		_, err := natsutil.NatsJetstreamPublish(natsBaselineProxyInboundSubject, msg.Data)
 		if err != nil {
@@ -317,7 +317,7 @@ func consumeDispatchProtocolMessageSubscriptionsMsg(msg *nats.Msg) {
 
 	defer conn.Close()
 
-	err = conn.Publish(natsBaselineProxySubject, msg.Data)
+	err = conn.Publish(natsBaselineSubject, msg.Data)
 	if err != nil {
 		// clear cached endpoint so it will be re-fetched...
 		// counterparty := lookupBaselineOrganization(*protomsg.Recipient)
