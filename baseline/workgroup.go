@@ -165,10 +165,11 @@ func (w *Workgroup) Create() bool {
 		return false
 	}
 
-	db := dbconf.DatabaseConnection()
-
+	newRecord := w.ID == uuid.Nil || FindWorkgroupByID(w.ID) == nil
 	success := false
-	if db.NewRecord(w) {
+
+	if newRecord {
+		db := dbconf.DatabaseConnection()
 		result := db.Create(&w)
 		rowsAffected := result.RowsAffected
 		errors := result.GetErrors()
@@ -179,7 +180,7 @@ func (w *Workgroup) Create() bool {
 				})
 			}
 		}
-		if !db.NewRecord(w) {
+		if FindWorkgroupByID(w.ID) == nil {
 			success = rowsAffected > 0
 		}
 	}
