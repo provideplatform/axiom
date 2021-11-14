@@ -494,10 +494,16 @@ func listWorkgroupMappingsHandler(c *gin.Context) {
 		return
 	}
 
+	workgroupID, err := uuid.FromString(c.Param("id"))
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
 	var mappings []*Mapping
 
 	db := dbconf.DatabaseConnection()
-	db.Find("organization_id = ?", organizationID, &mappings)
+	db.Where("organization_id = ? AND workgroup_id = ?", organizationID, workgroupID).Find(&mappings)
 
 	provide.Render(mappings, 200, c)
 }
@@ -519,7 +525,7 @@ func createWorkgroupMappingHandler(c *gin.Context) {
 	}
 
 	var mapping *Mapping
-	err = json.Unmarshal(buf, mapping)
+	err = json.Unmarshal(buf, &mapping)
 	if err != nil {
 		provide.RenderError(err.Error(), 422, c)
 		return
