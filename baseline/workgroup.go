@@ -67,6 +67,7 @@ func resolveBaselineCounterparties() {
 	if workgroup == nil {
 		common.Log.Debugf("persisting workgroup: %s", workgroupID)
 		workgroup = &Workgroup{}
+		workgroup.ID = workgroupID
 		workgroup.Name = common.StringOrNil(fmt.Sprintf("Baseline workgroup %s", workgroupID))
 
 		if !workgroup.Create() {
