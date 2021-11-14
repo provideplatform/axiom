@@ -9,6 +9,7 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/gin-gonic/gin"
+	dbconf "github.com/kthomas/go-db-config"
 	natsutil "github.com/kthomas/go-natsutil"
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideplatform/baseline/common"
@@ -494,6 +495,10 @@ func listWorkgroupMappingsHandler(c *gin.Context) {
 	}
 
 	var mappings []*Mapping
+
+	db := dbconf.DatabaseConnection()
+	db.Find("organization_id = ?", organizationID, &mappings)
+
 	provide.Render(mappings, 200, c)
 }
 
@@ -519,6 +524,15 @@ func createWorkgroupMappingHandler(c *gin.Context) {
 		provide.RenderError(err.Error(), 422, c)
 		return
 	}
+
+	workgroupID, err := uuid.FromString(c.Param("id"))
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	mapping.OrganizationID = organizationID
+	mapping.WorkgroupID = &workgroupID
 
 	if mapping.Create() {
 		provide.Render(mapping, 201, c)

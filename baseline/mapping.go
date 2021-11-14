@@ -13,7 +13,9 @@ import (
 type Mapping struct {
 	provide.Model
 	baseline.Mapping
-	Models []*MappingModel `json:"models"`
+	Models         []*MappingModel `json:"models"`
+	OrganizationID *uuid.UUID      `json:"organization_id"`
+	WorkgroupID    *uuid.UUID      `json:"workgroup_id"`
 }
 
 // MappingModel is a baseline mapping model prototype

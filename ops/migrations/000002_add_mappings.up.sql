@@ -8,7 +8,9 @@ CREATE TABLE public.mappings (
     name text NOT NULL,
     description text,
     metadata json DEFAULT '{}',
-    type varchar(64)
+    type varchar(64),
+    organization_id uuid NOT NULL,
+    workgroup_id uuid NOT NULL
 );
 
 ALTER TABLE public.mappings OWNER TO baseline;
@@ -17,6 +19,10 @@ ALTER TABLE ONLY public.mappings
     ADD CONSTRAINT mappings_pkey PRIMARY KEY (id);
 
 CREATE INDEX idx_mappings_type ON public.mappings USING btree (type);
+CREATE INDEX idx_mappings_organization_id_workgroup_id ON public.mappings USING btree (organization_id, workgroup_id);
+
+ALTER TABLE ONLY public.mappings
+  ADD CONSTRAINT mappings_workgroup_id_foreign FOREIGN KEY (workgroup_id) REFERENCES public.workgroups(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 CREATE TABLE public.mappingmodels (
     id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
