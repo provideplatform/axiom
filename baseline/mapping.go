@@ -121,7 +121,6 @@ func (m *Mapping) Update(mapping *Mapping) bool {
 
 	m.Name = mapping.Name
 	m.Description = mapping.Description
-	m.Metadata = mapping.Metadata
 	m.Type = mapping.Type
 
 	for _, model := range m.Models {

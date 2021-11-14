@@ -7,7 +7,6 @@ CREATE TABLE public.mappings (
     created_at timestamp with time zone NOT NULL,
     name text NOT NULL,
     description text,
-    metadata json DEFAULT '{}',
     type varchar(64),
     organization_id uuid NOT NULL,
     workgroup_id uuid NOT NULL
