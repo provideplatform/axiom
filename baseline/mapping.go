@@ -23,7 +23,7 @@ type MappingModel struct {
 	provide.Model
 	baseline.MappingModel
 	MappingID uuid.UUID       `json:"mapping_id"`
-	Fields    []*MappingField `json:"fields"`
+	Fields    []*MappingField `sql:"-" json:"fields"`
 }
 
 // MappingField is a baseline mapping field prototype
