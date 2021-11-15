@@ -22,13 +22,15 @@ type Mapping struct {
 type MappingModel struct {
 	provide.Model
 	baseline.MappingModel
-	Fields []*MappingField `json:"fields"`
+	MappingID uuid.UUID       `json:"mapping_id"`
+	Fields    []*MappingField `json:"fields"`
 }
 
 // MappingField is a baseline mapping field prototype
 type MappingField struct {
 	provide.Model
 	baseline.MappingField
+	MappingModelID uuid.UUID `json:"mapping_model_id"`
 }
 
 // FindMappingByID finds a mapping for the given id
@@ -92,6 +94,7 @@ func (m *Mapping) Create() bool {
 			success = rowsAffected > 0
 			if success {
 				for _, model := range m.Models {
+					model.MappingID = m.ID
 					if !model.Create(tx) {
 						tx.Rollback()
 						return false
@@ -128,6 +131,7 @@ func (m *Mapping) Update(mapping *Mapping) bool {
 	}
 
 	for _, model := range mapping.Models {
+		model.MappingID = mapping.ID
 		if !model.Create(tx) {
 			tx.Rollback()
 			return false
@@ -181,6 +185,7 @@ func (m *MappingModel) Create(tx *gorm.DB) bool {
 			success = rowsAffected > 0
 			if success {
 				for _, field := range m.Fields {
+					field.MappingModelID = m.ID
 					if !field.Create(tx) {
 						tx.Rollback()
 						return false
