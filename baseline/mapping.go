@@ -13,7 +13,7 @@ import (
 type Mapping struct {
 	provide.Model
 	baseline.Mapping
-	Models         []*MappingModel `json:"models"`
+	Models         []*MappingModel `sql:"-" json:"models"`
 	OrganizationID *uuid.UUID      `json:"organization_id"`
 	WorkgroupID    *uuid.UUID      `json:"workgroup_id"`
 }
@@ -172,6 +172,8 @@ func (m *MappingModel) Create(tx *gorm.DB) bool {
 		return false
 	}
 
+	common.Log.Tracef("attempting to create mapping model for mapping: %s", m.MappingID)
+
 	success := false
 	if tx.NewRecord(m) {
 		result := tx.Create(&m)
@@ -210,6 +212,8 @@ func (f *MappingField) Create(tx *gorm.DB) bool {
 	if !f.Validate() {
 		return false
 	}
+
+	common.Log.Tracef("attempting to create mapping model field for model: %s", f.MappingModelID)
 
 	success := false
 	if tx.NewRecord(f) {

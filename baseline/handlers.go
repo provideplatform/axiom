@@ -543,10 +543,12 @@ func createWorkgroupMappingHandler(c *gin.Context) {
 
 	if mapping.Create() {
 		provide.Render(mapping, 201, c)
-	} else {
+	} else if len(mapping.Errors) > 0 {
 		obj := map[string]interface{}{}
 		obj["errors"] = mapping.Errors
 		provide.Render(obj, 422, c)
+	} else {
+		provide.RenderError("internal persistence error", 500, c)
 	}
 }
 
@@ -593,10 +595,12 @@ func updateWorkgroupMappingHandler(c *gin.Context) {
 
 	if mapping.Update(_mapping) {
 		provide.Render(nil, 204, c)
-	} else {
+	} else if len(mapping.Errors) > 0 {
 		obj := map[string]interface{}{}
 		obj["errors"] = mapping.Errors
 		provide.Render(obj, 422, c)
+	} else {
+		provide.RenderError("internal persistence error", 500, c)
 	}
 }
 
