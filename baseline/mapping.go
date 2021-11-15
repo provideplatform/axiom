@@ -30,7 +30,7 @@ type MappingModel struct {
 type MappingField struct {
 	provide.Model
 	baseline.MappingField
-	MappingModelID uuid.UUID `json:"mapping_model_id"`
+	MappingModelID uuid.UUID `gorm:"column:group_name" json:"mapping_model_id"`
 }
 
 // FindMappingByID finds a mapping for the given id
