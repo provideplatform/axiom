@@ -164,6 +164,10 @@ func (m *Mapping) Validate() bool {
 	return true
 }
 
+func (m *MappingModel) TableName() string {
+	return "mappingmodels"
+}
+
 func (m *MappingModel) Create(tx *gorm.DB) bool {
 	if !m.Validate() {
 		return false
@@ -229,4 +233,8 @@ func (f *MappingField) Create(tx *gorm.DB) bool {
 
 func (f *MappingField) Validate() bool {
 	return true
+}
+
+func (f *MappingField) TableName() string {
+	return "mappingfields"
 }
