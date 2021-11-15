@@ -48,6 +48,7 @@ CREATE TABLE public.mappingfields (
     created_at timestamp with time zone NOT NULL,
     mappingmodel_id uuid NOT NULL,
     name text NOT NULL,
+    type varchar(64) NOT NULL,
     description text,
     default_value varchar(64),
     is_primary_key bool NOT NULL DEFAULT false
@@ -59,6 +60,7 @@ ALTER TABLE ONLY public.mappingfields
     ADD CONSTRAINT mappingfields_pkey PRIMARY KEY (id);
 
 CREATE INDEX idx_mappingfields_mappingmodel_id ON public.mappingfields USING btree (mappingmodel_id);
+CREATE INDEX idx_mappingfields_type ON public.mappingfields USING btree (type);
 
 ALTER TABLE ONLY public.mappingfields
   ADD CONSTRAINT mappingfields_mappingmodel_id_foreign FOREIGN KEY (mappingmodel_id) REFERENCES public.mappingmodels(id) ON UPDATE CASCADE ON DELETE CASCADE;
