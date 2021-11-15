@@ -96,6 +96,10 @@ func (m *Mapping) Create() bool {
 				for _, model := range m.Models {
 					model.MappingID = m.ID
 					if !model.Create(tx) {
+						for _, err := range model.Errors {
+							m.Errors = append(m.Errors, err)
+						}
+
 						tx.Rollback()
 						return false
 					}
@@ -133,6 +137,7 @@ func (m *Mapping) Update(mapping *Mapping) bool {
 	for _, model := range mapping.Models {
 		model.MappingID = mapping.ID
 		if !model.Create(tx) {
+			m.Errors = append(m.Errors, model.Errors...)
 			tx.Rollback()
 			return false
 		}
@@ -191,6 +196,7 @@ func (m *MappingModel) Create(tx *gorm.DB) bool {
 				for _, field := range m.Fields {
 					field.MappingModelID = m.ID
 					if !field.Create(tx) {
+						m.Errors = append(m.Errors, field.Errors...)
 						tx.Rollback()
 						return false
 					}
