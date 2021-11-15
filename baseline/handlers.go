@@ -503,7 +503,8 @@ func listWorkgroupMappingsHandler(c *gin.Context) {
 	var mappings []*Mapping
 
 	db := dbconf.DatabaseConnection()
-	db.Where("organization_id = ? AND workgroup_id = ?", organizationID, workgroupID).Find(&mappings)
+	query := db.Where("organization_id = ? AND workgroup_id = ?", organizationID, workgroupID).Order("type DESC")
+	provide.Paginate(c, query, &Mapping{}).Find(&mappings)
 
 	provide.Render(mappings, 200, c)
 }
