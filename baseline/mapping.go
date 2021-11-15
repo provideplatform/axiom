@@ -77,6 +77,7 @@ func (m *Mapping) Create() bool {
 
 	db := dbconf.DatabaseConnection()
 	tx := db.Begin()
+	defer tx.RollbackUnlessCommitted()
 
 	success := false
 	if tx.NewRecord(m) {
@@ -96,16 +97,13 @@ func (m *Mapping) Create() bool {
 				for _, model := range m.Models {
 					model.MappingID = m.ID
 					if !model.Create(tx) {
-						common.Log.Warningf("failed to create mapping model; %s; transaction will be rolled back", *model.Errors[0].Message)
+						common.Log.Warning("failed to create mapping model; transaction will be rolled back")
 						m.Errors = append(m.Errors, model.Errors...)
-						tx.Rollback()
 						return false
 					}
 				}
 
 				tx.Commit()
-			} else {
-				tx.Rollback()
 			}
 		}
 	}
@@ -123,6 +121,7 @@ func (m *Mapping) Update(mapping *Mapping) bool {
 
 	db := dbconf.DatabaseConnection()
 	tx := db.Begin()
+	defer tx.RollbackUnlessCommitted()
 
 	m.Name = mapping.Name
 	m.Description = mapping.Description
@@ -136,7 +135,6 @@ func (m *Mapping) Update(mapping *Mapping) bool {
 		model.MappingID = mapping.ID
 		if !model.Create(tx) {
 			m.Errors = append(m.Errors, model.Errors...)
-			tx.Rollback()
 			return false
 		}
 	}
@@ -156,8 +154,6 @@ func (m *Mapping) Update(mapping *Mapping) bool {
 	success := rowsAffected > 0
 	if success {
 		tx.Commit()
-	} else {
-		tx.Rollback()
 	}
 
 	return success
@@ -194,7 +190,7 @@ func (m *MappingModel) Create(tx *gorm.DB) bool {
 				for _, field := range m.Fields {
 					field.MappingModelID = m.ID
 					if !field.Create(tx) {
-						common.Log.Warningf("failed to create mapping model field; %s; transaction will be rolled back", *field.Errors[0].Message)
+						common.Log.Warningf("failed to create mapping model field; transaction will be rolled back")
 						m.Errors = append(m.Errors, field.Errors...)
 						return false
 					}
