@@ -96,10 +96,8 @@ func (m *Mapping) Create() bool {
 				for _, model := range m.Models {
 					model.MappingID = m.ID
 					if !model.Create(tx) {
-						for _, err := range model.Errors {
-							m.Errors = append(m.Errors, err)
-						}
-
+						common.Log.Warningf("failed to create mapping model; %s; transaction will be rolled back", *model.Errors[0].Message)
+						m.Errors = append(m.Errors, model.Errors...)
 						tx.Rollback()
 						return false
 					}
@@ -196,8 +194,8 @@ func (m *MappingModel) Create(tx *gorm.DB) bool {
 				for _, field := range m.Fields {
 					field.MappingModelID = m.ID
 					if !field.Create(tx) {
+						common.Log.Warningf("failed to create mapping model field; %s; transaction will be rolled back", *field.Errors[0].Message)
 						m.Errors = append(m.Errors, field.Errors...)
-						tx.Rollback()
 						return false
 					}
 				}

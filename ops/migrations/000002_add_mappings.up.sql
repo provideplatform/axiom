@@ -6,8 +6,8 @@ CREATE TABLE public.mappings (
     id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
     created_at timestamp with time zone NOT NULL,
     name text NOT NULL,
-    description text,
     type varchar(64),
+    description text,
     organization_id uuid NOT NULL,
     workgroup_id uuid NOT NULL
 );
