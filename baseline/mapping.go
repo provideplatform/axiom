@@ -146,7 +146,7 @@ func (m *Mapping) Update(mapping *Mapping) bool {
 	}
 
 	for _, model := range mapping.Models {
-		model.MappingID = mapping.ID
+		model.MappingID = m.ID
 		if !model.Create(tx) {
 			m.Errors = append(m.Errors, model.Errors...)
 			return false
