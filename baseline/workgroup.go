@@ -99,6 +99,9 @@ func resolveBaselineCounterparties() {
 					APIEndpoint:       common.StringOrNil(party["api_endpoint"]),
 					MessagingEndpoint: common.StringOrNil(party["messaging_endpoint"]),
 				},
+				make([]*Workgroup, 0),
+				make([]*Workflow, 0),
+				make([]*Workstep, 0),
 			}
 
 			counterparties = append(counterparties, p)
@@ -122,6 +125,9 @@ func resolveBaselineCounterparties() {
 						APIEndpoint:       common.StringOrNil(apiEndpoint),
 						MessagingEndpoint: common.StringOrNil(messagingEndpoint),
 					},
+					make([]*Workgroup, 0),
+					make([]*Workflow, 0),
+					make([]*Workstep, 0),
 				}
 
 				counterparties = append(counterparties, p)
