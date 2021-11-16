@@ -496,18 +496,23 @@ func listMappingsHandler(c *gin.Context) {
 		return
 	}
 
-	workgroupID, err := uuid.FromString(c.Param("id"))
-	if err != nil {
-		provide.RenderError(err.Error(), 422, c)
-		return
-	}
-
 	var mappings []*Mapping
 
 	db := dbconf.DatabaseConnection()
-	query := db.Where("organization_id = ? AND workgroup_id = ?", organizationID, workgroupID).Order("type DESC")
-	provide.Paginate(c, query, &Mapping{}).Find(&mappings)
+	var query *gorm.DB
+	if c.Query("workgroup_id") != "" {
+		workgroupID, err := uuid.FromString(c.Query("id"))
+		if err != nil {
+			provide.RenderError(err.Error(), 422, c)
+			return
+		}
+		query = db.Where("organization_id = ? AND workgroup_id = ?", organizationID, workgroupID)
+	} else {
+		query = db.Where("organization_id = ?", organizationID)
+	}
 
+	query = query.Order("type DESC")
+	provide.Paginate(c, query, &Mapping{}).Find(&mappings)
 	provide.Render(mappings, 200, c)
 }
 
@@ -534,14 +539,7 @@ func createMappingHandler(c *gin.Context) {
 		return
 	}
 
-	workgroupID, err := uuid.FromString(c.Param("id"))
-	if err != nil {
-		provide.RenderError(err.Error(), 422, c)
-		return
-	}
-
 	mapping.OrganizationID = organizationID
-	mapping.WorkgroupID = &workgroupID
 
 	if mapping.Create() {
 		provide.Render(mapping, 201, c)
@@ -570,7 +568,7 @@ func updateMappingHandler(c *gin.Context) {
 		return
 	}
 
-	mappingIDStr := c.Param("mappingId")
+	mappingIDStr := c.Param("id")
 	mappingID, err := uuid.FromString(mappingIDStr)
 	if err != nil {
 		provide.RenderError(err.Error(), 422, c)
@@ -616,7 +614,7 @@ func deleteMappingHandler(c *gin.Context) {
 		return
 	}
 
-	mappingIDStr := c.Param("mappingId")
+	mappingIDStr := c.Param("id")
 	mappingID, err := uuid.FromString(mappingIDStr)
 	if err != nil {
 		provide.RenderError(err.Error(), 422, c)
