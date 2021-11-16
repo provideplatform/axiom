@@ -77,6 +77,7 @@ func InstallWorkgroupsAPI(r *gin.Engine) {
 	r.GET("/api/v1/workgroups/:id/mappings", listWorkgroupMappingsHandler)
 	r.POST("/api/v1/workgroups/:id/mappings", createWorkgroupMappingHandler)
 	r.PUT("/api/v1/workgroups/:id/mappings/:mappingId", updateWorkgroupMappingHandler)
+	r.DELETE("/api/v1/workgroups/:id/mappings/:mappingId", deleteWorkgroupMappingHandler)
 }
 
 // InstallWorkstepsAPI installs workstep management APIs
@@ -601,6 +602,38 @@ func updateWorkgroupMappingHandler(c *gin.Context) {
 		provide.Render(obj, 422, c)
 	} else {
 		provide.RenderError("internal persistence error", 500, c)
+	}
+}
+
+func deleteWorkgroupMappingHandler(c *gin.Context) {
+	organizationID := util.AuthorizedSubjectID(c, "organization")
+	if organizationID == nil {
+		provide.RenderError("unauthorized", 401, c)
+		return
+	} else if common.OrganizationID != nil && organizationID.String() != *common.OrganizationID {
+		provide.RenderError("forbidden", 403, c)
+		return
+	}
+
+	mappingIDStr := c.Param("mappingId")
+	mappingID, err := uuid.FromString(mappingIDStr)
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	mapping := FindMappingByID(mappingID)
+	if mapping == nil {
+		provide.RenderError("not found", 404, c)
+		return
+	}
+
+	if mapping.Delete() {
+		provide.Render(nil, 204, c)
+	} else if len(mapping.Errors) > 0 {
+		obj := map[string]interface{}{}
+		obj["errors"] = mapping.Errors
+		provide.Render(obj, 422, c)
 	}
 }
 

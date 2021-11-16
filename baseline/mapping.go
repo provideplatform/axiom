@@ -111,6 +111,20 @@ func (m *Mapping) Create() bool {
 	return success
 }
 
+func (m *Mapping) Delete() bool {
+	db := dbconf.DatabaseConnection()
+	result := db.Delete(m)
+	errors := result.GetErrors()
+	if len(errors) > 0 {
+		for _, err := range errors {
+			m.Errors = append(m.Errors, &provide.Error{
+				Message: common.StringOrNil(err.Error()),
+			})
+		}
+	}
+	return len(m.Errors) == 0
+}
+
 // Update the underlying mapping instance with values from the given mapping;
 // this method uses a db transaction to wipe the old models and fields to
 // perform a wholesale update of the entire mapping...
