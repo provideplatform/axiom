@@ -12,9 +12,9 @@ import (
 // Participant is a party to a baseline workgroup or workflow context
 type Participant struct {
 	baseline.Participant
-	// Workgroups []*Workgroup `gorm:"many2many:workgroups_participants" json:"workgroups,omitempty"`
-	// Workflows  []*Workflow  `gorm:"many2many:workflows_participants" json:"workflows,omitempty"`
-	// Worksteps  []*Workflow  `gorm:"many2many:worksteps_participants" json:"worksteps,omitempty"`
+	Workgroups []*Workgroup `gorm:"many2many:workgroups_participants" json:"workgroups,omitempty"`
+	Workflows  []*Workflow  `gorm:"many2many:workflows_participants" json:"workflows,omitempty"`
+	Worksteps  []*Workstep  `gorm:"many2many:worksteps_participants" json:"worksteps,omitempty"`
 }
 
 func (p *Participant) Cache() error {
