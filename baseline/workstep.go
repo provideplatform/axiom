@@ -24,11 +24,16 @@ const workstepCircuitStatusProvisioned = "provisioned"
 type Workstep struct {
 	baseline.Workstep
 	Participants []*Participant `gorm:"many2many:worksteps_participants" json:"participants,omitempty"`
+	WorkstepID   *uuid.UUID     // when nil, indicates the workstep is a prototype (not an instance)
 }
 
 // WorkstepInstance is a baseline workstep instance
 type WorkstepInstance struct {
 	baseline.WorkstepInstance
+}
+
+func (f *WorkstepInstance) TableName() string {
+	return "worksteps"
 }
 
 // FindWorkstepByID retrieves a workstep for the given id
@@ -282,6 +287,10 @@ func etherscanBaseURL(networkID string) *string {
 	default:
 		return nil
 	}
+}
+
+func (w *Workstep) isPrototype() bool {
+	return w.WorkstepID != nil
 }
 
 func (w *Workstep) Create() bool {

@@ -30,12 +30,17 @@ type Workflow struct {
 	baseline.Workflow
 	Participants []*Participant `gorm:"many2many:workflows_participants" json:"participants"`
 	Worksteps    []*Workstep    `gorm:"many2many:workflows_worksteps" json:"worksteps,omitempty"`
+	WorkflowID   *uuid.UUID     // when nil, indicates the workflow is a prototype (not an instance)
 }
 
 // WorkflowInstance is a baseline workflow instance
 type WorkflowInstance struct {
 	baseline.WorkflowInstance
 	Worksteps []*baseline.WorkstepInstance `gorm:"many2many:workflowinstances_worksteps" json:"worksteps,omitempty"`
+}
+
+func (f *WorkflowInstance) TableName() string {
+	return "workflows"
 }
 
 // FindWorkflowByID retrieves a workflow instance for the given id
@@ -293,6 +298,10 @@ func circuitParamsFactory(name, identifier string, noteStoreID, nullifierStoreID
 	}
 
 	return params
+}
+
+func (w *Workflow) isPrototype() bool {
+	return w.WorkflowID != nil
 }
 
 func (w *Workflow) Create() bool {

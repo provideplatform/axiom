@@ -5,10 +5,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/gin-gonic/gin"
+	"github.com/jinzhu/gorm"
 	dbconf "github.com/kthomas/go-db-config"
 	natsutil "github.com/kthomas/go-natsutil"
 	uuid "github.com/kthomas/go.uuid"
@@ -44,6 +46,14 @@ func InstallCredentialsAPI(r *gin.Engine) {
 	r.POST("/api/v1/credentials", issueVerifiableCredentialHandler)
 }
 
+// InstallMappingsAPI installs mapping management APIs
+func InstallMappingsAPI(r *gin.Engine) {
+	r.GET("/api/v1/mappings", listMappingsHandler)
+	r.POST("/api/v1/mappings", createMappingHandler)
+	r.PUT("/api/v1/mappings/:id", updateMappingHandler)
+	r.DELETE("/api/v1/mappings/:mappingId", deleteMappingHandler)
+}
+
 // InstallObjectsAPI installs system of record proxy objects API
 func InstallObjectsAPI(r *gin.Engine) {
 	r.POST("/api/v1/objects", createObjectHandler)
@@ -61,6 +71,13 @@ func InstallPublicWorkgroupAPI(r *gin.Engine) {
 	r.POST("/api/v1/pub/invite", createPublicWorkgroupInviteHandler)
 }
 
+// InstallWorkgroupsAPI installs workgroup management APIs
+func InstallWorkgroupsAPI(r *gin.Engine) {
+	r.GET("/api/v1/workgroups", listWorkgroupsHandler)
+	r.GET("/api/v1/workgroups/:id", workgroupDetailsHandler)
+	r.POST("/api/v1/workgroups", createWorkgroupHandler)
+}
+
 // InstallWorkflowsAPI installs workflow management APIs
 func InstallWorkflowsAPI(r *gin.Engine) {
 	r.GET("/api/v1/workflows", listWorkflowsHandler)
@@ -68,24 +85,8 @@ func InstallWorkflowsAPI(r *gin.Engine) {
 	r.POST("/api/v1/workflows", createWorkflowHandler)
 }
 
-// InstallWorkgroupsAPI installs workgroup management APIs
-func InstallWorkgroupsAPI(r *gin.Engine) {
-	r.GET("/api/v1/workgroups", listWorkgroupsHandler)
-	r.GET("/api/v1/workgroups/:id", workgroupDetailsHandler)
-	r.POST("/api/v1/workgroups", createWorkgroupHandler)
-
-	r.GET("/api/v1/workgroups/:id/mappings", listWorkgroupMappingsHandler)
-	r.POST("/api/v1/workgroups/:id/mappings", createWorkgroupMappingHandler)
-	r.PUT("/api/v1/workgroups/:id/mappings/:mappingId", updateWorkgroupMappingHandler)
-	r.DELETE("/api/v1/workgroups/:id/mappings/:mappingId", deleteWorkgroupMappingHandler)
-}
-
 // InstallWorkstepsAPI installs workstep management APIs
 func InstallWorkstepsAPI(r *gin.Engine) {
-	// r.GET("/api/v1/worksteps", listWorkstepsHandler)
-	// r.GET("/api/v1/worksteps/:id", workstepDetailsHandler)
-	// r.POST("/api/v1/worksteps", createWorkstepHandler)
-
 	r.GET("/api/v1/workflows/:id/worksteps", listWorkstepsHandler)
 	r.GET("/api/v1/workflows/:id/worksteps/:workstepId", workstepDetailsHandler)
 	r.POST("/api/v1/workflows/:id/worksteps", createWorkstepHandler)
@@ -485,7 +486,7 @@ func createPublicWorkgroupInviteHandler(c *gin.Context) {
 	})
 }
 
-func listWorkgroupMappingsHandler(c *gin.Context) {
+func listMappingsHandler(c *gin.Context) {
 	organizationID := util.AuthorizedSubjectID(c, "organization")
 	if organizationID == nil {
 		provide.RenderError("unauthorized", 401, c)
@@ -510,7 +511,7 @@ func listWorkgroupMappingsHandler(c *gin.Context) {
 	provide.Render(mappings, 200, c)
 }
 
-func createWorkgroupMappingHandler(c *gin.Context) {
+func createMappingHandler(c *gin.Context) {
 	organizationID := util.AuthorizedSubjectID(c, "organization")
 	if organizationID == nil {
 		provide.RenderError("unauthorized", 401, c)
@@ -553,7 +554,7 @@ func createWorkgroupMappingHandler(c *gin.Context) {
 	}
 }
 
-func updateWorkgroupMappingHandler(c *gin.Context) {
+func updateMappingHandler(c *gin.Context) {
 	organizationID := util.AuthorizedSubjectID(c, "organization")
 	if organizationID == nil {
 		provide.RenderError("unauthorized", 401, c)
@@ -605,7 +606,7 @@ func updateWorkgroupMappingHandler(c *gin.Context) {
 	}
 }
 
-func deleteWorkgroupMappingHandler(c *gin.Context) {
+func deleteMappingHandler(c *gin.Context) {
 	organizationID := util.AuthorizedSubjectID(c, "organization")
 	if organizationID == nil {
 		provide.RenderError("unauthorized", 401, c)
@@ -647,14 +648,27 @@ func createWorkflowHandler(c *gin.Context) {
 		return
 	}
 
-	err := fmt.Errorf("not implemented")
+	buf, err := c.GetRawData()
+	if err != nil {
+		provide.RenderError(err.Error(), 400, c)
+		return
+	}
 
-	if err == nil {
-		provide.Render(nil, 204, c)
-	} else {
+	var workflow *Workflow
+	err = json.Unmarshal(buf, &workflow)
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	if workflow.Create() {
+		provide.Render(workflow, 201, c)
+	} else if len(workflow.Errors) > 0 {
 		obj := map[string]interface{}{}
-		obj["errors"] = []interface{}{} // FIXME
+		obj["errors"] = workflow.Errors
 		provide.Render(obj, 422, c)
+	} else {
+		provide.RenderError("internal persistence error", 500, c)
 	}
 }
 
@@ -668,10 +682,26 @@ func listWorkflowsHandler(c *gin.Context) {
 		return
 	}
 
-	// filterInstances := strings.ToLower(c.Param("filter_instances")) == "true"
-	// filterPrototypes := strings.ToLower(c.Param("filter_prototypes")) == "true"
-
 	var workflows []*Workflow
+
+	filterInstances := strings.ToLower(c.Param("filter_instances")) == "true"
+	filterPrototypes := strings.ToLower(c.Param("filter_prototypes")) == "true"
+
+	db := dbconf.DatabaseConnection()
+	var query *gorm.DB
+
+	if c.Query("workgroup_id") != "" {
+		query = db.Where("workflows.workgroup_id = ?", c.Query("workgroup_id"))
+	}
+	if filterInstances {
+		query = db.Where("workflows.workflow_id IS NULL")
+	}
+	if filterPrototypes {
+		query = db.Where("workflows.workflow_id IS NOT NULL")
+	}
+	query = query.Order("workflows.created_at DESC")
+
+	provide.Paginate(c, query, &Workflow{}).Find(&workflows)
 	provide.Render(workflows, 200, c)
 }
 
@@ -704,14 +734,36 @@ func createWorkstepHandler(c *gin.Context) {
 		return
 	}
 
-	err := fmt.Errorf("not implemented")
+	buf, err := c.GetRawData()
+	if err != nil {
+		provide.RenderError(err.Error(), 400, c)
+		return
+	}
 
-	if err == nil {
-		provide.Render(nil, 204, c)
-	} else {
+	var workstep *Workstep
+	err = json.Unmarshal(buf, &workstep)
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	workflowID, err := uuid.FromString(c.Param("id"))
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	// workstep.OrganizationID = organizationID
+	workstep.WorkflowID = &workflowID
+
+	if workstep.Create() {
+		provide.Render(workstep, 201, c)
+	} else if len(workstep.Errors) > 0 {
 		obj := map[string]interface{}{}
-		obj["errors"] = []interface{}{} // FIXME
+		obj["errors"] = workstep.Errors
 		provide.Render(obj, 422, c)
+	} else {
+		provide.RenderError("internal persistence error", 500, c)
 	}
 }
 
@@ -726,6 +778,25 @@ func listWorkstepsHandler(c *gin.Context) {
 	}
 
 	var worksteps []*Workstep
+
+	filterInstances := strings.ToLower(c.Param("filter_instances")) == "true"
+	filterPrototypes := strings.ToLower(c.Param("filter_prototypes")) == "true"
+
+	db := dbconf.DatabaseConnection()
+	var query *gorm.DB
+
+	if c.Query("workflow_id") != "" {
+		query = db.Where("worksteps.workflow_id = ?", c.Query("workflow_id"))
+	}
+	if filterInstances {
+		query = db.Where("worksteps.workstep_id IS NULL")
+	}
+	if filterPrototypes {
+		query = db.Where("worksteps.workstep_id IS NOT NULL")
+	}
+	query = query.Order("worksteps.created_at DESC")
+
+	provide.Paginate(c, query, &Workstep{}).Find(&worksteps)
 	provide.Render(worksteps, 200, c)
 }
 
