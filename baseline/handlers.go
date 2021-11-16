@@ -697,7 +697,12 @@ func listWorkflowsHandler(c *gin.Context) {
 	if filterPrototypes {
 		query = db.Where("workflows.workflow_id IS NOT NULL")
 	}
-	query = query.Order("workflows.created_at DESC")
+
+	if query == nil {
+		query = db.Order("workflows.created_at DESC")
+	} else {
+		query = query.Order("workflows.created_at DESC")
+	}
 
 	provide.Paginate(c, query, &Workflow{}).Find(&workflows)
 	provide.Render(workflows, 200, c)
@@ -792,7 +797,12 @@ func listWorkstepsHandler(c *gin.Context) {
 	if filterPrototypes {
 		query = db.Where("worksteps.workstep_id IS NOT NULL")
 	}
-	query = query.Order("worksteps.created_at DESC")
+
+	if query == nil {
+		query = db.Order("worksteps.created_at DESC")
+	} else {
+		query = query.Order("worksteps.created_at DESC")
+	}
 
 	provide.Paginate(c, query, &Workstep{}).Find(&worksteps)
 	provide.Render(worksteps, 200, c)
