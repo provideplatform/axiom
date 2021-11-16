@@ -581,7 +581,7 @@ func updateWorkgroupMappingHandler(c *gin.Context) {
 		return
 	}
 
-	var _mapping *Mapping
+	_mapping := &Mapping{}
 	err = json.Unmarshal(buf, _mapping)
 	if err != nil {
 		provide.RenderError(err.Error(), 422, c)
