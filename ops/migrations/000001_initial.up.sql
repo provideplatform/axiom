@@ -142,6 +142,9 @@ CREATE INDEX idx_workflows_workflow_id ON public.workflows USING btree (workflow
 ALTER TABLE ONLY public.workflows
   ADD CONSTRAINT workflows_workgroup_id_foreign FOREIGN KEY (workgroup_id) REFERENCES public.workgroups(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
+ALTER TABLE ONLY public.workflows
+  ADD CONSTRAINT workflows_workflow_id_foreign FOREIGN KEY (workflow_id) REFERENCES public.workflows(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
 CREATE TABLE public.workflows_participants (
     workflow_id uuid NOT NULL,
     participant varchar(64) NOT NULL
@@ -182,6 +185,9 @@ CREATE INDEX idx_worksteps_workstep_id ON public.worksteps USING btree (workstep
 
 ALTER TABLE ONLY public.worksteps
   ADD CONSTRAINT worksteps_workflow_id_foreign FOREIGN KEY (workflow_id) REFERENCES public.workflows(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.worksteps
+  ADD CONSTRAINT worksteps_workstep_id_foreign FOREIGN KEY (workstep_id) REFERENCES public.worksteps(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 CREATE TABLE public.worksteps_participants (
     workstep_id uuid NOT NULL,
