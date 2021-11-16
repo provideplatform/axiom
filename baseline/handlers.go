@@ -51,7 +51,7 @@ func InstallMappingsAPI(r *gin.Engine) {
 	r.GET("/api/v1/mappings", listMappingsHandler)
 	r.POST("/api/v1/mappings", createMappingHandler)
 	r.PUT("/api/v1/mappings/:id", updateMappingHandler)
-	r.DELETE("/api/v1/mappings/:mappingId", deleteMappingHandler)
+	r.DELETE("/api/v1/mappings/:id", deleteMappingHandler)
 }
 
 // InstallObjectsAPI installs system of record proxy objects API
@@ -504,7 +504,7 @@ func listMappingsHandler(c *gin.Context) {
 	db := dbconf.DatabaseConnection()
 	var query *gorm.DB
 	if c.Query("workgroup_id") != "" {
-		workgroupID, err := uuid.FromString(c.Query("id"))
+		workgroupID, err := uuid.FromString(c.Query("workgroup_id"))
 		if err != nil {
 			provide.RenderError(err.Error(), 422, c)
 			return
