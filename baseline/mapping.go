@@ -70,6 +70,13 @@ func FindMappingFieldsByMappingModelID(mappingModelID uuid.UUID) []*MappingField
 	return fields
 }
 
+func (m *Mapping) enrich() {
+	m.Models = FindMappingModelsByMappingID(m.ID)
+	for _, model := range m.Models {
+		model.Fields = FindMappingFieldsByMappingModelID(model.ID)
+	}
+}
+
 func (m *Mapping) Create() bool {
 	if !m.Validate() {
 		return false

@@ -516,6 +516,11 @@ func listMappingsHandler(c *gin.Context) {
 
 	query = query.Order("type DESC")
 	provide.Paginate(c, query, &Mapping{}).Find(&mappings)
+
+	for _, mapping := range mappings {
+		mapping.enrich()
+	}
+
 	provide.Render(mappings, 200, c)
 }
 
