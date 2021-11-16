@@ -85,6 +85,7 @@ CREATE TABLE public.workgroups (
     created_at timestamp with time zone NOT NULL,
     name text NOT NULL,
     description text,
+    shield text,
     privacy_policy bytea,
     security_policy bytea,
     tokenization_policy bytea
@@ -136,6 +137,7 @@ ALTER TABLE public.workflows OWNER TO baseline;
 ALTER TABLE ONLY public.workflows
     ADD CONSTRAINT workflows_pkey PRIMARY KEY (id);
 
+CREATE INDEX idx_workflows_status ON public.workflows USING btree (status);
 CREATE INDEX idx_workflows_workgroup_id ON public.workflows USING btree (workgroup_id);
 CREATE INDEX idx_workflows_workflow_id ON public.workflows USING btree (workflow_id);
 
@@ -161,13 +163,14 @@ ALTER TABLE ONLY public.workflows_participants
 
 CREATE TABLE public.worksteps (
     id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    created_at timestamp with time zone NOT NULL,
     name text NOT NULL,
     description text,
-    circuit_id uuid,
-    created_at timestamp with time zone NOT NULL,
     require_finality boolean default false NOT NULL,
     workflow_id uuid NOT NULL,
-    workstep_id uuid
+    workstep_id uuid,
+    prover_id uuid,
+    status varchar(64) NOT NULL
 );
 
 
@@ -180,6 +183,8 @@ ALTER TABLE public.worksteps OWNER TO baseline;
 ALTER TABLE ONLY public.worksteps
     ADD CONSTRAINT worksteps_pkey PRIMARY KEY (id);
 
+CREATE INDEX idx_worksteps_prover_id ON public.worksteps USING btree (prover_id);
+CREATE INDEX idx_worksteps_status ON public.worksteps USING btree (status);
 CREATE INDEX idx_worksteps_workflow_id ON public.worksteps USING btree (workflow_id);
 CREATE INDEX idx_worksteps_workstep_id ON public.worksteps USING btree (workstep_id);
 
