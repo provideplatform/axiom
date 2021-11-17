@@ -226,6 +226,7 @@ func lookupBaselineOrganizationMessagingEndpoint(recipient string) *string {
 					Address:           common.StringOrNil(recipient),
 					MessagingEndpoint: common.StringOrNil(string(endpoint)),
 				},
+				common.StringOrNil(recipient),
 				make([]*Workgroup, 0),
 				make([]*Workflow, 0),
 				make([]*Workstep, 0),

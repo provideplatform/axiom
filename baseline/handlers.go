@@ -319,6 +319,7 @@ func createWorkgroupHandler(c *gin.Context) {
 		baseline.Participant{
 			Address: invitorAddress,
 		},
+		invitorAddress,
 		make([]*Workgroup, 0),
 		make([]*Workflow, 0),
 		make([]*Workstep, 0),
