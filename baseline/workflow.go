@@ -28,6 +28,7 @@ const requireCircuitTimeout = time.Minute * 5
 // Workflow is a baseline workflow prototype
 type Workflow struct {
 	baseline.Workflow
+	Name         *string        `json:"name"`
 	Participants []*Participant `gorm:"many2many:workflows_participants" json:"participants"`
 	Worksteps    []*Workstep    `gorm:"many2many:workflows_worksteps" json:"worksteps,omitempty"`
 	WorkflowID   *uuid.UUID     // when nil, indicates the workflow is a prototype (not an instance)
