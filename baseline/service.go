@@ -350,14 +350,18 @@ func (m *Message) baselineOutbound() bool {
 	common.Log.Debugf("dispatching outbound protocol message intended for %d recipients", len(recipients))
 
 	for _, recipient := range recipients {
-		common.Log.Debugf("dispatching outbound protocol message to %s", *recipient.Address)
-		err := m.ProtocolMessage.broadcast(*recipient.Address)
-		if err != nil {
-			msg := fmt.Sprintf("failed to dispatch protocol message to recipient: %s; %s", *recipient.Address, err.Error())
-			common.Log.Warning(msg)
-			m.Errors = append(m.Errors, &provide.Error{
-				Message: common.StringOrNil(msg),
-			})
+		if recipient.Address != nil {
+			common.Log.Debugf("dispatching outbound protocol message to %s", *recipient.Address)
+			err := m.ProtocolMessage.broadcast(*recipient.Address)
+			if err != nil {
+				msg := fmt.Sprintf("failed to dispatch protocol message to recipient: %s; %s", *recipient.Address, err.Error())
+				common.Log.Warning(msg)
+				m.Errors = append(m.Errors, &provide.Error{
+					Message: common.StringOrNil(msg),
+				})
+			}
+		} else {
+			common.Log.Warning("failed to dispatch protocol message to recipient; no recipient address")
 		}
 	}
 
