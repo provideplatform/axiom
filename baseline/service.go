@@ -282,7 +282,7 @@ func (m *Message) baselineOutbound() bool {
 					})
 				}
 			} else {
-				common.Log.Warningf("failed to dispatch protocol message to recipient: %s; no recipient address", *recipient.Address)
+				common.Log.Warning("failed to dispatch protocol message to recipient; no recipient address")
 			}
 		}
 	}
