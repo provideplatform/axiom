@@ -323,5 +323,13 @@ func (w *Workstep) Create() bool {
 }
 
 func (w *Workstep) Validate() bool {
-	return true
+	if w.Status == nil {
+		if w.WorkstepID == nil {
+			w.Status = common.StringOrNil("draft")
+		} else {
+			w.Status = common.StringOrNil("init")
+		}
+	}
+
+	return len(w.Errors) == 0
 }

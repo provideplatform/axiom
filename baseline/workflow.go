@@ -333,5 +333,13 @@ func (w *Workflow) Create() bool {
 }
 
 func (w *Workflow) Validate() bool {
-	return true
+	if w.Status == nil {
+		if w.WorkflowID == nil {
+			w.Status = common.StringOrNil("draft")
+		} else {
+			w.Status = common.StringOrNil("init")
+		}
+	}
+
+	return len(w.Errors) == 0
 }
