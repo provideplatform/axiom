@@ -206,16 +206,16 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *nats.Msg) {
 
 			for _, workstep := range workflow.Worksteps {
 				params := map[string]interface{}{}
-				rawcircuit, _ := json.Marshal(workstep.Circuit)
+				rawcircuit, _ := json.Marshal(workstep.Prover)
 				json.Unmarshal(rawcircuit, &params)
 
-				workstep.Circuit, err = privacy.CreateCircuit(*token, params)
+				workstep.Prover, err = privacy.CreateCircuit(*token, params)
 				if err != nil {
 					common.Log.Warningf("failed to handle inbound sync protocol message; failed to create circuit; %s", err.Error())
 					return
 				}
-				workstep.CircuitID = &workstep.Circuit.ID
-				common.Log.Debugf("sync protocol message created circuit: %s", workstep.Circuit.ID)
+				workstep.ProverID = &workstep.Prover.ID
+				common.Log.Debugf("sync protocol message created circuit: %s", workstep.Prover.ID)
 			}
 
 			err = workflow.Cache()

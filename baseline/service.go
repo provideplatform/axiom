@@ -239,8 +239,8 @@ func (m *Message) baselineOutbound() bool {
 		}
 
 		for _, workstep := range workflow.Worksteps {
-			circuit := workstep.Circuit
-			workstep.Circuit = &privacy.Circuit{
+			circuit := workstep.Prover
+			workstep.Prover = &privacy.Circuit{
 				Artifacts:     circuit.Artifacts,
 				Name:          circuit.Name,
 				Description:   circuit.Description,
@@ -423,7 +423,7 @@ func (m *Message) prove() error {
 	if index < 0 || index >= len(baselineRecord.Context.Workflow.Worksteps) {
 		return fmt.Errorf("failed to resolve workstep/circuit at index: %d; index out of range", index)
 	}
-	circuit := baselineRecord.Context.Workflow.Worksteps[index].Circuit
+	circuit := baselineRecord.Context.Workflow.Worksteps[index].Prover
 
 	resp, err := privacy.Prove(*token, circuit.ID.String(), map[string]interface{}{
 		"witness": m.ProtocolMessage.Payload.Witness,
@@ -453,7 +453,7 @@ func (m *ProtocolMessage) verify(store bool) error {
 	if index < 0 || index >= len(baselineRecord.Context.Workflow.Worksteps) {
 		return fmt.Errorf("failed to resolve workstep/circuit at index: %d; index out of range", index)
 	}
-	circuit := baselineRecord.Context.Workflow.Worksteps[index].Circuit
+	circuit := baselineRecord.Context.Workflow.Worksteps[index].Prover
 
 	resp, err := privacy.Verify(*token, circuit.ID.String(), map[string]interface{}{
 		"store":   store,

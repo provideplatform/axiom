@@ -97,7 +97,8 @@ func baselineWorkstepFactory(identifier *string, workflowID *string, circuit *pr
 
 	workstep := &baseline.WorkstepInstance{
 		baseline.Workstep{
-			Circuit:      circuit,
+			Prover:       circuit,
+			ProverID:     &circuit.ID,
 			Participants: make([]*baseline.Participant, 0), // FIXME
 			WorkflowID:   &workflowUUID,
 		},
@@ -121,7 +122,7 @@ func requireCircuits(token *string, workflow *WorkflowInstance) error {
 		case <-timer.C:
 			for i, workstep := range workflow.Worksteps {
 				if !circuits[i] {
-					circuit, err := privacy.GetCircuitDetails(*token, workstep.Circuit.ID.String())
+					circuit, err := privacy.GetCircuitDetails(*token, workstep.Prover.ID.String())
 					if err != nil {
 						common.Log.Warningf("failed to fetch circuit details; %s", err.Error())
 						break
@@ -138,8 +139,8 @@ func requireCircuits(token *string, workflow *WorkflowInstance) error {
 							}
 						}
 
-						workflow.Worksteps[i].Circuit = circuit
-						workflow.Worksteps[i].CircuitID = &circuit.ID
+						workflow.Worksteps[i].Prover = circuit
+						workflow.Worksteps[i].ProverID = &circuit.ID
 						circuits[i] = true
 					}
 				}
