@@ -31,7 +31,7 @@ type Workgroup struct {
 func FindWorkgroupByID(id uuid.UUID) *Workgroup {
 	db := dbconf.DatabaseConnection()
 	workgroup := &Workgroup{}
-	db.Where("id = ?", id.String()).Find(&id)
+	db.Where("id = ?", id.String()).Find(&workgroup)
 	if workgroup == nil || workgroup.ID == uuid.Nil {
 		return nil
 	}
