@@ -20,6 +20,17 @@ import (
 
 const workstepCircuitStatusProvisioned = "provisioned"
 
+const workstepStatusDraft = "draft"
+const workstepStatusDeployed = "deployed"
+const workstepStatusDeprecated = "deprecated"
+
+// workstep instance statuses
+const workstepStatusInit = "init"
+const workstepStatusRunning = "running"
+const workstepStatusCompleted = "completed"
+const workstepStatusCanceled = "canceled"
+const workstepStatusFailed = "failed"
+
 // Workstep is a baseline workstep prototype
 type Workstep struct {
 	baseline.Workstep
@@ -90,8 +101,6 @@ func baselineWorkstepFactory(identifier *string, workflowID *string, circuit *pr
 			Participants: make([]*baseline.Participant, 0), // FIXME
 			WorkflowID:   &workflowUUID,
 		},
-		nil,
-		nil,
 		nil,
 	}
 
@@ -323,13 +332,45 @@ func (w *Workstep) Create() bool {
 }
 
 func (w *Workstep) Validate() bool {
-	if w.Status == nil {
+	if w.ID == uuid.Nil && w.Status == nil {
 		if w.WorkstepID == nil {
 			w.Status = common.StringOrNil("draft")
 		} else {
 			w.Status = common.StringOrNil("init")
 		}
 	}
+
+	if w.Status == nil {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil("status is required"),
+		})
+	}
+
+	if *w.Status != workflowStatusDraft &&
+		*w.Status != workflowStatusDeployed &&
+		*w.Status != workflowStatusDeprecated &&
+		*w.Status != workflowStatusInit &&
+		*w.Status != workflowStatusRunning &&
+		*w.Status != workflowStatusCompleted &&
+		*w.Status != workflowStatusCanceled &&
+		*w.Status != workflowStatusFailed {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil(fmt.Sprintf("invalid status: %s", *w.Status)),
+		})
+	}
+
+	// switch *w.Status {
+	// 	case workflowStatusDraft:
+	// 	case workflowStatusDeployed:
+	// 	case workflowStatusDeprecated:
+	// 	case workflowStatusInit:
+	// 	case workflowStatusRunning:
+	// 	case workflowStatusCompleted:
+	// 	case workflowStatusCanceled:
+	// 	case workflowStatusFailed:
+	// 	default:
+	// 		// no-op
+	// }
 
 	return len(w.Errors) == 0
 }

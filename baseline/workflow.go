@@ -25,6 +25,17 @@ const requireCircuitTickerInterval = time.Second * 5
 const requireCircuitSleepInterval = time.Millisecond * 500
 const requireCircuitTimeout = time.Minute * 5
 
+const workflowStatusDraft = "draft"
+const workflowStatusDeployed = "deployed"
+const workflowStatusDeprecated = "deprecated"
+
+// workflow instance statuses
+const workflowStatusInit = "init"
+const workflowStatusRunning = "running"
+const workflowStatusCompleted = "completed"
+const workflowStatusCanceled = "canceled"
+const workflowStatusFailed = "failed"
+
 // Workflow is a baseline workflow prototype
 type Workflow struct {
 	baseline.Workflow
@@ -102,7 +113,6 @@ func baselineWorkflowFactory(objectType string, identifier *string) (*WorkflowIn
 
 	workflow := &WorkflowInstance{
 		baseline.WorkflowInstance{
-			Shield:    nil, // FIXME
 			Worksteps: make([]*baseline.WorkstepInstance, 0),
 		},
 		make([]*baseline.WorkstepInstance, 0),
@@ -333,13 +343,45 @@ func (w *Workflow) Create() bool {
 }
 
 func (w *Workflow) Validate() bool {
-	if w.Status == nil {
+	if w.ID == uuid.Nil && w.Status == nil {
 		if w.WorkflowID == nil {
 			w.Status = common.StringOrNil("draft")
 		} else {
 			w.Status = common.StringOrNil("init")
 		}
 	}
+
+	if w.Status == nil {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil("status is required"),
+		})
+	}
+
+	if *w.Status != workflowStatusDraft &&
+		*w.Status != workflowStatusDeployed &&
+		*w.Status != workflowStatusDeprecated &&
+		*w.Status != workflowStatusInit &&
+		*w.Status != workflowStatusRunning &&
+		*w.Status != workflowStatusCompleted &&
+		*w.Status != workflowStatusCanceled &&
+		*w.Status != workflowStatusFailed {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil(fmt.Sprintf("invalid status: %s", *w.Status)),
+		})
+	}
+
+	// switch *w.Status {
+	// 	case workflowStatusDraft:
+	// 	case workflowStatusDeployed:
+	// 	case workflowStatusDeprecated:
+	// 	case workflowStatusInit:
+	// 	case workflowStatusRunning:
+	// 	case workflowStatusCompleted:
+	// 	case workflowStatusCanceled:
+	// 	case workflowStatusFailed:
+	// 	default:
+	// 		// no-op
+	// }
 
 	return len(w.Errors) == 0
 }
