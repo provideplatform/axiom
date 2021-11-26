@@ -71,7 +71,7 @@ func FindWorkflowByID(id uuid.UUID) *Workflow {
 func FindWorkflowInstanceByID(id uuid.UUID) *WorkflowInstance {
 	db := dbconf.DatabaseConnection()
 	instance := &WorkflowInstance{}
-	db.Where("id = ? AND workflow_id IS NOT NULL", id.String()).Find(&id)
+	db.Where("id = ? AND workflow_id IS NOT NULL", id.String()).Find(&instance)
 	if instance == nil || instance.ID == uuid.Nil {
 		return nil
 	}

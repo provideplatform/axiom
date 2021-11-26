@@ -51,7 +51,7 @@ func (f *WorkstepInstance) TableName() string {
 func FindWorkstepByID(id uuid.UUID) *Workstep {
 	db := dbconf.DatabaseConnection()
 	workstep := &Workstep{}
-	db.Where("id = ?", id.String()).Find(&id)
+	db.Where("id = ?", id.String()).Find(&workstep)
 	if workstep == nil || workstep.ID == uuid.Nil {
 		return nil
 	}
@@ -62,7 +62,7 @@ func FindWorkstepByID(id uuid.UUID) *Workstep {
 func FindWorkstepInstanceByID(id uuid.UUID) *WorkstepInstance {
 	db := dbconf.DatabaseConnection()
 	instance := &WorkstepInstance{}
-	db.Where("id = ? AND workstep_id IS NOT NULL", id.String()).Find(&id)
+	db.Where("id = ? AND workstep_id IS NOT NULL", id.String()).Find(&instance)
 	if instance == nil || instance.ID == uuid.Nil {
 		return nil
 	}
