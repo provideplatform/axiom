@@ -5,7 +5,7 @@ on:
       - master
 jobs:
   push_to_branch:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
       SLACK_WEBHOOK_URL: ${{ secrets.INTEGRATION_SLACK_WEBHOOK }}
