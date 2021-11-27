@@ -535,6 +535,8 @@ github.com/provideplatform/ident v0.9.10-0.20210903195520-28bcb83ac5d6/go.mod h1
 github.com/provideplatform/provide-go v0.0.0-20210624064849-d7328258f0d8/go.mod h1:q0/Q8KaZxYg84rdwBIIE7ZwHluzM5zw7zJJoJOqAbzg=
 github.com/provideplatform/provide-go v0.0.0-20211126180837-8b88e176363f h1:JeoWTd17uZcS2AVGHQUq3EMsQfluJ/DStG4OhlHjmvs=
 github.com/provideplatform/provide-go v0.0.0-20211126180837-8b88e176363f/go.mod h1:q0/Q8KaZxYg84rdwBIIE7ZwHluzM5zw7zJJoJOqAbzg=
+github.com/provideplatform/provide-go v0.0.0-20211127050707-46885782be9e h1:vv9RlztvBsM54iy183SYaGhl3rb4DEIxh1t7flWujAk=
+github.com/provideplatform/provide-go v0.0.0-20211127050707-46885782be9e/go.mod h1:q0/Q8KaZxYg84rdwBIIE7ZwHluzM5zw7zJJoJOqAbzg=
 github.com/rcrowley/go-metrics v0.0.0-20190826022208-cac0b30c2563/go.mod h1:bCqnVzQkZxMG4s8nGwiZ5l3QUCyqpo9Y+/ZMZ9VjZe4=
 github.com/rivo/uniseg v0.1.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
 github.com/rivo/uniseg v0.2.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
