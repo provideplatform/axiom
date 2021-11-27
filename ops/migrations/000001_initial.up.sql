@@ -170,6 +170,7 @@ CREATE TABLE public.worksteps (
     workflow_id uuid NOT NULL,
     workstep_id uuid,
     prover_id uuid,
+    shield text,
     status varchar(64) NOT NULL
 );
 
