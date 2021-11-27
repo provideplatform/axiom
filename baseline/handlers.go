@@ -691,8 +691,8 @@ func listWorkflowsHandler(c *gin.Context) {
 
 	var workflows []*Workflow
 
-	filterInstances := strings.ToLower(c.Param("filter_instances")) == "true"
-	filterPrototypes := strings.ToLower(c.Param("filter_prototypes")) == "true"
+	filterInstances := strings.ToLower(c.Query("filter_instances")) == "true"
+	filterPrototypes := strings.ToLower(c.Query("filter_prototypes")) == "true"
 
 	db := dbconf.DatabaseConnection()
 	var query *gorm.DB
@@ -727,7 +727,12 @@ func workflowDetailsHandler(c *gin.Context) {
 		return
 	}
 
-	workflow := LookupBaselineWorkflow(c.Param("id"))
+	workflowID, err := uuid.FromString(c.Param("id"))
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+	workflow := FindWorkflowByID(workflowID)
 
 	if workflow != nil {
 		provide.Render(workflow, 200, c)
