@@ -43,13 +43,13 @@ type Workflow struct {
 	Participants []*Participant `gorm:"many2many:workflows_participants" json:"participants"`
 	WorkgroupID  *uuid.UUID     `json:"workgroup_id"`
 	WorkflowID   *uuid.UUID     `json:"workflow_id"` // when nil, indicates the workflow is a prototype (not an instance)
-	Worksteps    []*Workstep    `gorm:"many2many:workflows_worksteps" json:"worksteps,omitempty"`
+	Worksteps    []*Workstep    `json:"worksteps,omitempty"`
 }
 
 // WorkflowInstance is a baseline workflow instance
 type WorkflowInstance struct {
 	baseline.WorkflowInstance
-	Worksteps []*baseline.WorkstepInstance `gorm:"many2many:workflowinstances_worksteps" json:"worksteps,omitempty"`
+	Worksteps []*baseline.WorkstepInstance `json:"worksteps,omitempty"`
 }
 
 func (f *WorkflowInstance) TableName() string {
@@ -60,7 +60,7 @@ func (f *WorkflowInstance) TableName() string {
 func FindWorkflowByID(id uuid.UUID) *Workflow {
 	db := dbconf.DatabaseConnection()
 	workflow := &Workflow{}
-	db.Where("id = ?", id.String()).Find(&id)
+	db.Where("id = ?", id.String()).Find(&workflow)
 	if workflow == nil || workflow.ID == uuid.Nil {
 		return nil
 	}
@@ -337,6 +337,17 @@ func (w *Workflow) Create() bool {
 		}
 		if !db.NewRecord(w) {
 			success = rowsAffected > 0
+
+			if success && !w.isPrototype() {
+				for _, workstep := range FindWorkstepsByWorkflowID(*w.WorkflowID) {
+					raw, _ := json.Marshal(workstep)
+					instance := &Workstep{}
+					json.Unmarshal(raw, &instance)
+					instance.WorkstepID = &workstep.ID
+					instance.ID = uuid.Nil
+					instance.Create()
+				}
+			}
 		}
 	}
 

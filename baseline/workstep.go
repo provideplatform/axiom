@@ -25,6 +25,7 @@ const workstepStatusDeployed = "deployed"
 const workstepStatusDeprecated = "deprecated"
 
 // workstep instance statuses
+// FIXME? add 'pending'
 const workstepStatusInit = "init"
 const workstepStatusRunning = "running"
 const workstepStatusCompleted = "completed"
@@ -56,6 +57,14 @@ func FindWorkstepByID(id uuid.UUID) *Workstep {
 		return nil
 	}
 	return workstep
+}
+
+// FindWorkstepsByWorkflowID retrieves a list of worksteps for the given workflow id
+func FindWorkstepsByWorkflowID(id uuid.UUID) []*Workstep {
+	worksteps := make([]*Workstep, 0)
+	db := dbconf.DatabaseConnection()
+	db.Where("workflow_id = ?", id.String()).Find(&worksteps)
+	return worksteps
 }
 
 // FindWorkstepInstanceByID retrieves a workflow instance for the given id
