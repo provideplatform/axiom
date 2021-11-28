@@ -407,7 +407,7 @@ func (w *Workflow) Validate() bool {
 			w.Errors = append(w.Errors, &provide.Error{
 				Message: common.StringOrNil("attempted to instantiate deprecated prototype"),
 			})
-		} else if *proto.Status == workflowStatusDeployed {
+		} else if *proto.Status != workflowStatusDeployed {
 			w.Errors = append(w.Errors, &provide.Error{
 				Message: common.StringOrNil("ineligible prototype - this is likely an ephemeral failure; please try again"),
 			})
