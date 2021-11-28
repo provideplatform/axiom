@@ -389,11 +389,27 @@ func (w *Workflow) Validate() bool {
 		})
 	}
 
-	if w.WorkflowID != nil {
+	if !w.isPrototype() {
 		proto := FindWorkflowByID(*w.WorkflowID)
 		if !proto.isPrototype() {
 			w.Errors = append(w.Errors, &provide.Error{
 				Message: common.StringOrNil("ineligible prototype"),
+			})
+		} else if *proto.Status == workflowStatusDraft {
+			w.Errors = append(w.Errors, &provide.Error{
+				Message: common.StringOrNil("attempted to instantiate draft prototype"),
+			})
+		} else if proto.Version == nil {
+			w.Errors = append(w.Errors, &provide.Error{
+				Message: common.StringOrNil("attempted to instantiate unversioned prototype"),
+			})
+		} else if *proto.Status == workflowStatusDeprecated {
+			w.Errors = append(w.Errors, &provide.Error{
+				Message: common.StringOrNil("attempted to instantiate deprecated prototype"),
+			})
+		} else if *proto.Status == workflowStatusDeployed {
+			w.Errors = append(w.Errors, &provide.Error{
+				Message: common.StringOrNil("ineligible prototype - this is likely an ephemeral failure; please try again"),
 			})
 		}
 	}
