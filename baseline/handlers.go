@@ -429,8 +429,28 @@ func listWorkgroupsHandler(c *gin.Context) {
 		return
 	}
 
-	var workgroup []*Workgroup
-	provide.Render(workgroup, 200, c)
+	// token, _ := util.ParseBearerAuthorizationHeader(c, nil)
+	// resp, err := ident.ListApplications(token.Raw, map[string]interface{}{})
+
+	// if err == nil {
+	// 	provide.Render(resp, 200, c)
+	// } else {
+	// 	provide.RenderError(fmt.Sprintf("failed to list workgroups; %s", err.Error()), 500, c)
+	// }
+
+	var workgroups []*Workgroup
+
+	db := dbconf.DatabaseConnection()
+	var query *gorm.DB
+
+	if query == nil {
+		query = db.Order("workgroups.created_at DESC")
+	} else {
+		query = query.Order("workgroups.created_at DESC")
+	}
+
+	provide.Paginate(c, query, &Workflow{}).Find(&workgroups)
+	provide.Render(workgroups, 200, c)
 }
 
 func workgroupDetailsHandler(c *gin.Context) {
