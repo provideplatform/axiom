@@ -382,6 +382,15 @@ func (w *Workflow) Validate() bool {
 		})
 	}
 
+	if w.WorkflowID != nil {
+		proto := FindWorkflowByID(*w.WorkflowID)
+		if !proto.isPrototype() {
+			w.Errors = append(w.Errors, &provide.Error{
+				Message: common.StringOrNil("ineligible prototype"),
+			})
+		}
+	}
+
 	// switch *w.Status {
 	// 	case workflowStatusDraft:
 	// 	case workflowStatusDeployed:
