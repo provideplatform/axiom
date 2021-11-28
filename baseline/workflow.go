@@ -78,6 +78,13 @@ func FindWorkflowInstanceByID(id uuid.UUID) *WorkflowInstance {
 	return instance
 }
 
+// enrich a workflow
+func (w *Workflow) enrich() error {
+	// the next line enriching worksteps is not the preferred methods... use workflows/:id/worksteps list endpoint
+	// w.Worksteps = FindWorkstepsByWorkflowID(w.ID)
+	return nil
+}
+
 // Cache a workflow instance
 func (w *WorkflowInstance) Cache() error {
 	if w.ID == uuid.Nil {

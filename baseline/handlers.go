@@ -732,9 +732,11 @@ func workflowDetailsHandler(c *gin.Context) {
 		provide.RenderError(err.Error(), 422, c)
 		return
 	}
+
 	workflow := FindWorkflowByID(workflowID)
 
 	if workflow != nil {
+		workflow.enrich()
 		provide.Render(workflow, 200, c)
 	} else {
 		provide.RenderError("workflow not found", 404, c)
@@ -802,8 +804,8 @@ func listWorkstepsHandler(c *gin.Context) {
 	db := dbconf.DatabaseConnection()
 	var query *gorm.DB
 
-	if c.Query("workflow_id") != "" {
-		query = db.Where("worksteps.workflow_id = ?", c.Query("workflow_id"))
+	if c.Param("id") != "" {
+		query = db.Where("worksteps.workflow_id = ?", c.Query("id"))
 	}
 	if filterInstances {
 		query = db.Where("worksteps.workstep_id IS NULL")
