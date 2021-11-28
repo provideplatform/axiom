@@ -311,7 +311,7 @@ func etherscanBaseURL(networkID string) *string {
 }
 
 func (w *Workstep) isPrototype() bool {
-	return w.WorkstepID != nil
+	return w.WorkstepID == nil
 }
 
 func (w *Workstep) Create() bool {

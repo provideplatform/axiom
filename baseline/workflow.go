@@ -313,7 +313,7 @@ func circuitParamsFactory(name, identifier string, noteStoreID, nullifierStoreID
 }
 
 func (w *Workflow) isPrototype() bool {
-	return w.WorkflowID != nil
+	return w.WorkflowID == nil
 }
 
 func (w *Workflow) Create() bool {
