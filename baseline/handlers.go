@@ -854,7 +854,13 @@ func workstepDetailsHandler(c *gin.Context) {
 		return
 	}
 
-	workstep := LookupBaselineWorkstep(c.Param("id"))
+	workstepID, err := uuid.FromString(c.Param("workstepId"))
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	workstep := FindWorkstepByID(workstepID)
 
 	if workstep != nil {
 		provide.Render(workstep, 200, c)
