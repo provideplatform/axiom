@@ -327,6 +327,7 @@ func (w *Workstep) Update(other *Workstep) bool {
 	workflow := FindWorkflowByID(*w.WorkflowID)
 	worksteps := FindWorkstepsByWorkflowID(*w.WorkflowID)
 	adjustsCardinality := false
+	previousCardinality := w.Cardinality
 
 	if workflow.isPrototype() {
 		if workflow.Status != nil && *workflow.Status != workflowStatusDraft {
@@ -358,16 +359,16 @@ func (w *Workstep) Update(other *Workstep) bool {
 			adjustsCardinality = true
 
 			for i, workstep := range worksteps {
-				if w.Cardinality > other.Cardinality {
+				if previousCardinality > other.Cardinality {
 					// cardinality moved left... adjust all affectedcardinalities + 1
-					if i >= other.Cardinality-1 && i < w.Cardinality-1 {
+					if i >= other.Cardinality-1 && i < previousCardinality-1 {
 						workstep.Cardinality++
 						workstep.Cardinality *= -1
 						tx.Save(&workstep)
 					}
 				} else if w.Cardinality < other.Cardinality {
 					// cardinality moved right... adjust all affected cardinalities - 1
-					if i >= w.Cardinality-1 && i < other.Cardinality-1 {
+					if i >= previousCardinality-1 && i < other.Cardinality-1 {
 						workstep.Cardinality--
 						workstep.Cardinality *= -1
 						tx.Save(&workstep)
@@ -378,7 +379,7 @@ func (w *Workstep) Update(other *Workstep) bool {
 
 		// modify the cardinality
 		w.Cardinality = other.Cardinality
-	} else if other.Cardinality != 0 && w.Cardinality != other.Cardinality {
+	} else if other.Cardinality != 0 && previousCardinality != other.Cardinality {
 		w.Errors = append(w.Errors, &provide.Error{
 			Message: common.StringOrNil("cannot modify instantiated workstep cardinality"),
 		})
@@ -392,15 +393,15 @@ func (w *Workstep) Update(other *Workstep) bool {
 
 	if adjustsCardinality {
 		for i, workstep := range worksteps {
-			if w.Cardinality > other.Cardinality {
+			if previousCardinality > other.Cardinality {
 				// cardinality moved left... adjust all affectedcardinalities + 1
-				if i >= other.Cardinality-1 && i < w.Cardinality-1 {
+				if i >= other.Cardinality-1 && i < previousCardinality-1 {
 					workstep.Cardinality *= -1
 					tx.Save(&workstep)
 				}
-			} else if w.Cardinality < other.Cardinality {
+			} else if previousCardinality < other.Cardinality {
 				// cardinality moved right... adjust all affected cardinalities - 1
-				if i >= w.Cardinality-1 && i < other.Cardinality-1 {
+				if i >= previousCardinality-1 && i < other.Cardinality-1 {
 					workstep.Cardinality *= -1
 					tx.Save(&workstep)
 				}
