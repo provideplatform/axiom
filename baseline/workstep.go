@@ -399,9 +399,23 @@ func (w *Workstep) Validate() bool {
 		}
 	}
 
+	if w.Cardinality == 0 {
+		workflow := FindWorkflowByID(*w.WorkflowID)
+		if workflow.isPrototype() {
+			worksteps := FindWorkstepsByWorkflowID(*w.WorkflowID)
+			w.Cardinality = len(worksteps) + 1
+		}
+	}
+
 	if w.Status == nil {
 		w.Errors = append(w.Errors, &provide.Error{
 			Message: common.StringOrNil("status is required"),
+		})
+	}
+
+	if w.WorkflowID == nil {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil("workflow reference is required"),
 		})
 	}
 
