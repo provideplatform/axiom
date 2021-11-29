@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	dbconf "github.com/kthomas/go-db-config"
 	natsutil "github.com/kthomas/go-natsutil"
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/nats-io/nats.go"
@@ -73,6 +74,7 @@ func init() {
 	})
 
 	createNatsBaselineProxySubscriptions(&waitGroup)
+	createNatsBaselineWorkflowDeploySubscriptions(&waitGroup)
 	createNatsBaselineWorkstepDeploySubscriptions(&waitGroup)
 	createNatsDispatchInvitationSubscriptions(&waitGroup)
 	createNatsDispatchProtocolMessageSubscriptions(&waitGroup)
@@ -308,10 +310,24 @@ func consumeBaselineWorkflowDeploySubscriptionsMsg(msg *nats.Msg) {
 		return
 	}
 
+	success := true
+
 	workflow := FindWorkflowByID(workstepID)
-	if workflow.deploy() {
-		common.Log.Debugf("deployed workflow: %s", workflow.ID)
+	worksteps := FindWorkstepsByWorkflowID(workflow.ID)
+	for _, workstep := range worksteps {
+		if workstep.Status != nil && *workstep.Status != workstepStatusDeployed {
+			common.Log.Debugf("waiting on workstep with id %s for pending deployment of workflow: %s", workstep.ID, workflow.ID)
+			success = false
+		}
+	}
+
+	if success {
+		db := dbconf.DatabaseConnection()
+		workflow.Status = common.StringOrNil(workflowStatusDeployed)
+		db.Save(&workflow)
 		msg.Ack()
+	} else {
+		msg.Nak()
 	}
 }
 
