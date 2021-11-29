@@ -8,6 +8,7 @@ import (
 	"time"
 
 	dbconf "github.com/kthomas/go-db-config"
+	"github.com/kthomas/go-natsutil"
 	"github.com/kthomas/go-redisutil"
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideplatform/baseline/common"
@@ -27,6 +28,7 @@ const requireCircuitTimeout = time.Minute * 5
 
 const workflowStatusDraft = "draft"
 const workflowStatusDeployed = "deployed"
+const workflowStatusPendingDeployment = "pending_deployment"
 const workflowStatusDeprecated = "deprecated"
 
 // workflow instance statuses
@@ -319,6 +321,45 @@ func circuitParamsFactory(name, identifier string, noteStoreID, nullifierStoreID
 	return params
 }
 
+// deploy the workflow
+func (w *Workflow) deploy() bool {
+	if w.Status != nil && *w.Status != workflowStatusDraft {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil(fmt.Sprintf("cannot deploy workflow with status: %s", *w.Status)),
+		})
+		return false
+	}
+
+	w.Status = common.StringOrNil(workflowStatusPendingDeployment)
+
+	worksteps := FindWorkstepsByWorkflowID(w.ID)
+	for _, workstep := range worksteps {
+		params := map[string]interface{}{
+			"workstep_id": workstep.ID.String(),
+		}
+		payload, _ := json.Marshal(params)
+
+		_, err := natsutil.NatsJetstreamPublish("baseline.workstep.deploy", payload)
+		if err != nil {
+			common.Log.Warningf("failed to deploy workstep; failed to publish deploy message; %s", err.Error())
+			return false
+		}
+	}
+
+	params := map[string]interface{}{
+		"workflow_id": w.ID.String(),
+	}
+	payload, _ := json.Marshal(params)
+
+	_, err := natsutil.NatsJetstreamPublish("baseline.workflow.deploy", payload)
+	if err != nil {
+		common.Log.Warningf("failed to deploy workflow; failed to publish deploy message; %s", err.Error())
+		return false
+	}
+
+	return true
+}
+
 func (w *Workflow) isPrototype() bool {
 	return w.WorkflowID == nil
 }
@@ -369,7 +410,12 @@ func (w *Workflow) Update(other *Workflow) bool {
 
 	// these validations are for update only...
 	if w.isPrototype() {
-		if *w.Status == workflowStatusDeployed && other.Status != nil && *other.Status != *w.Status && *w.Status != workflowStatusDeprecated {
+		if *w.Status == workflowStatusDeployed && other.Status != nil && *other.Status != *w.Status && *other.Status != workflowStatusDeprecated {
+			w.Errors = append(w.Errors, &provide.Error{
+				Message: common.StringOrNil("invalid state transition"),
+			})
+			return false
+		} else if *w.Status == workflowStatusPendingDeployment && other.Status != nil && *other.Status != *w.Status && *other.Status != workflowStatusDeployed {
 			w.Errors = append(w.Errors, &provide.Error{
 				Message: common.StringOrNil("invalid state transition"),
 			})
@@ -381,8 +427,13 @@ func (w *Workflow) Update(other *Workflow) bool {
 			return false
 		}
 
-		if *w.Status != workflowStatusDeployed && *w.Status != workflowStatusDeprecated {
+		if *w.Status != workflowStatusDeployed && *w.Status != workflowStatusPendingDeployment && *w.Status != workflowStatusDeprecated {
 			w.Version = other.Version
+
+			if *w.Status == workflowStatusDraft && other.Status != nil && *other.Status == workflowStatusDeployed {
+				// deploy the workflow...
+				w.deploy()
+			}
 		}
 	}
 
@@ -455,19 +506,6 @@ func (w *Workflow) Validate() bool {
 			})
 		}
 	}
-
-	// switch *w.Status {
-	// 	case workflowStatusDraft:
-	// 	case workflowStatusDeployed:
-	// 	case workflowStatusDeprecated:
-	// 	case workflowStatusInit:
-	// 	case workflowStatusRunning:
-	// 	case workflowStatusCompleted:
-	// 	case workflowStatusCanceled:
-	// 	case workflowStatusFailed:
-	// 	default:
-	// 		// no-op
-	// }
 
 	return len(w.Errors) == 0
 }

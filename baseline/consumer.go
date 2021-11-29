@@ -24,6 +24,16 @@ const natsDispatchInvitationMaxInFlight = 2048
 const dispatchInvitationAckWait = time.Second * 30
 const natsDispatchInvitationMaxDeliveries = 10
 
+const natsBaselineWorkflowDeployMessageSubject = "baseline.workflow.deploy"
+const natsBaselineWorkflowDeployMessageMaxInFlight = 2048
+const baselineWorkflowDeployMessageAckWait = time.Second * 30
+const natsBaselineWorkflowDeployMessageMaxDeliveries = 10
+
+const natsBaselineWorkstepDeployMessageSubject = "baseline.workstep.deploy"
+const natsBaselineWorkstepDeployMessageMaxInFlight = 2048
+const baselineWorkstepDeployMessageAckWait = time.Second * 30
+const natsBaselineWorkstepDeployMessageMaxDeliveries = 10
+
 const natsDispatchProtocolMessageSubject = "baseline.protocolmessage.outbound"
 const natsDispatchProtocolMessageMaxInFlight = 2048
 const dispatchProtocolMessageAckWait = time.Second * 30
@@ -63,6 +73,7 @@ func init() {
 	})
 
 	createNatsBaselineProxySubscriptions(&waitGroup)
+	createNatsBaselineWorkstepDeploySubscriptions(&waitGroup)
 	createNatsDispatchInvitationSubscriptions(&waitGroup)
 	createNatsDispatchProtocolMessageSubscriptions(&waitGroup)
 }
@@ -94,6 +105,38 @@ func createNatsBaselineProxySubscriptions(wg *sync.WaitGroup) {
 
 		msg.Ack()
 	})
+}
+
+func createNatsBaselineWorkflowDeploySubscriptions(wg *sync.WaitGroup) {
+	for i := uint64(0); i < natsutil.GetNatsConsumerConcurrency(); i++ {
+		natsutil.RequireNatsJetstreamSubscription(wg,
+			baselineWorkflowDeployMessageAckWait,
+			natsBaselineWorkflowDeployMessageSubject,
+			natsBaselineWorkflowDeployMessageSubject,
+			natsBaselineWorkflowDeployMessageSubject,
+			consumeBaselineWorkflowDeploySubscriptionsMsg,
+			baselineWorkflowDeployMessageAckWait,
+			natsBaselineWorkflowDeployMessageMaxInFlight,
+			natsBaselineWorkflowDeployMessageMaxDeliveries,
+			nil,
+		)
+	}
+}
+
+func createNatsBaselineWorkstepDeploySubscriptions(wg *sync.WaitGroup) {
+	for i := uint64(0); i < natsutil.GetNatsConsumerConcurrency(); i++ {
+		natsutil.RequireNatsJetstreamSubscription(wg,
+			baselineWorkstepDeployMessageAckWait,
+			natsBaselineWorkstepDeployMessageSubject,
+			natsBaselineWorkstepDeployMessageSubject,
+			natsBaselineWorkstepDeployMessageSubject,
+			consumeBaselineWorkstepDeploySubscriptionsMsg,
+			baselineWorkstepDeployMessageAckWait,
+			natsBaselineWorkstepDeployMessageMaxInFlight,
+			natsBaselineWorkstepDeployMessageMaxDeliveries,
+			nil,
+		)
+	}
 }
 
 func createNatsDispatchInvitationSubscriptions(wg *sync.WaitGroup) {
@@ -244,6 +287,58 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *nats.Msg) {
 	}
 
 	msg.Ack()
+}
+
+func consumeBaselineWorkflowDeploySubscriptionsMsg(msg *nats.Msg) {
+	common.Log.Debugf("consuming %d-byte NATS baseline workflow deploy message on subject: %s", len(msg.Data), msg.Subject)
+
+	var params map[string]interface{}
+
+	err := json.Unmarshal(msg.Data, &params)
+	if err != nil {
+		common.Log.Warningf("failed to umarshal baseline workflow deploy message; %s", err.Error())
+		msg.Nak()
+		return
+	}
+
+	workstepID, err := uuid.FromString(params["workflow_id"].(string))
+	if err != nil {
+		common.Log.Warningf("failed to parse baseline workflow id; %s", err.Error())
+		msg.Nak()
+		return
+	}
+
+	workflow := FindWorkflowByID(workstepID)
+	if workflow.deploy() {
+		common.Log.Debugf("deployed workflow: %s", workflow.ID)
+		msg.Ack()
+	}
+}
+
+func consumeBaselineWorkstepDeploySubscriptionsMsg(msg *nats.Msg) {
+	common.Log.Debugf("consuming %d-byte NATS baseline workstep deploy message on subject: %s", len(msg.Data), msg.Subject)
+
+	var params map[string]interface{}
+
+	err := json.Unmarshal(msg.Data, &params)
+	if err != nil {
+		common.Log.Warningf("failed to umarshal baseline workstep deploy message; %s", err.Error())
+		msg.Nak()
+		return
+	}
+
+	workstepID, err := uuid.FromString(params["workstep_id"].(string))
+	if err != nil {
+		common.Log.Warningf("failed to parse baseline workstep id; %s", err.Error())
+		msg.Nak()
+		return
+	}
+
+	workstep := FindWorkstepByID(workstepID)
+	if workstep.deploy() {
+		common.Log.Debugf("deployed workstep: %s", workstep.ID)
+		msg.Ack()
+	}
 }
 
 func consumeDispatchInvitationSubscriptionsMsg(msg *nats.Msg) {

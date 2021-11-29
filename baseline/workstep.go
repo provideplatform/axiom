@@ -310,6 +310,18 @@ func etherscanBaseURL(networkID string) *string {
 	}
 }
 
+func (w *Workstep) deploy() bool {
+	if w.Status != nil && *w.Status != workstepStatusDraft {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil(fmt.Sprintf("cannot deploy workstep with status: %s", *w.Status)),
+		})
+		return false
+	}
+
+	// FIXME!!!
+	return false
+}
+
 func (w *Workstep) isPrototype() bool {
 	return w.WorkstepID == nil
 }
@@ -330,14 +342,12 @@ func (w *Workstep) Update(other *Workstep) bool {
 	previousCardinality := w.Cardinality
 
 	if workflow.isPrototype() {
-		if workflow.Status != nil && *workflow.Status != workflowStatusDraft {
+		if workflow.Status != nil && *workflow.Status != workflowStatusDraft && other.Status != nil && *other.Status != *w.Status {
 			w.Errors = append(w.Errors, &provide.Error{
 				Message: common.StringOrNil("invalid state transition; referenced workflow is not in a mutable state"),
 			})
 			return false
-		}
-
-		if *w.Status == workstepStatusDeployed && other.Status != nil && *other.Status != *w.Status && *w.Status != workstepStatusDeprecated {
+		} else if *w.Status == workstepStatusDeployed && other.Status != nil && *other.Status != *w.Status && *other.Status != workstepStatusDeprecated {
 			w.Errors = append(w.Errors, &provide.Error{
 				Message: common.StringOrNil("invalid state transition"),
 			})
@@ -498,19 +508,6 @@ func (w *Workstep) Validate() bool {
 			Message: common.StringOrNil(fmt.Sprintf("invalid status: %s", *w.Status)),
 		})
 	}
-
-	// switch *w.Status {
-	// 	case workflowStatusDraft:
-	// 	case workflowStatusDeployed:
-	// 	case workflowStatusDeprecated:
-	// 	case workflowStatusInit:
-	// 	case workflowStatusRunning:
-	// 	case workflowStatusCompleted:
-	// 	case workflowStatusCanceled:
-	// 	case workflowStatusFailed:
-	// 	default:
-	// 		// no-op
-	// }
 
 	return len(w.Errors) == 0
 }
