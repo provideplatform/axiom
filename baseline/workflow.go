@@ -367,16 +367,18 @@ func (w *Workflow) Update(other *Workflow) bool {
 		return false
 	}
 
-	if *w.Status == workflowStatusDeployed && other.Status != nil && *other.Status != *w.Status && *w.Status != workflowStatusDeprecated {
-		w.Errors = append(w.Errors, &provide.Error{
-			Message: common.StringOrNil("invalid state transition"),
-		})
-		return false
-	} else if *w.Status == workflowStatusDeprecated && other.Status != nil && *w.Status != *other.Status {
-		w.Errors = append(w.Errors, &provide.Error{
-			Message: common.StringOrNil("invalid state transition; cannot modify status of deprecated workflow"),
-		})
-		return false
+	if w.isPrototype() {
+		if *w.Status == workflowStatusDeployed && other.Status != nil && *other.Status != *w.Status && *w.Status != workflowStatusDeprecated {
+			w.Errors = append(w.Errors, &provide.Error{
+				Message: common.StringOrNil("invalid state transition"),
+			})
+			return false
+		} else if *w.Status == workflowStatusDeprecated && other.Status != nil && *w.Status != *other.Status {
+			w.Errors = append(w.Errors, &provide.Error{
+				Message: common.StringOrNil("invalid state transition; cannot modify status of deprecated workflow"),
+			})
+			return false
+		}
 	}
 
 	// modify the status
