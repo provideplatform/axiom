@@ -169,6 +169,7 @@ CREATE TABLE public.worksteps (
     require_finality boolean default false NOT NULL,
     workflow_id uuid NOT NULL,
     workstep_id uuid,
+    cardinality integer NOT NULL,
     prover_id uuid,
     shield text,
     status varchar(64) NOT NULL
@@ -188,6 +189,8 @@ CREATE INDEX idx_worksteps_prover_id ON public.worksteps USING btree (prover_id)
 CREATE INDEX idx_worksteps_status ON public.worksteps USING btree (status);
 CREATE INDEX idx_worksteps_workflow_id ON public.worksteps USING btree (workflow_id);
 CREATE INDEX idx_worksteps_workstep_id ON public.worksteps USING btree (workstep_id);
+
+CREATE UNIQUE INDEX idx_worksteps_workflow_id_cardinality ON public.worksteps USING btree (workflow_id, cardinality);
 
 ALTER TABLE ONLY public.worksteps
   ADD CONSTRAINT worksteps_workflow_id_foreign FOREIGN KEY (workflow_id) REFERENCES public.workflows(id) ON UPDATE CASCADE ON DELETE CASCADE;

@@ -938,9 +938,9 @@ func listWorkstepsHandler(c *gin.Context) {
 	}
 
 	if query == nil {
-		query = db.Order("worksteps.created_at DESC")
+		query = db.Order("worksteps.cardinality ASC")
 	} else {
-		query = query.Order("worksteps.created_at DESC")
+		query = query.Order("worksteps.cardinality ASC")
 	}
 
 	provide.Paginate(c, query, &Workstep{}).Find(&worksteps)

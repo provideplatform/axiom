@@ -341,6 +341,9 @@ func (w *Workstep) Update(other *Workstep) bool {
 			})
 			return false
 		}
+
+		// modify the cardinality
+		w.Cardinality = other.Cardinality
 	}
 
 	// modify the status
