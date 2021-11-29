@@ -326,6 +326,7 @@ func (w *Workstep) Update(other *Workstep) bool {
 
 	workflow := FindWorkflowByID(*w.WorkflowID)
 	worksteps := FindWorkstepsByWorkflowID(*w.WorkflowID)
+	adjustsCardinality := false
 
 	if workflow.isPrototype() {
 		if workflow.Status != nil && *workflow.Status != workflowStatusDraft {
@@ -354,19 +355,21 @@ func (w *Workstep) Update(other *Workstep) bool {
 		}
 
 		if other.Cardinality != 0 && w.Cardinality != other.Cardinality {
-			worksteps := FindWorkstepsByWorkflowID(*w.WorkflowID)
+			adjustsCardinality = true
 
 			for i, workstep := range worksteps {
 				if w.Cardinality > other.Cardinality {
 					// cardinality moved left... adjust all affectedcardinalities + 1
 					if i >= other.Cardinality-1 && i < w.Cardinality-1 {
 						workstep.Cardinality++
+						workstep.Cardinality *= -1
 						tx.Save(&workstep)
 					}
 				} else if w.Cardinality < other.Cardinality {
 					// cardinality moved right... adjust all affected cardinalities - 1
 					if i >= w.Cardinality-1 && i < other.Cardinality-1 {
 						workstep.Cardinality--
+						workstep.Cardinality *= -1
 						tx.Save(&workstep)
 					}
 				}
@@ -386,6 +389,25 @@ func (w *Workstep) Update(other *Workstep) bool {
 	w.Status = other.Status
 
 	result := tx.Save(&w)
+
+	if adjustsCardinality {
+		for i, workstep := range worksteps {
+			if w.Cardinality > other.Cardinality {
+				// cardinality moved left... adjust all affectedcardinalities + 1
+				if i >= other.Cardinality-1 && i < w.Cardinality-1 {
+					workstep.Cardinality *= -1
+					tx.Save(&workstep)
+				}
+			} else if w.Cardinality < other.Cardinality {
+				// cardinality moved right... adjust all affected cardinalities - 1
+				if i >= w.Cardinality-1 && i < other.Cardinality-1 {
+					workstep.Cardinality *= -1
+					tx.Save(&workstep)
+				}
+			}
+		}
+	}
+
 	rowsAffected := result.RowsAffected
 	errors := result.GetErrors()
 	if len(errors) > 0 {
