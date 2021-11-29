@@ -320,7 +320,7 @@ func (w *Workstep) Update(other *Workstep) bool {
 		return false
 	}
 
-	workflow := FindWorkflowByID(w.ID)
+	workflow := FindWorkflowByID(*w.WorkflowID)
 
 	if workflow.isPrototype() {
 		if workflow.Status != nil && *workflow.Status != workflowStatusDraft {
