@@ -367,6 +367,7 @@ func (w *Workflow) Update(other *Workflow) bool {
 		return false
 	}
 
+	// these validations are for update only...
 	if w.isPrototype() {
 		if *w.Status == workflowStatusDeployed && other.Status != nil && *other.Status != *w.Status && *w.Status != workflowStatusDeprecated {
 			w.Errors = append(w.Errors, &provide.Error{
@@ -378,6 +379,10 @@ func (w *Workflow) Update(other *Workflow) bool {
 				Message: common.StringOrNil("invalid state transition; cannot modify status of deprecated workflow"),
 			})
 			return false
+		}
+
+		if *w.Status != workflowStatusDeployed && *w.Status != workflowStatusDeprecated {
+			w.Version = other.Version
 		}
 	}
 
