@@ -314,6 +314,50 @@ func (w *Workstep) isPrototype() bool {
 	return w.WorkstepID == nil
 }
 
+// Update the workstep
+func (w *Workstep) Update(other *Workstep) bool {
+	if !w.Validate() {
+		return false
+	}
+
+	workflow := FindWorkflowByID(w.ID)
+
+	if workflow.Status != nil && *workflow.Status != workflowStatusDraft {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil("invalid state transition; referenced workflow is not in a mutable state"),
+		})
+		return false
+	}
+
+	if *w.Status == workstepStatusDeployed && other.Status != nil && *other.Status != *w.Status && *w.Status != workstepStatusDeprecated {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil("invalid state transition"),
+		})
+		return false
+	} else if *w.Status == workflowStatusDeprecated && other.Status != nil && *w.Status != *other.Status {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil("invalid state transition; cannot modify status of deprecated workstep"),
+		})
+		return false
+	}
+
+	// modify the status
+	w.Status = other.Status
+
+	db := dbconf.DatabaseConnection()
+	result := db.Save(&w)
+	rowsAffected := result.RowsAffected
+	errors := result.GetErrors()
+	if len(errors) > 0 {
+		for _, err := range errors {
+			w.Errors = append(w.Errors, &provide.Error{
+				Message: common.StringOrNil(err.Error()),
+			})
+		}
+	}
+	return rowsAffected == 1 && len(errors) == 0
+}
+
 func (w *Workstep) Create() bool {
 	if !w.Validate() {
 		return false

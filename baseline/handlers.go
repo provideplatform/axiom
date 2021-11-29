@@ -83,6 +83,7 @@ func InstallWorkflowsAPI(r *gin.Engine) {
 	r.GET("/api/v1/workflows", listWorkflowsHandler)
 	r.GET("/api/v1/workflows/:id", workflowDetailsHandler)
 	r.POST("/api/v1/workflows", createWorkflowHandler)
+	r.PUT("/api/v1/workflows/:id", updateWorkflowHandler)
 }
 
 // InstallWorkstepsAPI installs workstep management APIs
@@ -90,6 +91,7 @@ func InstallWorkstepsAPI(r *gin.Engine) {
 	r.GET("/api/v1/workflows/:id/worksteps", listWorkstepsHandler)
 	r.GET("/api/v1/workflows/:id/worksteps/:workstepId", workstepDetailsHandler)
 	r.POST("/api/v1/workflows/:id/worksteps", createWorkstepHandler)
+	r.PUT("/api/v1/workflows/:id/worksteps/:workstepId", updateWorkstepHandler)
 }
 
 func configurationHandler(c *gin.Context) {
@@ -699,6 +701,52 @@ func createWorkflowHandler(c *gin.Context) {
 	}
 }
 
+func updateWorkflowHandler(c *gin.Context) {
+	organizationID := util.AuthorizedSubjectID(c, "organization")
+	if organizationID == nil {
+		provide.RenderError("unauthorized", 401, c)
+		return
+	} else if common.OrganizationID != nil && organizationID.String() != *common.OrganizationID {
+		provide.RenderError("forbidden", 403, c)
+		return
+	}
+
+	buf, err := c.GetRawData()
+	if err != nil {
+		provide.RenderError(err.Error(), 400, c)
+		return
+	}
+
+	workflowID, err := uuid.FromString(c.Param("workflowId"))
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	workflow := FindWorkflowByID(workflowID)
+	if workflow == nil {
+		provide.RenderError("not found", 404, c)
+		return
+	}
+
+	var _workflow *Workflow
+	err = json.Unmarshal(buf, &_workflow)
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	if workflow.Update(_workflow) {
+		provide.Render(workflow, 202, c)
+	} else if len(workflow.Errors) > 0 {
+		obj := map[string]interface{}{}
+		obj["errors"] = workflow.Errors
+		provide.Render(obj, 422, c)
+	} else {
+		provide.RenderError("internal persistence error", 500, c)
+	}
+}
+
 func listWorkflowsHandler(c *gin.Context) {
 	organizationID := util.AuthorizedSubjectID(c, "organization")
 	if organizationID == nil {
@@ -797,6 +845,61 @@ func createWorkstepHandler(c *gin.Context) {
 
 	if workstep.Create() {
 		provide.Render(workstep, 201, c)
+	} else if len(workstep.Errors) > 0 {
+		obj := map[string]interface{}{}
+		obj["errors"] = workstep.Errors
+		provide.Render(obj, 422, c)
+	} else {
+		provide.RenderError("internal persistence error", 500, c)
+	}
+}
+
+func updateWorkstepHandler(c *gin.Context) {
+	organizationID := util.AuthorizedSubjectID(c, "organization")
+	if organizationID == nil {
+		provide.RenderError("unauthorized", 401, c)
+		return
+	} else if common.OrganizationID != nil && organizationID.String() != *common.OrganizationID {
+		provide.RenderError("forbidden", 403, c)
+		return
+	}
+
+	buf, err := c.GetRawData()
+	if err != nil {
+		provide.RenderError(err.Error(), 400, c)
+		return
+	}
+
+	workflowID, err := uuid.FromString(c.Param("id"))
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	workstepID, err := uuid.FromString(c.Param("workstepId"))
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	workstep := FindWorkstepByID(workstepID)
+	if workstep == nil {
+		provide.RenderError("not found", 404, c)
+		return
+	} else if workstep.WorkflowID == nil || workstep.WorkflowID.String() != workflowID.String() {
+		provide.RenderError("forbidden", 403, c)
+		return
+	}
+
+	var _workstep *Workstep
+	err = json.Unmarshal(buf, &_workstep)
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	if workstep.Update(_workstep) {
+		provide.Render(workstep, 202, c)
 	} else if len(workstep.Errors) > 0 {
 		obj := map[string]interface{}{}
 		obj["errors"] = workstep.Errors

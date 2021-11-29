@@ -361,6 +361,41 @@ func (w *Workflow) Create() bool {
 	return success
 }
 
+// Update the workflow
+func (w *Workflow) Update(other *Workflow) bool {
+	if !w.Validate() {
+		return false
+	}
+
+	if *w.Status == workflowStatusDeployed && other.Status != nil && *other.Status != *w.Status && *w.Status != workflowStatusDeprecated {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil("invalid state transition"),
+		})
+		return false
+	} else if *w.Status == workflowStatusDeprecated && other.Status != nil && *w.Status != *other.Status {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil("invalid state transition; cannot modify status of deprecated workflow"),
+		})
+		return false
+	}
+
+	// modify the status
+	w.Status = other.Status
+
+	db := dbconf.DatabaseConnection()
+	result := db.Save(&w)
+	rowsAffected := result.RowsAffected
+	errors := result.GetErrors()
+	if len(errors) > 0 {
+		for _, err := range errors {
+			w.Errors = append(w.Errors, &provide.Error{
+				Message: common.StringOrNil(err.Error()),
+			})
+		}
+	}
+	return rowsAffected == 1 && len(errors) == 0
+}
+
 func (w *Workflow) Validate() bool {
 	if w.ID == uuid.Nil && w.Status == nil {
 		if w.WorkflowID == nil {
