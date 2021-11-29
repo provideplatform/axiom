@@ -717,7 +717,7 @@ func updateWorkflowHandler(c *gin.Context) {
 		return
 	}
 
-	workflowID, err := uuid.FromString(c.Param("workflowId"))
+	workflowID, err := uuid.FromString(c.Param("id"))
 	if err != nil {
 		provide.RenderError(err.Error(), 422, c)
 		return
