@@ -320,6 +320,10 @@ func (w *Workstep) Update(other *Workstep) bool {
 		return false
 	}
 
+	db := dbconf.DatabaseConnection()
+	tx := db.Begin()
+	defer tx.RollbackUnlessCommitted()
+
 	workflow := FindWorkflowByID(*w.WorkflowID)
 
 	if workflow.isPrototype() {
@@ -342,15 +346,39 @@ func (w *Workstep) Update(other *Workstep) bool {
 			return false
 		}
 
+		if other.Cardinality != 0 && w.Cardinality != other.Cardinality {
+			worksteps := FindWorkstepsByWorkflowID(*w.WorkflowID)
+
+			for i, workstep := range worksteps {
+				if w.Cardinality > other.Cardinality {
+					// adjust all cardinalities - 1
+					if i < other.Cardinality-1 {
+						workstep.Cardinality--
+						tx.Save(&workstep)
+					}
+				} else if w.Cardinality < other.Cardinality {
+					// adjust all cardinalities + 1
+					if i > other.Cardinality-1 {
+						workstep.Cardinality++
+						tx.Save(&workstep)
+					}
+				}
+			}
+		}
+
 		// modify the cardinality
 		w.Cardinality = other.Cardinality
+	} else if other.Cardinality != 0 && w.Cardinality != other.Cardinality {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil("cannot modify instantiated workstep cardinality"),
+		})
+		return false
 	}
 
 	// modify the status
 	w.Status = other.Status
 
-	db := dbconf.DatabaseConnection()
-	result := db.Save(&w)
+	result := tx.Save(&w)
 	rowsAffected := result.RowsAffected
 	errors := result.GetErrors()
 	if len(errors) > 0 {
@@ -360,7 +388,11 @@ func (w *Workstep) Update(other *Workstep) bool {
 			})
 		}
 	}
-	return rowsAffected == 1 && len(errors) == 0
+	success := rowsAffected >= 1 && len(errors) == 0
+	if success {
+		tx.Commit()
+	}
+	return success
 }
 
 func (w *Workstep) Create() bool {
@@ -399,12 +431,17 @@ func (w *Workstep) Validate() bool {
 		}
 	}
 
+	workflow := FindWorkflowByID(*w.WorkflowID)
+	worksteps := FindWorkstepsByWorkflowID(*w.WorkflowID)
+
 	if w.Cardinality == 0 {
-		workflow := FindWorkflowByID(*w.WorkflowID)
 		if workflow.isPrototype() {
-			worksteps := FindWorkstepsByWorkflowID(*w.WorkflowID)
 			w.Cardinality = len(worksteps) + 1
 		}
+	} else if w.Cardinality > len(worksteps) {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil("cardinality out of bounds"),
+		})
 	}
 
 	if w.Status == nil {
