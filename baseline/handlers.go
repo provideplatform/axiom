@@ -921,14 +921,14 @@ func listWorkstepsHandler(c *gin.Context) {
 
 	var worksteps []*Workstep
 
-	filterInstances := strings.ToLower(c.Param("filter_instances")) == "true"
-	filterPrototypes := strings.ToLower(c.Param("filter_prototypes")) == "true"
+	filterInstances := strings.ToLower(c.Query("filter_instances")) == "true"
+	filterPrototypes := strings.ToLower(c.Query("filter_prototypes")) == "true"
 
 	db := dbconf.DatabaseConnection()
 	var query *gorm.DB
 
 	if c.Param("id") != "" {
-		query = db.Where("worksteps.workflow_id = ?", c.Query("id"))
+		query = db.Where("worksteps.workflow_id = ?", c.Param("id"))
 	}
 	if filterInstances {
 		query = db.Where("worksteps.workstep_id IS NULL")
