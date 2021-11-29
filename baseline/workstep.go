@@ -325,6 +325,7 @@ func (w *Workstep) Update(other *Workstep) bool {
 	defer tx.RollbackUnlessCommitted()
 
 	workflow := FindWorkflowByID(*w.WorkflowID)
+	worksteps := FindWorkstepsByWorkflowID(*w.WorkflowID)
 
 	if workflow.isPrototype() {
 		if workflow.Status != nil && *workflow.Status != workflowStatusDraft {
@@ -344,6 +345,12 @@ func (w *Workstep) Update(other *Workstep) bool {
 				Message: common.StringOrNil("invalid state transition; cannot modify status of deprecated workstep"),
 			})
 			return false
+		}
+
+		if other.Cardinality > len(worksteps) {
+			w.Errors = append(w.Errors, &provide.Error{
+				Message: common.StringOrNil("cardinality out of bounds"),
+			})
 		}
 
 		if other.Cardinality != 0 && w.Cardinality != other.Cardinality {
