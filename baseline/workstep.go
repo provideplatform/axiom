@@ -358,15 +358,15 @@ func (w *Workstep) Update(other *Workstep) bool {
 
 			for i, workstep := range worksteps {
 				if w.Cardinality > other.Cardinality {
-					// adjust all cardinalities - 1
-					if i < other.Cardinality-1 {
-						workstep.Cardinality--
+					// cardinality moved left... adjust all affectedcardinalities + 1
+					if i >= other.Cardinality-1 && i < w.Cardinality-1 {
+						workstep.Cardinality++
 						tx.Save(&workstep)
 					}
 				} else if w.Cardinality < other.Cardinality {
-					// adjust all cardinalities + 1
-					if i > other.Cardinality-1 {
-						workstep.Cardinality++
+					// cardinality moved right... adjust all affected cardinalities - 1
+					if i >= w.Cardinality-1 && i < other.Cardinality-1 {
+						workstep.Cardinality--
 						tx.Save(&workstep)
 					}
 				}
