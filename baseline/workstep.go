@@ -493,7 +493,7 @@ func (w *Workstep) Delete() bool {
 	}
 
 	success := rowsAffected > 0
-	if success && w.isPrototype() {
+	if success {
 		x := w.Cardinality
 		for _, workstep := range FindWorkstepsByWorkflowID(*w.WorkflowID) {
 			if workstep.Cardinality > x {
