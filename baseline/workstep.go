@@ -478,7 +478,10 @@ func (w *Workstep) Delete() bool {
 	}
 
 	db := dbconf.DatabaseConnection()
-	result := db.Delete(&w)
+	tx := db.Begin()
+	defer tx.RollbackUnlessCommitted()
+
+	result := tx.Delete(&w)
 	rowsAffected := result.RowsAffected
 	errors := result.GetErrors()
 	if len(errors) > 0 {
@@ -489,7 +492,19 @@ func (w *Workstep) Delete() bool {
 		}
 	}
 
-	return rowsAffected > 0
+	success := rowsAffected > 0
+	if success && w.isPrototype() {
+		x := w.Cardinality
+		for i, workstep := range FindWorkstepsByWorkflowID(*w.WorkflowID) {
+			if i > x {
+				workstep.Cardinality--
+				tx.Save(&workstep)
+			}
+		}
+	}
+
+	tx.Commit()
+	return success
 }
 
 func (w *Workstep) Validate() bool {
