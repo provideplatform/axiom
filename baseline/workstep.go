@@ -462,6 +462,36 @@ func (w *Workstep) Create() bool {
 	return success
 }
 
+func (w *Workstep) Delete() bool {
+	if !w.isPrototype() {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil("cannot delete workstep instance"),
+		})
+		return false
+	}
+
+	if w.Status != nil && *w.Status != workstepStatusDraft {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil("non-draft workstep cannot be deleted"),
+		})
+		return false
+	}
+
+	db := dbconf.DatabaseConnection()
+	result := db.Delete(&w)
+	rowsAffected := result.RowsAffected
+	errors := result.GetErrors()
+	if len(errors) > 0 {
+		for _, err := range errors {
+			w.Errors = append(w.Errors, &provide.Error{
+				Message: common.StringOrNil(err.Error()),
+			})
+		}
+	}
+
+	return rowsAffected > 0
+}
+
 func (w *Workstep) Validate() bool {
 	if w.ID == uuid.Nil && w.Status == nil {
 		if w.WorkstepID == nil {
