@@ -496,7 +496,7 @@ func (w *Workstep) Delete() bool {
 	if success && w.isPrototype() {
 		x := w.Cardinality
 		for i, workstep := range FindWorkstepsByWorkflowID(*w.WorkflowID) {
-			if i > x {
+			if i >= x {
 				workstep.Cardinality--
 				tx.Save(&workstep)
 			}
