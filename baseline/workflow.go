@@ -388,7 +388,7 @@ func (w *Workflow) Create(tx *gorm.DB) bool {
 	_tx := tx
 	if _tx == nil {
 		db := dbconf.DatabaseConnection()
-		tx = db.Begin()
+		_tx = db.Begin()
 	}
 	defer _tx.RollbackUnlessCommitted()
 
