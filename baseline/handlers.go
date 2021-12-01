@@ -934,6 +934,11 @@ func updateWorkstepHandler(c *gin.Context) {
 		return
 	}
 
+	if workstep.Status != nil && _workstep.Status != nil && *workstep.Status != *_workstep.Status {
+		provide.RenderError("cannot modify workstep status", 400, c)
+		return
+	}
+
 	if workstep.Update(_workstep) {
 		provide.Render(workstep, 202, c)
 	} else if len(workstep.Errors) > 0 {
