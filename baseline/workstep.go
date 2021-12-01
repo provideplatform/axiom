@@ -646,6 +646,13 @@ func (w *Workstep) Validate() bool {
 	}
 
 	workflow := FindWorkflowByID(*w.WorkflowID)
+	if workflow == nil {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil("invalid workflow"),
+		})
+		return false
+	}
+
 	worksteps := FindWorkstepsByWorkflowID(*w.WorkflowID)
 
 	if w.Cardinality < 0 {
