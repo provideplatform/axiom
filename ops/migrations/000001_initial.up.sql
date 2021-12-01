@@ -124,7 +124,8 @@ CREATE TABLE public.workflows (
     status text NOT NULL,
     version text,
     workgroup_id uuid NOT NULL,
-    workflow_id uuid
+    workflow_id uuid,
+    metadata json DEFAULT '{}'
 );
 
 
@@ -172,7 +173,8 @@ CREATE TABLE public.worksteps (
     cardinality integer NOT NULL,
     prover_id uuid,
     shield text,
-    status varchar(64) NOT NULL
+    status varchar(64) NOT NULL,
+    metadata json DEFAULT '{}'
 );
 
 
