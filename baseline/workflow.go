@@ -420,7 +420,7 @@ func (w *Workflow) Create(tx *gorm.DB) bool {
 					if len(instance.Errors) == 0 {
 						common.Log.Debugf("spawned workstep instance %s for workflow: %s; cardinality: %d; workstep prototype: %s", instance.ID, instance.WorkflowID, instance.Cardinality, instance.WorkstepID)
 					} else {
-						err := fmt.Errorf("failed to spawn workstep instance for workflow: %s; workstep cardinality: %d; %s", w.ID, instance.Cardinality, *w.Errors[0].Message)
+						err := fmt.Errorf("failed to spawn workstep instance for workflow: %s; workstep cardinality: %d; %s", w.ID, instance.Cardinality, *instance.Errors[0].Message)
 						common.Log.Warningf(err.Error())
 						w.Errors = append(w.Errors, &provide.Error{
 							Message: common.StringOrNil(err.Error()),
