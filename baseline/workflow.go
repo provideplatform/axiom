@@ -406,8 +406,9 @@ func (w *Workflow) Create() bool {
 					raw, _ := json.Marshal(workstep)
 					instance := &Workstep{}
 					json.Unmarshal(raw, &instance)
-					instance.WorkstepID = &workstep.ID
 					instance.ID = uuid.Nil
+					instance.WorkflowID = &w.ID
+					instance.WorkstepID = &workstep.ID
 					instance.Create()
 				}
 			}
