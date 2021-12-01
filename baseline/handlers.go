@@ -1049,6 +1049,8 @@ func workstepDetailsHandler(c *gin.Context) {
 	workstep := FindWorkstepByID(workstepID)
 
 	if workstep != nil {
+		token, _ := util.ParseBearerAuthorizationHeader(c, nil)
+		workstep.enrich(token.Raw)
 		provide.Render(workstep, 200, c)
 	} else {
 		provide.RenderError("workstep not found", 404, c)

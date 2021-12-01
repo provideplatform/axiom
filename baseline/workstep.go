@@ -9,6 +9,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common/compiler"
 	dbconf "github.com/kthomas/go-db-config"
+	natsutil "github.com/kthomas/go-natsutil"
 	"github.com/kthomas/go-redisutil"
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideplatform/baseline/common"
@@ -23,6 +24,7 @@ const workstepCircuitStatusProvisioned = "provisioned"
 const workstepStatusDraft = "draft"
 const workstepStatusDeployed = "deployed"
 const workstepStatusDeprecated = "deprecated"
+const workstepStatusPendingDeployment = "pending_deployment"
 
 // workstep instance statuses
 // FIXME? add 'pending'
@@ -310,7 +312,21 @@ func etherscanBaseURL(networkID string) *string {
 	}
 }
 
-func (w *Workstep) deploy() bool {
+func (w *Workstep) enrich(token string) error {
+	if w.ProverID == nil {
+		return fmt.Errorf("failed to enrich workstep: %s", w.ID)
+	}
+
+	var err error
+	w.Prover, err = privacy.GetCircuitDetails(token, w.ProverID.String())
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (w *Workstep) deploy(token string) bool {
 	if w.Status != nil && *w.Status != workstepStatusDraft {
 		w.Errors = append(w.Errors, &provide.Error{
 			Message: common.StringOrNil(fmt.Sprintf("cannot deploy workstep with status: %s", *w.Status)),
@@ -318,8 +334,108 @@ func (w *Workstep) deploy() bool {
 		return false
 	}
 
-	// FIXME!!!
-	return false
+	var proverParams map[string]interface{}
+	metadata := w.ParseMetadata()
+	if params, paramsOk := metadata["prover"].(map[string]interface{}); paramsOk {
+		proverParams = params
+	}
+
+	if proverParams == nil {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil("failed to deploy workstep; no prover specified"),
+		})
+		return false
+	}
+
+	prover, err := privacy.CreateCircuit(token, proverParams)
+	if err != nil {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil(fmt.Sprintf("failed to deploy workstep; %s", err.Error())),
+		})
+		return false
+	}
+
+	w.ProverID = &prover.ID
+	w.Status = common.StringOrNil(workstepStatusPendingDeployment)
+
+	db := dbconf.DatabaseConnection()
+	result := db.Save(&w)
+	rowsAffected := result.RowsAffected
+	errors := result.GetErrors()
+	if len(errors) > 0 {
+		for _, err := range errors {
+			w.Errors = append(w.Errors, &provide.Error{
+				Message: common.StringOrNil(err.Error()),
+			})
+		}
+	}
+	success := rowsAffected > 0 && len(errors) == 0
+	if success {
+		common.Log.Debugf("deployed prover %s for workstep: %s", prover.ID, w.ID)
+
+		params := map[string]interface{}{
+			"workstep_id": w.ID.String(),
+		}
+		payload, _ := json.Marshal(params)
+		_, err := natsutil.NatsJetstreamPublish("baseline.workstep.deploy.finalize", payload)
+		if err != nil {
+			common.Log.Warningf("failed to deploy workflow; failed to publish finalize deploy message; %s", err.Error())
+			return false
+		}
+	}
+
+	return prover.ID != uuid.Nil && err != nil
+}
+
+func (w *Workstep) finalizeDeploy(token string) bool {
+	if w.Status != nil && *w.Status != workstepStatusPendingDeployment {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil(fmt.Sprintf("cannot finalize workstep deployment with status: %s", *w.Status)),
+		})
+		return false
+	}
+
+	if w.ProverID == nil {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil("cannot finalize workstep deployment without prover id"),
+		})
+		return false
+	}
+
+	prover, err := privacy.GetCircuitDetails(token, w.ProverID.String())
+	if err != nil {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil(fmt.Sprintf("failed to finalize workstep deployment; %s", err.Error())),
+		})
+		return false
+	}
+
+	if prover.Status != nil && *prover.Status == "" {
+		common.Log.Debugf("deployment still pending for workstep: %s", w.ID)
+		return false
+	}
+
+	deployedAt := time.Now()
+	w.DeployedAt = &deployedAt
+	w.Status = common.StringOrNil(workstepStatusDeployed)
+
+	db := dbconf.DatabaseConnection()
+	result := db.Save(&w)
+	rowsAffected := result.RowsAffected
+	errors := result.GetErrors()
+	if len(errors) > 0 {
+		for _, err := range errors {
+			w.Errors = append(w.Errors, &provide.Error{
+				Message: common.StringOrNil(err.Error()),
+			})
+		}
+	}
+	success := rowsAffected > 0 && len(errors) == 0
+	if success {
+		common.Log.Debugf("deployed prover %s for workstep: %s", prover.ID, w.ID)
+	}
+
+	return success
 }
 
 func (w *Workstep) isPrototype() bool {
@@ -561,6 +677,7 @@ func (w *Workstep) Validate() bool {
 	if *w.Status != workstepStatusDraft &&
 		*w.Status != workstepStatusDeployed &&
 		*w.Status != workstepStatusDeprecated &&
+		*w.Status != workstepStatusPendingDeployment &&
 		*w.Status != workstepStatusInit &&
 		*w.Status != workstepStatusRunning &&
 		*w.Status != workstepStatusCompleted &&

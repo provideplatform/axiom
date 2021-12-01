@@ -12,6 +12,7 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/provideplatform/baseline/common"
 	"github.com/provideplatform/provide-go/api/baseline"
+	"github.com/provideplatform/provide-go/api/ident"
 	"github.com/provideplatform/provide-go/api/privacy"
 )
 
@@ -34,6 +35,11 @@ const natsBaselineWorkstepDeployMessageSubject = "baseline.workstep.deploy"
 const natsBaselineWorkstepDeployMessageMaxInFlight = 2048
 const baselineWorkstepDeployMessageAckWait = time.Second * 30
 const natsBaselineWorkstepDeployMessageMaxDeliveries = 10
+
+const natsBaselineWorkstepFinalizeDeployMessageSubject = "baseline.workstep.deploy.finalize"
+const natsBaselineWorkstepFinalizeDeployMessageMaxInFlight = 2048
+const baselineWorkstepFinalizeDeployMessageAckWait = time.Second * 30
+const natsBaselineWorkstepFinalizeDeployMessageMaxDeliveries = 10
 
 const natsDispatchProtocolMessageSubject = "baseline.protocolmessage.outbound"
 const natsDispatchProtocolMessageMaxInFlight = 2048
@@ -76,6 +82,7 @@ func init() {
 	createNatsBaselineProxySubscriptions(&waitGroup)
 	createNatsBaselineWorkflowDeploySubscriptions(&waitGroup)
 	createNatsBaselineWorkstepDeploySubscriptions(&waitGroup)
+	createNatsBaselineWorkstepFinalizeDeploySubscriptions(&waitGroup)
 	createNatsDispatchInvitationSubscriptions(&waitGroup)
 	createNatsDispatchProtocolMessageSubscriptions(&waitGroup)
 }
@@ -116,7 +123,7 @@ func createNatsBaselineWorkflowDeploySubscriptions(wg *sync.WaitGroup) {
 			natsBaselineWorkflowDeployMessageSubject,
 			natsBaselineWorkflowDeployMessageSubject,
 			natsBaselineWorkflowDeployMessageSubject,
-			consumeBaselineWorkflowDeploySubscriptionsMsg,
+			consumeBaselineWorkflowFinalizeDeploySubscriptionsMsg,
 			baselineWorkflowDeployMessageAckWait,
 			natsBaselineWorkflowDeployMessageMaxInFlight,
 			natsBaselineWorkflowDeployMessageMaxDeliveries,
@@ -136,6 +143,22 @@ func createNatsBaselineWorkstepDeploySubscriptions(wg *sync.WaitGroup) {
 			baselineWorkstepDeployMessageAckWait,
 			natsBaselineWorkstepDeployMessageMaxInFlight,
 			natsBaselineWorkstepDeployMessageMaxDeliveries,
+			nil,
+		)
+	}
+}
+
+func createNatsBaselineWorkstepFinalizeDeploySubscriptions(wg *sync.WaitGroup) {
+	for i := uint64(0); i < natsutil.GetNatsConsumerConcurrency(); i++ {
+		natsutil.RequireNatsJetstreamSubscription(wg,
+			baselineWorkstepFinalizeDeployMessageAckWait,
+			natsBaselineWorkstepFinalizeDeployMessageSubject,
+			natsBaselineWorkstepFinalizeDeployMessageSubject,
+			natsBaselineWorkstepFinalizeDeployMessageSubject,
+			consumeBaselineWorkstepFinalizeDeploySubscriptionsMsg,
+			baselineWorkstepFinalizeDeployMessageAckWait,
+			natsBaselineWorkstepFinalizeDeployMessageMaxInFlight,
+			natsBaselineWorkstepFinalizeDeployMessageMaxDeliveries,
 			nil,
 		)
 	}
@@ -291,7 +314,7 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *nats.Msg) {
 	msg.Ack()
 }
 
-func consumeBaselineWorkflowDeploySubscriptionsMsg(msg *nats.Msg) {
+func consumeBaselineWorkflowFinalizeDeploySubscriptionsMsg(msg *nats.Msg) {
 	common.Log.Debugf("consuming %d-byte NATS baseline workflow deploy message on subject: %s", len(msg.Data), msg.Subject)
 
 	var params map[string]interface{}
@@ -351,9 +374,59 @@ func consumeBaselineWorkstepDeploySubscriptionsMsg(msg *nats.Msg) {
 	}
 
 	workstep := FindWorkstepByID(workstepID)
-	if workstep.deploy() {
+
+	token, err := ident.CreateToken(*common.OrganizationRefreshToken, map[string]interface{}{
+		"grant_type":      "refresh_token",
+		"organization_id": *common.OrganizationID,
+	})
+	if err != nil {
+		common.Log.Warningf("failed to vend organization access token; %s", err.Error())
+		return
+	}
+
+	if workstep.deploy(*token.AccessToken) {
+		common.Log.Debugf("workstep pending deployment: %s", workstep.ID)
+		msg.Ack()
+	} else {
+		common.Log.Warningf("failed to deploy workstep: %s; nacking message...", workstep.ID)
+	}
+}
+
+func consumeBaselineWorkstepFinalizeDeploySubscriptionsMsg(msg *nats.Msg) {
+	common.Log.Debugf("consuming %d-byte NATS baseline workstep finalize deploy message on subject: %s", len(msg.Data), msg.Subject)
+
+	var params map[string]interface{}
+
+	err := json.Unmarshal(msg.Data, &params)
+	if err != nil {
+		common.Log.Warningf("failed to umarshal baseline workstep finalize deploy message; %s", err.Error())
+		msg.Nak()
+		return
+	}
+
+	workstepID, err := uuid.FromString(params["workstep_id"].(string))
+	if err != nil {
+		common.Log.Warningf("failed to parse baseline workstep id; %s", err.Error())
+		msg.Nak()
+		return
+	}
+
+	workstep := FindWorkstepByID(workstepID)
+
+	token, err := ident.CreateToken(*common.OrganizationRefreshToken, map[string]interface{}{
+		"grant_type":      "refresh_token",
+		"organization_id": *common.OrganizationID,
+	})
+	if err != nil {
+		common.Log.Warningf("failed to vend organization access token; %s", err.Error())
+		return
+	}
+
+	if workstep.finalizeDeploy(*token.AccessToken) {
 		common.Log.Debugf("deployed workstep: %s", workstep.ID)
 		msg.Ack()
+	} else {
+		common.Log.Warningf("failed to finalize workstep deployment: %s; nacking message...", workstep.ID)
 	}
 }
 

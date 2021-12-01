@@ -517,6 +517,7 @@ func (w *Workflow) Validate() bool {
 
 	if *w.Status != workflowStatusDraft &&
 		*w.Status != workflowStatusDeployed &&
+		*w.Status != workflowStatusPendingDeployment &&
 		*w.Status != workflowStatusDeprecated &&
 		*w.Status != workflowStatusInit &&
 		*w.Status != workflowStatusRunning &&
