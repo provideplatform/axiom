@@ -693,7 +693,7 @@ func createWorkflowHandler(c *gin.Context) {
 		return
 	}
 
-	if workflow.Create() {
+	if workflow.Create(nil) {
 		provide.Render(workflow, 201, c)
 	} else if len(workflow.Errors) > 0 {
 		obj := map[string]interface{}{}
@@ -879,7 +879,7 @@ func createWorkstepHandler(c *gin.Context) {
 	// workstep.OrganizationID = organizationID
 	workstep.WorkflowID = &workflowID
 
-	if workstep.Create() {
+	if workstep.Create(nil) {
 		provide.Render(workstep, 201, c)
 	} else if len(workstep.Errors) > 0 {
 		obj := map[string]interface{}{}

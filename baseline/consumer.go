@@ -392,7 +392,7 @@ func consumeBaselineWorkstepDeploySubscriptionsMsg(msg *nats.Msg) {
 		common.Log.Debugf("workstep pending deployment: %s", workstep.ID)
 		msg.Ack()
 	} else {
-		common.Log.Warningf("failed to deploy workstep: %s; nacking message...", workstep.ID)
+		common.Log.Warningf("deployment not finalized for workstep: %s", workstep.ID)
 	}
 }
 

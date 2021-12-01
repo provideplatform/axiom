@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common/compiler"
+	"github.com/jinzhu/gorm"
 	dbconf "github.com/kthomas/go-db-config"
 	natsutil "github.com/kthomas/go-natsutil"
 	"github.com/kthomas/go-redisutil"
@@ -551,16 +552,21 @@ func (w *Workstep) Update(other *Workstep) bool {
 	return success
 }
 
-func (w *Workstep) Create() bool {
+func (w *Workstep) Create(tx *gorm.DB) bool {
 	if !w.Validate() {
 		return false
 	}
 
-	db := dbconf.DatabaseConnection()
+	_tx := tx
+	if _tx == nil {
+		db := dbconf.DatabaseConnection()
+		tx = db.Begin()
+	}
+	defer _tx.RollbackUnlessCommitted()
 
 	success := false
-	if db.NewRecord(w) {
-		result := db.Create(&w)
+	if _tx.NewRecord(w) {
+		result := _tx.Create(&w)
 		rowsAffected := result.RowsAffected
 		errors := result.GetErrors()
 		if len(errors) > 0 {
@@ -570,9 +576,13 @@ func (w *Workstep) Create() bool {
 				})
 			}
 		}
-		if !db.NewRecord(w) {
+		if !_tx.NewRecord(w) {
 			success = rowsAffected > 0
 		}
+	}
+
+	if success {
+		_tx.Commit()
 	}
 
 	return success
