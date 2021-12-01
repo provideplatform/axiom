@@ -519,7 +519,11 @@ func (w *Workstep) Validate() bool {
 	workflow := FindWorkflowByID(*w.WorkflowID)
 	worksteps := FindWorkstepsByWorkflowID(*w.WorkflowID)
 
-	if w.Cardinality == 0 {
+	if w.Cardinality < 0 {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil("cardinality out of bounds"),
+		})
+	} else if w.Cardinality == 0 {
 		if workflow.isPrototype() {
 			w.Cardinality = len(worksteps) + 1
 		}
