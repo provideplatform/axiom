@@ -26,7 +26,7 @@ require (
 	github.com/onsi/ginkgo v1.15.1
 	github.com/onsi/gomega v1.11.0
 	github.com/provideplatform/ident v0.9.10-0.20210903195520-28bcb83ac5d6
-	github.com/provideplatform/provide-go v0.0.0-20211129044304-18e32c48b89f
+	github.com/provideplatform/provide-go v0.0.0-20211201064952-809f12e3481d
 	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97
 	nhooyr.io/websocket v1.8.7 // indirect
 )

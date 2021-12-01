@@ -507,6 +507,19 @@ func (w *Workstep) Delete() bool {
 	return success
 }
 
+// ParseMetadata parse the metadeta
+func (w *Workstep) ParseMetadata() map[string]interface{} {
+	metadata := map[string]interface{}{}
+	if w.Metadata != nil {
+		err := json.Unmarshal(*w.Metadata, &metadata)
+		if err != nil {
+			common.Log.Warningf("failed to unmarshal workstep metadata; %s", err.Error())
+			return nil
+		}
+	}
+	return metadata
+}
+
 func (w *Workstep) Validate() bool {
 	if w.ID == uuid.Nil && w.Status == nil {
 		if w.WorkstepID == nil {

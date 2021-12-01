@@ -487,6 +487,19 @@ func (w *Workflow) Delete() bool {
 	return rowsAffected > 0
 }
 
+// ParseConfig parse the metadeta
+func (w *Workflow) ParseMetadata() map[string]interface{} {
+	metadata := map[string]interface{}{}
+	if w.Metadata != nil {
+		err := json.Unmarshal(*w.Metadata, &metadata)
+		if err != nil {
+			common.Log.Warningf("failed to unmarshal workflow metadata; %s", err.Error())
+			return nil
+		}
+	}
+	return metadata
+}
+
 func (w *Workflow) Validate() bool {
 	if w.ID == uuid.Nil && w.Status == nil {
 		if w.WorkflowID == nil {
