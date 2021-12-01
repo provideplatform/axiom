@@ -89,7 +89,7 @@ func InstallWorkflowsAPI(r *gin.Engine) {
 
 // InstallWorkstepsAPI installs workstep management APIs
 func InstallWorkstepsAPI(r *gin.Engine) {
-	r.GET("/api/v1/workflows", listWorkstepsHandler)
+	r.GET("/api/v1/worksteps", listWorkstepsHandler)
 	r.GET("/api/v1/workflows/:id/worksteps", listWorkstepsHandler)
 	r.GET("/api/v1/workflows/:id/worksteps/:workstepId", workstepDetailsHandler)
 	r.POST("/api/v1/workflows/:id/worksteps", createWorkstepHandler)
