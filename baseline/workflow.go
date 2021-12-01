@@ -331,8 +331,23 @@ func (w *Workflow) deploy() bool {
 	}
 
 	w.Status = common.StringOrNil(workflowStatusPendingDeployment)
-
 	worksteps := FindWorkstepsByWorkflowID(w.ID)
+
+	if len(worksteps) == 0 {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil("cannot deploy workflow with zero worksteps"),
+		})
+		return false
+	}
+
+	finalWorkstep := worksteps[len(worksteps)-1]
+	if !finalWorkstep.RequireFinality {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil("cannot deploy workflow without exit on the final workstep"),
+		})
+		return false
+	}
+
 	for _, workstep := range worksteps {
 		params := map[string]interface{}{
 			"workstep_id": workstep.ID.String(),
