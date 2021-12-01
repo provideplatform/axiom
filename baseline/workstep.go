@@ -410,7 +410,7 @@ func (w *Workstep) finalizeDeploy(token string) bool {
 		return false
 	}
 
-	if prover.Status != nil && *prover.Status == "" {
+	if prover.Status != nil && *prover.Status != "provisioned" {
 		common.Log.Debugf("deployment still pending for workstep: %s", w.ID)
 		return false
 	}

@@ -346,7 +346,11 @@ func consumeBaselineWorkflowFinalizeDeploySubscriptionsMsg(msg *nats.Msg) {
 
 	if success {
 		db := dbconf.DatabaseConnection()
-		workflow.Status = common.StringOrNil(workflowStatusDeployed)
+
+		deployedAt := time.Now()
+		workflow.DeployedAt = &deployedAt
+		workflow.Status = common.StringOrNil(workstepStatusDeployed)
+
 		db.Save(&workflow)
 		msg.Ack()
 	} else {
