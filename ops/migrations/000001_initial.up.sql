@@ -118,6 +118,7 @@ ALTER TABLE ONLY public.workgroups_participants
 CREATE TABLE public.workflows (
     id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
     created_at timestamp with time zone NOT NULL,
+    deployed_at timestamp with time zone,
     name text NOT NULL,
     description text,
     shield text,
@@ -165,6 +166,7 @@ ALTER TABLE ONLY public.workflows_participants
 CREATE TABLE public.worksteps (
     id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
     created_at timestamp with time zone NOT NULL,
+    deployed_at timestamp with time zone,
     name text NOT NULL,
     description text,
     require_finality boolean default false NOT NULL,
