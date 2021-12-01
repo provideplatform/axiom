@@ -437,8 +437,10 @@ func (w *Workflow) Update(other *Workflow) bool {
 		}
 	}
 
-	// modify the status
-	w.Status = other.Status
+	if w.Status != nil && *w.Status != workflowStatusPendingDeployment {
+		// modify the status
+		w.Status = other.Status
+	}
 
 	db := dbconf.DatabaseConnection()
 	result := db.Save(&w)
