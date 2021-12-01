@@ -431,8 +431,9 @@ func (w *Workflow) Update(other *Workflow) bool {
 			w.Version = other.Version
 
 			if *w.Status == workflowStatusDraft && other.Status != nil && *other.Status == workflowStatusDeployed {
-				// deploy the workflow...
-				w.deploy()
+				if !w.deploy() { // deploy the workflow...
+					return false
+				}
 			}
 		}
 	}
