@@ -354,7 +354,7 @@ func consumeBaselineWorkflowFinalizeDeploySubscriptionsMsg(msg *nats.Msg) {
 		db.Save(&workflow)
 		msg.Ack()
 	} else {
-		msg.Nak()
+		common.Log.Warningf("deployment not finalized for workflow: %s", workflow.ID)
 	}
 }
 
@@ -430,7 +430,7 @@ func consumeBaselineWorkstepFinalizeDeploySubscriptionsMsg(msg *nats.Msg) {
 		common.Log.Debugf("deployed workstep: %s", workstep.ID)
 		msg.Ack()
 	} else {
-		common.Log.Warningf("failed to finalize workstep deployment: %s; nacking message...", workstep.ID)
+		common.Log.Warningf("deployment not finalized for workstep: %s", workstep.ID)
 	}
 }
 
