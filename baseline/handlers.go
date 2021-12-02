@@ -745,6 +745,8 @@ func deployWorkflowHandler(c *gin.Context) {
 
 	if version, versionOk := params["version"].(string); versionOk {
 		_workflow.Version = common.StringOrNil(version)
+	} else {
+		_workflow.Version = workflow.Version
 	}
 
 	if workflow.Update(_workflow) {
