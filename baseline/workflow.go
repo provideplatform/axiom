@@ -481,6 +481,14 @@ func (w *Workflow) Update(other *Workflow) bool {
 		w.Status = other.Status
 	}
 
+	if other.Name == nil {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil("name is required"),
+		})
+		return false
+	}
+	w.Name = other.Name
+
 	db := dbconf.DatabaseConnection()
 	result := db.Save(&w)
 	rowsAffected := result.RowsAffected
