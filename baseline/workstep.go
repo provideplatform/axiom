@@ -388,26 +388,26 @@ func (w *Workstep) deploy(token string) bool {
 	return prover.ID != uuid.Nil && err != nil
 }
 
-func (w *Workstep) execute(token string, payload *baseline.ProtocolMessagePayload) bool {
+func (w *Workstep) execute(token string, payload *baseline.ProtocolMessagePayload) (*privacy.ProveResponse, error) {
 	if w.isPrototype() {
 		w.Errors = append(w.Errors, &provide.Error{
 			Message: common.StringOrNil("cannot execute workstep prototype"),
 		})
-		return false
+		return nil, fmt.Errorf(*w.Errors[0].Message)
 	}
 
 	if w.Status != nil && *w.Status != workstepStatusInit && *w.Status != workstepStatusRunning {
 		w.Errors = append(w.Errors, &provide.Error{
 			Message: common.StringOrNil(fmt.Sprintf("cannot execute workstep with status: %s", *w.Status)),
 		})
-		return false
+		return nil, fmt.Errorf(*w.Errors[0].Message)
 	}
 
 	if w.ProverID == nil {
 		w.Errors = append(w.Errors, &provide.Error{
 			Message: common.StringOrNil("cannot execute workstep without prover id"),
 		})
-		return false
+		return nil, fmt.Errorf(*w.Errors[0].Message)
 	}
 
 	var params map[string]interface{}
@@ -418,14 +418,14 @@ func (w *Workstep) execute(token string, payload *baseline.ProtocolMessagePayloa
 		w.Errors = append(w.Errors, &provide.Error{
 			Message: common.StringOrNil(fmt.Sprintf("failed to execute workstep; %s", err.Error())),
 		})
-		return false
+		return nil, fmt.Errorf(*w.Errors[0].Message)
 	}
 
 	if len(proof.Errors) > 0 || proof.Proof == nil {
 		w.Errors = append(w.Errors, &provide.Error{
 			Message: common.StringOrNil(fmt.Sprintf("failed to execute workstep; %s", err.Error())),
 		})
-		return false
+		return nil, fmt.Errorf(*w.Errors[0].Message)
 	}
 
 	w.Status = common.StringOrNil(workstepStatusRunning)
@@ -447,7 +447,7 @@ func (w *Workstep) execute(token string, payload *baseline.ProtocolMessagePayloa
 		common.Log.Debugf("executed workstep %s; proof: %s", w.ID, *proof.Proof)
 	}
 
-	return success
+	return proof, nil
 }
 
 func (w *Workstep) finalizeDeploy(token string) bool {

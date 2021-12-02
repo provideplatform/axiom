@@ -1099,8 +1099,14 @@ func executeWorkstepHandler(c *gin.Context) {
 	}
 
 	token, _ := util.ParseBearerAuthorizationHeader(c, nil)
-	if workstep.execute(token.Raw, payload) {
-		provide.Render(workstep, 202, c)
+	proof, err := workstep.execute(token.Raw, payload)
+	if err != nil {
+		provide.RenderError(fmt.Sprintf("cannot execute workstep; %s", err.Error()), 400, c)
+		return
+	}
+
+	if proof != nil {
+		provide.Render(proof, 201, c)
 	} else if len(workstep.Errors) > 0 {
 		obj := map[string]interface{}{}
 		obj["errors"] = workstep.Errors
