@@ -445,13 +445,13 @@ func (w *Workstep) isPrototype() bool {
 
 // Update the workstep
 func (w *Workstep) Update(other *Workstep) bool {
-	if !w.Validate() {
-		return false
-	}
-
 	db := dbconf.DatabaseConnection()
 	tx := db.Begin()
 	defer tx.RollbackUnlessCommitted()
+
+	if !w.Validate(tx) {
+		return false
+	}
 
 	workflow := FindWorkflowByID(*w.WorkflowID)
 	worksteps := FindWorkstepsByWorkflowID(*w.WorkflowID)
@@ -557,16 +557,16 @@ func (w *Workstep) Update(other *Workstep) bool {
 }
 
 func (w *Workstep) Create(tx *gorm.DB) bool {
-	if !w.Validate() {
-		return false
-	}
-
 	_tx := tx
 	if _tx == nil {
 		db := dbconf.DatabaseConnection()
 		_tx = db.Begin()
 	}
 	defer _tx.RollbackUnlessCommitted()
+
+	if !w.Validate(_tx) {
+		return false
+	}
 
 	success := false
 	if _tx.NewRecord(w) {
@@ -650,7 +650,7 @@ func (w *Workstep) ParseMetadata() map[string]interface{} {
 	return metadata
 }
 
-func (w *Workstep) Validate() bool {
+func (w *Workstep) Validate(tx *gorm.DB) bool {
 	if w.ID == uuid.Nil && w.Status == nil {
 		if w.WorkstepID == nil {
 			w.Status = common.StringOrNil("draft")
@@ -659,7 +659,15 @@ func (w *Workstep) Validate() bool {
 		}
 	}
 
-	workflow := FindWorkflowByID(*w.WorkflowID)
+	workflow := &Workflow{}
+	tx.Where("id = ?", w.WorkflowID.String()).Find(&workflow)
+	if workflow == nil || workflow.ID == uuid.Nil {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil("invalid workflow"),
+		})
+		return false
+	}
+
 	if workflow == nil {
 		w.Errors = append(w.Errors, &provide.Error{
 			Message: common.StringOrNil("invalid workflow"),
@@ -667,7 +675,8 @@ func (w *Workstep) Validate() bool {
 		return false
 	}
 
-	worksteps := FindWorkstepsByWorkflowID(*w.WorkflowID)
+	worksteps := make([]*Workstep, 0)
+	tx.Where("workflow_id = ?", workflow.ID.String()).Find(&worksteps)
 
 	if w.Cardinality < 0 {
 		w.Errors = append(w.Errors, &provide.Error{
