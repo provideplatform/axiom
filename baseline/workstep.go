@@ -388,6 +388,68 @@ func (w *Workstep) deploy(token string) bool {
 	return prover.ID != uuid.Nil && err != nil
 }
 
+func (w *Workstep) execute(token string, payload *baseline.ProtocolMessagePayload) bool {
+	if w.isPrototype() {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil("cannot execute workstep prototype"),
+		})
+		return false
+	}
+
+	if w.Status != nil && *w.Status != workstepStatusInit && *w.Status != workstepStatusRunning {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil(fmt.Sprintf("cannot execute workstep with status: %s", *w.Status)),
+		})
+		return false
+	}
+
+	if w.ProverID == nil {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil("cannot execute workstep without prover id"),
+		})
+		return false
+	}
+
+	var params map[string]interface{}
+	raw, _ := json.Marshal(payload)
+	json.Unmarshal(raw, &params) // HACK
+	proof, err := privacy.Prove(token, w.ProverID.String(), params)
+	if err != nil {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil(fmt.Sprintf("failed to execute workstep; %s", err.Error())),
+		})
+		return false
+	}
+
+	if len(proof.Errors) > 0 || proof.Proof == nil {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil(fmt.Sprintf("failed to execute workstep; %s", err.Error())),
+		})
+		return false
+	}
+
+	w.Status = common.StringOrNil(workstepStatusRunning)
+	// metadata := w.ParseMetadata()
+
+	db := dbconf.DatabaseConnection()
+	result := db.Save(&w)
+	rowsAffected := result.RowsAffected
+	errors := result.GetErrors()
+	if len(errors) > 0 {
+		for _, err := range errors {
+			w.Errors = append(w.Errors, &provide.Error{
+				Message: common.StringOrNil(err.Error()),
+			})
+		}
+	}
+	success := rowsAffected > 0 && len(errors) == 0
+	if success {
+		common.Log.Debugf("executed workstep %s; proof: %s", w.ID, *proof.Proof)
+	}
+
+	return success
+}
+
 func (w *Workstep) finalizeDeploy(token string) bool {
 	if w.Status != nil && *w.Status != workstepStatusPendingDeployment {
 		w.Errors = append(w.Errors, &provide.Error{

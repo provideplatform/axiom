@@ -96,6 +96,7 @@ func InstallWorkstepsAPI(r *gin.Engine) {
 	r.POST("/api/v1/workflows/:id/worksteps", createWorkstepHandler)
 	r.PUT("/api/v1/workflows/:id/worksteps/:workstepId", updateWorkstepHandler)
 	r.DELETE("/api/v1/workflows/:id/worksteps/:workstepId", deleteWorkstepHandler)
+	r.POST("/api/v1/workflows/:id/worksteps/:workstepId/execute", executeWorkstepHandler)
 }
 
 func configurationHandler(c *gin.Context) {
@@ -1039,6 +1040,67 @@ func deleteWorkstepHandler(c *gin.Context) {
 
 	if workstep.Delete() {
 		provide.Render(nil, 204, c)
+	} else if len(workstep.Errors) > 0 {
+		obj := map[string]interface{}{}
+		obj["errors"] = workstep.Errors
+		provide.Render(obj, 422, c)
+	} else {
+		provide.RenderError("internal persistence error", 500, c)
+	}
+}
+
+func executeWorkstepHandler(c *gin.Context) {
+	organizationID := util.AuthorizedSubjectID(c, "organization")
+	if organizationID == nil {
+		provide.RenderError("unauthorized", 401, c)
+		return
+	} else if common.OrganizationID != nil && organizationID.String() != *common.OrganizationID {
+		provide.RenderError("forbidden", 403, c)
+		return
+	}
+
+	buf, err := c.GetRawData()
+	if err != nil {
+		provide.RenderError(err.Error(), 400, c)
+		return
+	}
+
+	workflowID, err := uuid.FromString(c.Param("id"))
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	workstepID, err := uuid.FromString(c.Param("workstepId"))
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	workstep := FindWorkstepByID(workstepID)
+	if workstep == nil {
+		provide.RenderError("not found", 404, c)
+		return
+	} else if workstep.WorkflowID == nil || workstep.WorkflowID.String() != workflowID.String() {
+		provide.RenderError("forbidden", 403, c)
+		return
+	}
+
+	if workstep.Status != nil && *workstep.Status != workstepStatusInit && *workstep.Status != workstepStatusRunning {
+		provide.RenderError("cannot execute workstep", 400, c)
+		return
+	}
+
+	var payload *baseline.ProtocolMessagePayload
+	err = json.Unmarshal(buf, &payload)
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	token, _ := util.ParseBearerAuthorizationHeader(c, nil)
+	if workstep.execute(token.Raw, payload) {
+		provide.Render(workstep, 202, c)
 	} else if len(workstep.Errors) > 0 {
 		obj := map[string]interface{}{}
 		obj["errors"] = workstep.Errors
