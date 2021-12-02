@@ -416,7 +416,7 @@ func (w *Workflow) Create(tx *gorm.DB) bool {
 					instance.Status = nil
 					instance.WorkflowID = &w.ID
 					instance.WorkstepID = &workstep.ID
-					tx.Create(&instance)
+					_tx.Create(&instance)
 
 					if len(instance.Errors) == 0 {
 						common.Log.Debugf("spawned workstep instance %s for workflow: %s; cardinality: %d; workstep prototype: %s", instance.ID, instance.WorkflowID, instance.Cardinality, instance.WorkstepID)
