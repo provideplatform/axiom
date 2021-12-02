@@ -516,6 +516,10 @@ func (w *Workstep) Update(other *Workstep) bool {
 	// modify the status
 	w.Status = other.Status
 
+	if other.Name == nil {
+		w.Name = other.Name
+	}
+
 	result := tx.Save(&w)
 
 	if adjustsCardinality {
