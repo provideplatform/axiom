@@ -326,7 +326,7 @@ func consumeBaselineWorkflowFinalizeDeploySubscriptionsMsg(msg *nats.Msg) {
 		return
 	}
 
-	workstepID, err := uuid.FromString(params["workflow_id"].(string))
+	workflowID, err := uuid.FromString(params["workflow_id"].(string))
 	if err != nil {
 		common.Log.Warningf("failed to parse baseline workflow id; %s", err.Error())
 		msg.Nak()
@@ -335,7 +335,7 @@ func consumeBaselineWorkflowFinalizeDeploySubscriptionsMsg(msg *nats.Msg) {
 
 	success := true
 
-	workflow := FindWorkflowByID(workstepID)
+	workflow := FindWorkflowByID(workflowID)
 	worksteps := FindWorkstepsByWorkflowID(workflow.ID)
 	for _, workstep := range worksteps {
 		if workstep.Status != nil && *workstep.Status != workstepStatusDeployed {
