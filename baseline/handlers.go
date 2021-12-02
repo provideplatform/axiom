@@ -740,11 +740,14 @@ func deployWorkflowHandler(c *gin.Context) {
 		return
 	}
 
+	_workflow := &Workflow{}
+	_workflow.Status = common.StringOrNil(workflowStatusDeployed) // HACK!!!
+
 	if version, versionOk := params["version"].(string); versionOk {
-		workflow.Version = common.StringOrNil(version)
+		_workflow.Version = common.StringOrNil(version)
 	}
 
-	if workflow.deploy() {
+	if workflow.Update(_workflow) {
 		provide.Render(workflow, 202, c)
 	} else if len(workflow.Errors) > 0 {
 		obj := map[string]interface{}{}
