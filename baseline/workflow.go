@@ -413,7 +413,7 @@ func (w *Workflow) Create(tx *gorm.DB) bool {
 					instance := &Workstep{}
 					json.Unmarshal(raw, &instance)
 					instance.ID = uuid.Nil
-					instance.WorkflowID = &w.ID
+					instance.WorkflowID = w.WorkflowID
 					instance.WorkstepID = &workstep.ID
 					instance.Create(tx)
 
