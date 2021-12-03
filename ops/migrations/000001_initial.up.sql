@@ -106,7 +106,7 @@ CREATE TABLE public.workgroups_participants (
     participant varchar(64) NOT NULL
 );
 
-CREATE INDEX idx_workgroups_participants_workgroup_id_participant ON public.workgroups_participants USING btree (workgroup_id, participant);
+CREATE UNIQUE INDEX idx_workgroups_participants_workgroup_id_participant ON public.workgroups_participants USING btree (workgroup_id, participant);
 
 ALTER TABLE ONLY public.workgroups_participants
   ADD CONSTRAINT workgroups_participants_workgroup_id_foreign FOREIGN KEY (workgroup_id) REFERENCES public.workgroups(id) ON UPDATE CASCADE ON DELETE CASCADE;
@@ -154,7 +154,7 @@ CREATE TABLE public.workflows_participants (
     participant varchar(64) NOT NULL
 );
 
-CREATE INDEX idx_workflows_participants_workflow_id_participant ON public.workflows_participants USING btree (workflow_id, participant);
+CREATE UNIQUE INDEX idx_workflows_participants_workflow_id_participant ON public.workflows_participants USING btree (workflow_id, participant);
 
 ALTER TABLE ONLY public.workflows_participants
   ADD CONSTRAINT workflows_participants_workgroup_id_foreign FOREIGN KEY (workflow_id) REFERENCES public.workflows(id) ON UPDATE CASCADE ON DELETE CASCADE;
