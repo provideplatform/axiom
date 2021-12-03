@@ -13,7 +13,7 @@ import (
 // Participant is a party to a baseline workgroup or workflow context
 type Participant struct {
 	baseline.Participant
-	Address    *string      `json:"address"`
+	Address    *string      `gorm:"column:participant" json:"address"`
 	Workgroups []*Workgroup `sql:"-" json:"workgroups,omitempty"`
 	Workflows  []*Workflow  `sql:"-" json:"workflows,omitempty"`
 	Worksteps  []*Workstep  `sql:"-" json:"worksteps,omitempty"`
@@ -21,7 +21,7 @@ type Participant struct {
 
 // WorkstepParticipant is a party to a baseline workstep
 type WorkstepParticipant struct {
-	Address     *string     `json:"address"`
+	Address     *string     `gorm:"column:participant" json:"address"`
 	Proof       *string     `json:"proof"`
 	Witness     interface{} `json:"witness"`
 	WitnessedAt *time.Time  `json:"witnessed_at"`
