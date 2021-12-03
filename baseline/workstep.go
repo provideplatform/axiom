@@ -507,8 +507,7 @@ func (w *Workstep) isPrototype() bool {
 
 func (w *Workstep) listParticipants(tx *gorm.DB) []*Participant {
 	participants := make([]*Participant, 0)
-	result := tx.Exec("SELECT * FROM worksteps_participants WHERE workstep_id=?", w.ID).Scan(&participants)
-	rows, err := result.Rows()
+	rows, err := tx.Raw("SELECT * FROM worksteps_participants WHERE workstep_id=?", w.ID).Rows()
 	if err != nil {
 		common.Log.Warningf("failed to list workstep participants; %s", err.Error())
 		return participants

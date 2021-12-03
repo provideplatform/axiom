@@ -382,8 +382,7 @@ func (w *Workflow) isPrototype() bool {
 
 func (w *Workflow) listParticipants(tx *gorm.DB) []*Participant {
 	participants := make([]*Participant, 0)
-	result := tx.Exec("SELECT * FROM workflows_participants WHERE workflow_id=?", w.ID).Scan(&participants)
-	rows, err := result.Rows()
+	rows, err := tx.Raw("SELECT * FROM workflows_participants WHERE workflow_id=?", w.ID).Rows()
 	if err != nil {
 		common.Log.Warningf("failed to read workflow participants; %s", err.Error())
 		return participants
