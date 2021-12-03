@@ -43,6 +43,7 @@ const workflowStatusFailed = "failed"
 type Workflow struct {
 	baseline.Workflow
 	Name         *string        `json:"name"`
+	Description  *string        `json:"description"`
 	Participants []*Participant `sql:"-" json:"participants,omitempty"`
 	WorkgroupID  *uuid.UUID     `json:"workgroup_id"`
 	WorkflowID   *uuid.UUID     `json:"workflow_id"` // when nil, indicates the workflow is a prototype (not an instance)

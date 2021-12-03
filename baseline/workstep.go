@@ -38,6 +38,7 @@ const workstepStatusFailed = "failed"
 // Workstep is a baseline workstep prototype
 type Workstep struct {
 	baseline.Workstep
+	Description  *string        `json:"description"`
 	Participants []*Participant `sql:"-" json:"participants,omitempty"`
 	WorkstepID   *uuid.UUID     `json:"workstep_id"` // when nil, indicates the workstep is a prototype (not an instance)
 }
@@ -639,11 +640,10 @@ func (w *Workstep) Update(other *Workstep) bool {
 	}
 
 	// modify the status
+	w.Name = other.Name
+	w.Description = other.Description
+	w.RequireFinality = other.RequireFinality
 	w.Status = other.Status
-
-	if other.Name == nil {
-		w.Name = other.Name
-	}
 
 	result := tx.Save(&w)
 

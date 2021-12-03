@@ -24,6 +24,7 @@ const requireCounterpartiesTickerInterval = time.Second * 30 // HACK
 type Workgroup struct {
 	baseline.Workgroup
 	Name         *string        `json:"name"`
+	Description  *string        `json:"description"`
 	Participants []*Participant `sql:"-" json:"participants,omitempty"`
 	Workflows    []*Workflow    `sql:"-" json:"workflows,omitempty"`
 }
