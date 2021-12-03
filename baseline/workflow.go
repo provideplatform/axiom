@@ -43,7 +43,7 @@ const workflowStatusFailed = "failed"
 type Workflow struct {
 	baseline.Workflow
 	Name         *string        `json:"name"`
-	Participants []*Participant `gorm:"many2many:workflows_participants" json:"participants,omitempty"`
+	Participants []*Participant `sql:"-" json:"participants,omitempty"`
 	WorkgroupID  *uuid.UUID     `json:"workgroup_id"`
 	WorkflowID   *uuid.UUID     `json:"workflow_id"` // when nil, indicates the workflow is a prototype (not an instance)
 	Worksteps    []*Workstep    `json:"worksteps,omitempty"`
@@ -380,6 +380,54 @@ func (w *Workflow) isPrototype() bool {
 	return w.WorkflowID == nil
 }
 
+func (w *Workflow) listParticipants(tx *gorm.DB) []*Participant {
+	var participants []*Participant
+	tx.Exec("SELECT * FROM workflows_participants WHERE workflow_id=?", w.ID).Find(&participants)
+	return participants
+}
+
+func (w *Workflow) addParticipant(participant string, tx *gorm.DB) bool {
+	common.Log.Debugf("adding participant %s to workflow: %s", participant, w.ID)
+	result := tx.Exec("INSERT INTO workflows_participants (workstep_id, participant) VALUES (?, ?, ?)", w.ID, participant)
+	success := result.RowsAffected == 1
+	if success {
+		common.Log.Debugf("added participant %s to workflow: %s", participant, w.ID)
+	} else {
+		common.Log.Warningf("failed to add participant %s to workflow: %s", participant, w.ID)
+		errors := result.GetErrors()
+		if len(errors) > 0 {
+			for _, err := range errors {
+				w.Errors = append(w.Errors, &provide.Error{
+					Message: common.StringOrNil(err.Error()),
+				})
+			}
+		}
+	}
+
+	return len(w.Errors) == 0
+}
+
+func (w *Workflow) removeParticipant(participant string, tx *gorm.DB) bool {
+	common.Log.Debugf("removing participant %s to workflow: %s", participant, w.ID)
+	result := tx.Exec("DELETE FROM workflows_participants WHERE workflow_id=? AND participant=?", w.ID, participant)
+	success := result.RowsAffected == 1
+	if success {
+		common.Log.Debugf("removed participant %s from workflow: %s", participant, w.ID)
+	} else {
+		common.Log.Warningf("failed to remove participant %s from workflow: %s", participant, w.ID)
+		errors := result.GetErrors()
+		if len(errors) > 0 {
+			for _, err := range errors {
+				w.Errors = append(w.Errors, &provide.Error{
+					Message: common.StringOrNil(err.Error()),
+				})
+			}
+		}
+	}
+
+	return len(w.Errors) == 0
+}
+
 func (w *Workflow) Create(tx *gorm.DB) bool {
 	if !w.Validate() {
 		return false
@@ -408,14 +456,12 @@ func (w *Workflow) Create(tx *gorm.DB) bool {
 			success = rowsAffected > 0
 
 			if success {
-				workflowParticipants := _tx.Model(&w).Association("Participants").Find(&w.Participants)
-
 				if w.Participants == nil || len(w.Participants) == 0 {
 					workgroup := FindWorkgroupByID(*w.WorkgroupID)
-					participants := make([]*Participant, 0)
-					_tx.Model(&workgroup).Association("Participants").Find(&participants)
+					participants := workgroup.listParticipants(_tx)
+					common.Log.Debugf("no participants added to workflow; defaulting to %d workgroup participant(s)", len(participants))
 					for _, p := range participants {
-						workflowParticipants.Append(p)
+						w.addParticipant(*p.Address, _tx)
 					}
 				}
 			}
@@ -433,13 +479,12 @@ func (w *Workflow) Create(tx *gorm.DB) bool {
 
 					if len(instance.Errors) == 0 {
 						common.Log.Debugf("spawned workstep instance %s for workflow: %s; cardinality: %d; workstep prototype: %s", instance.ID, instance.WorkflowID, instance.Cardinality, instance.WorkstepID)
-
-						workstepParticipants := _tx.Model(&instance).Association("Participants").Find(&instance.Participants)
 						if instance.Participants == nil || len(instance.Participants) == 0 {
-							participants := make([]*Participant, 0)
-							_tx.Model(&w).Association("Participants").Find(&participants)
+							workstep := FindWorkstepByID(workstep.ID)
+							participants := workstep.listParticipants(_tx)
+							common.Log.Debugf("no participants added to workstep; defaulting to %d workstep prototype participant(s)", len(participants))
 							for _, p := range participants {
-								workstepParticipants.Append(p)
+								instance.addParticipant(*p.Address, _tx)
 							}
 						}
 					} else {

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jinzhu/gorm"
 	dbconf "github.com/kthomas/go-db-config"
 	"github.com/kthomas/go-redisutil"
 	uuid "github.com/kthomas/go.uuid"
@@ -23,8 +24,8 @@ const requireCounterpartiesTickerInterval = time.Second * 30 // HACK
 type Workgroup struct {
 	baseline.Workgroup
 	Name         *string        `json:"name"`
-	Participants []*Participant `gorm:"many2many:workgroups_participants" json:"participants,omitempty"`
-	Workflows    []*Workflow    `gorm:"many2many:workgroups_workflows" json:"workflows,omitempty"`
+	Participants []*Participant `sql:"-" json:"participants,omitempty"`
+	Workflows    []*Workflow    `sql:"-" json:"workflows,omitempty"`
 }
 
 // FindWorkgroupByID retrieves a workgroup for the given id
@@ -132,8 +133,7 @@ func resolveBaselineCounterparties() {
 			if participant.Address != nil && !strings.EqualFold(strings.ToLower(*participant.Address), strings.ToLower(*common.BaselineOrganizationAddress)) {
 				exists := lookupBaselineOrganization(*participant.Address) != nil
 
-				db.Model(workgroup).Association("Participants").Append(&participant)
-
+				workgroup.addParticipant(*participant.Address, db)
 				err := participant.Cache()
 				if err != nil {
 					common.Log.Warningf("failed to cache counterparty; %s", err.Error())
@@ -187,6 +187,54 @@ func (w *Workgroup) Create() bool {
 	}
 
 	return success
+}
+
+func (w *Workgroup) listParticipants(tx *gorm.DB) []*Participant {
+	var participants []*Participant
+	tx.Exec("SELECT * FROM workgroups_participants WHERE workgroup_id=?", w.ID).Find(&participants)
+	return participants
+}
+
+func (w *Workgroup) addParticipant(participant string, tx *gorm.DB) bool {
+	common.Log.Debugf("adding participant %s to workgroup: %s", participant, w.ID)
+	result := tx.Exec("INSERT INTO workgroups_participants (workgroup_id, participant) VALUES (?, ?, ?)", w.ID, participant)
+	success := result.RowsAffected == 1
+	if success {
+		common.Log.Debugf("added participant %s from workgroup: %s", participant, w.ID)
+	} else {
+		common.Log.Warningf("failed to add participant %s from workgroup: %s", participant, w.ID)
+		errors := result.GetErrors()
+		if len(errors) > 0 {
+			for _, err := range errors {
+				w.Errors = append(w.Errors, &provide.Error{
+					Message: common.StringOrNil(err.Error()),
+				})
+			}
+		}
+	}
+
+	return len(w.Errors) == 0
+}
+
+func (w *Workgroup) removeParticipant(participant string, tx *gorm.DB) bool {
+	common.Log.Debugf("removing participant %s to workgroup: %s", participant, w.ID)
+	result := tx.Exec("DELETE FROM workgroups_participants WHERE workgroup_id=? AND participant=?", w.ID, participant)
+	success := result.RowsAffected == 1
+	if success {
+		common.Log.Debugf("removed participant %s from workgroup: %s", participant, w.ID)
+	} else {
+		common.Log.Warningf("failed to remove participant %s from workgroup: %s", participant, w.ID)
+		errors := result.GetErrors()
+		if len(errors) > 0 {
+			for _, err := range errors {
+				w.Errors = append(w.Errors, &provide.Error{
+					Message: common.StringOrNil(err.Error()),
+				})
+			}
+		}
+	}
+
+	return len(w.Errors) == 0
 }
 
 func (w *Workgroup) Validate() bool {

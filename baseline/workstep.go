@@ -505,6 +505,54 @@ func (w *Workstep) isPrototype() bool {
 	return w.WorkstepID == nil
 }
 
+func (w *Workstep) listParticipants(tx *gorm.DB) []*Participant {
+	var participants []*Participant
+	tx.Exec("SELECT * FROM worksteps_participants WHERE workstep_id=?", w.ID).Find(&participants)
+	return participants
+}
+
+func (w *Workstep) addParticipant(participant string, tx *gorm.DB) bool {
+	common.Log.Debugf("adding participant %s to workstep: %s", participant, w.ID)
+	result := tx.Exec("INSERT INTO worksteps_participants (workstep_id, participant) VALUES (?, ?, ?)", w.ID, participant)
+	success := result.RowsAffected == 1
+	if success {
+		common.Log.Debugf("added participant %s from workstep: %s", participant, w.ID)
+	} else {
+		common.Log.Warningf("failed to add participant %s from workstep: %s", participant, w.ID)
+		errors := result.GetErrors()
+		if len(errors) > 0 {
+			for _, err := range errors {
+				w.Errors = append(w.Errors, &provide.Error{
+					Message: common.StringOrNil(err.Error()),
+				})
+			}
+		}
+	}
+
+	return len(w.Errors) == 0
+}
+
+func (w *Workstep) removeParticipant(participant string, tx *gorm.DB) bool {
+	common.Log.Debugf("removing participant %s to workstep: %s", participant, w.ID)
+	result := tx.Exec("DELETE FROM worksteps_participants WHERE workstep_id=? AND participant=?", w.ID, participant)
+	success := result.RowsAffected == 1
+	if success {
+		common.Log.Debugf("removed participant %s from workstep: %s", participant, w.ID)
+	} else {
+		common.Log.Warningf("failed to remove participant %s from workstep: %s", participant, w.ID)
+		errors := result.GetErrors()
+		if len(errors) > 0 {
+			for _, err := range errors {
+				w.Errors = append(w.Errors, &provide.Error{
+					Message: common.StringOrNil(err.Error()),
+				})
+			}
+		}
+	}
+
+	return len(w.Errors) == 0
+}
+
 // Update the workstep
 func (w *Workstep) Update(other *Workstep) bool {
 	db := dbconf.DatabaseConnection()
@@ -648,13 +696,12 @@ func (w *Workstep) Create(tx *gorm.DB) bool {
 	}
 
 	if success {
-		workstepParticipants := _tx.Model(&w).Association("Participants").Find(&w.Participants)
 		if w.Participants == nil || len(w.Participants) == 0 {
 			workflow := FindWorkflowByID(*w.WorkflowID)
-			participants := make([]*Participant, 0)
-			_tx.Model(&workflow).Association("Participants").Find(&participants)
+			participants := workflow.listParticipants(_tx)
+			common.Log.Debugf("no participants added to workstep; defaulting to %d workflow participant(s)", len(participants))
 			for _, p := range participants {
-				workstepParticipants.Append(p)
+				w.addParticipant(*p.Address, _tx)
 			}
 		}
 
