@@ -38,7 +38,7 @@ const workstepStatusFailed = "failed"
 // Workstep is a baseline workstep prototype
 type Workstep struct {
 	baseline.Workstep
-	Participants []*Participant `gorm:"many2many:worksteps_participants" json:"participants,omitempty"`
+	Participants []*Participant `sql:"-" json:"participants,omitempty"`
 	WorkstepID   *uuid.UUID     `json:"workstep_id"` // when nil, indicates the workstep is a prototype (not an instance)
 }
 
