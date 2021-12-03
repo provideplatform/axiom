@@ -18,9 +18,11 @@ import (
 	"github.com/provideplatform/provide-go/api/baseline"
 	"github.com/provideplatform/provide-go/api/nchain"
 	"github.com/provideplatform/provide-go/api/privacy"
+	"github.com/provideplatform/provide-go/api/vault"
 )
 
 const workstepCircuitStatusProvisioned = "provisioned"
+const vaultSecretTypeWorkstepExecution = "workstep_participant_execution"
 
 const workstepStatusDraft = "draft"
 const workstepStatusDeployed = "deployed"
@@ -446,6 +448,21 @@ func (w *Workstep) execute(token string, payload *baseline.ProtocolMessagePayloa
 	success := rowsAffected > 0 && len(errors) == 0
 	if success {
 		common.Log.Debugf("executed workstep %s; proof: %s", w.ID, *proof.Proof)
+		w.setParticipantExecutionPayload(token, *common.BaselineOrganizationAddress, payload, db)
+		// FIXME-- this is just inserting executions for the participant running this baseline stack instance...
+		// we need to also make sure the other witnesses are inserted upon processing by way of baseline inbound...
+
+		pc := 0
+		participants := w.listParticipants(db)
+		for _, p := range participants {
+			if p.Proof != nil {
+				pc += 1
+			}
+		}
+		if pc == len(participants) {
+			w.Status = common.StringOrNil(workstepStatusCompleted)
+			db.Save(&w)
+		}
 	}
 
 	return proof, nil
@@ -506,8 +523,8 @@ func (w *Workstep) isPrototype() bool {
 	return w.WorkstepID == nil
 }
 
-func (w *Workstep) listParticipants(tx *gorm.DB) []*Participant {
-	participants := make([]*Participant, 0)
+func (w *Workstep) listParticipants(tx *gorm.DB) []*WorkstepParticipant {
+	participants := make([]*WorkstepParticipant, 0)
 	rows, err := tx.Raw("SELECT * FROM worksteps_participants WHERE workstep_id=?", w.ID).Rows()
 	if err != nil {
 		common.Log.Warningf("failed to list workstep participants; %s", err.Error())
@@ -515,7 +532,7 @@ func (w *Workstep) listParticipants(tx *gorm.DB) []*Participant {
 	}
 
 	for rows.Next() {
-		var p *Participant
+		var p *WorkstepParticipant
 		err = rows.Scan(&p)
 		if err != nil {
 			common.Log.Warningf("failed to list workstep participants; %s", err.Error())
@@ -525,6 +542,49 @@ func (w *Workstep) listParticipants(tx *gorm.DB) []*Participant {
 	}
 
 	return participants
+}
+
+func (w *Workstep) setParticipantExecutionPayload(token, address string, payload *baseline.ProtocolMessagePayload, tx *gorm.DB) error {
+	participating := false
+	for _, p := range w.listParticipants(tx) {
+		if p.Address != nil && strings.EqualFold(strings.ToLower(*p.Address), strings.ToLower(address)) {
+			participating = true
+		}
+	}
+
+	if !participating {
+		err := fmt.Errorf("failed to set workstep execution proof and witness data for participant: %s; invalid participant", address)
+		common.Log.Warningf(err.Error())
+		return err
+	}
+
+	rawWitness, _ := json.Marshal(payload.Witness)
+	secret, err := vault.CreateSecret(
+		token,
+		common.Vault.ID.String(),
+		string(rawWitness),
+		fmt.Sprintf("baseline.workstep.%s.participant.%s.execution", w.ID, address),
+		fmt.Sprintf("baseline workstep execution by participant %s", address),
+		vaultSecretTypeWorkstepExecution,
+	)
+	if err != nil {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil(fmt.Sprintf("failed to deploy workstep; %s", err.Error())),
+		})
+		return nil
+	}
+
+	witnessedAt := time.Now()
+	result := tx.Exec("UPDATE worksteps_participants SET proof=?, witness_secret_id=?, witnessed_at=? WHERE workstep_id=? AND participant=?", *payload.Proof, secret.ID, witnessedAt, w.ID, address)
+	success := result.RowsAffected == 1
+	if !success {
+		err := fmt.Errorf("failed to set workstep execution proof and witness data for participant: %s", address)
+		common.Log.Warningf(err.Error())
+		return err
+	}
+
+	common.Log.Debugf("set workstep execution proof and witness data for participant: %s", address)
+	return nil
 }
 
 func (w *Workstep) addParticipant(participant string, tx *gorm.DB) bool {

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/kthomas/go-redisutil"
 	"github.com/provideplatform/provide-go/api/baseline"
@@ -16,6 +17,14 @@ type Participant struct {
 	Workgroups []*Workgroup `sql:"-" json:"workgroups,omitempty"`
 	Workflows  []*Workflow  `sql:"-" json:"workflows,omitempty"`
 	Worksteps  []*Workstep  `sql:"-" json:"worksteps,omitempty"`
+}
+
+// WorkstepParticipant is a party to a baseline workstep
+type WorkstepParticipant struct {
+	Address     *string     `json:"address"`
+	Proof       *string     `json:"proof"`
+	Witness     interface{} `json:"witness"`
+	WitnessedAt *time.Time  `json:"witnessed_at"`
 }
 
 func (p *Participant) Cache() error {
