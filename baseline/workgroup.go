@@ -190,8 +190,24 @@ func (w *Workgroup) Create() bool {
 }
 
 func (w *Workgroup) listParticipants(tx *gorm.DB) []*Participant {
-	var participants []*Participant
-	tx.Exec("SELECT * FROM workgroups_participants WHERE workgroup_id=?", w.ID).Find(&participants)
+	participants := make([]*Participant, 0)
+	result := tx.Exec("SELECT * FROM workgroups_participants WHERE workgroup_id=?", w.ID).Scan(&participants)
+	rows, err := result.Rows()
+	if err != nil {
+		common.Log.Warningf("failed to read workgroup participants; %s", err.Error())
+		return participants
+	}
+
+	for rows.Next() {
+		var p *Participant
+		err = rows.Scan(&p)
+		if err != nil {
+			common.Log.Warningf("failed to read workgroup participants; %s", err.Error())
+			return participants
+		}
+		participants = append(participants, p)
+	}
+
 	return participants
 }
 

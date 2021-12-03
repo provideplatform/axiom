@@ -381,14 +381,30 @@ func (w *Workflow) isPrototype() bool {
 }
 
 func (w *Workflow) listParticipants(tx *gorm.DB) []*Participant {
-	var participants []*Participant
-	tx.Exec("SELECT * FROM workflows_participants WHERE workflow_id=?", w.ID).Find(&participants)
+	participants := make([]*Participant, 0)
+	result := tx.Exec("SELECT * FROM workflows_participants WHERE workflow_id=?", w.ID).Scan(&participants)
+	rows, err := result.Rows()
+	if err != nil {
+		common.Log.Warningf("failed to read workflow participants; %s", err.Error())
+		return participants
+	}
+
+	for rows.Next() {
+		var p *Participant
+		err = rows.Scan(&p)
+		if err != nil {
+			common.Log.Warningf("failed to read workflow participants; %s", err.Error())
+			return participants
+		}
+		participants = append(participants, p)
+	}
+
 	return participants
 }
 
 func (w *Workflow) addParticipant(participant string, tx *gorm.DB) bool {
 	common.Log.Debugf("adding participant %s to workflow: %s", participant, w.ID)
-	result := tx.Exec("INSERT INTO workflows_participants (workstep_id, participant) VALUES (?, ?)", w.ID, participant)
+	result := tx.Exec("INSERT INTO workflows_participants (workflow_id, participant) VALUES (?, ?)", w.ID, participant)
 	success := result.RowsAffected == 1
 	if success {
 		common.Log.Debugf("added participant %s to workflow: %s", participant, w.ID)
