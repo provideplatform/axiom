@@ -76,7 +76,6 @@ func resolveBaselineCounterparties() {
 	}
 
 	db := dbconf.DatabaseConnection()
-	participants := db.Model(workgroup).Association("Participants")
 
 	go func() {
 		common.Log.Trace("attempting to resolve baseline counterparties")
@@ -120,17 +119,10 @@ func resolveBaselineCounterparties() {
 			messagingEndpoint, _ := org.Metadata["messaging_endpoint"].(string)
 
 			if addrOk {
-				p := &Participant{
-					baseline.Participant{
-						Address:           common.StringOrNil(addr),
-						APIEndpoint:       common.StringOrNil(apiEndpoint),
-						MessagingEndpoint: common.StringOrNil(messagingEndpoint),
-					},
-					common.StringOrNil(addr),
-					make([]*Workgroup, 0),
-					make([]*Workflow, 0),
-					make([]*Workstep, 0),
-				}
+				p := &Participant{}
+				p.Address = common.StringOrNil(addr)
+				p.APIEndpoint = common.StringOrNil(apiEndpoint)
+				p.MessagingEndpoint = common.StringOrNil(messagingEndpoint)
 
 				counterparties = append(counterparties, p)
 			}
@@ -140,7 +132,8 @@ func resolveBaselineCounterparties() {
 			if participant.Address != nil && !strings.EqualFold(strings.ToLower(*participant.Address), strings.ToLower(*common.BaselineOrganizationAddress)) {
 				exists := lookupBaselineOrganization(*participant.Address) != nil
 
-				participants.Append(&participant)
+				db.Model(workgroup).Association("Participants").Append(&participant)
+
 				err := participant.Cache()
 				if err != nil {
 					common.Log.Warningf("failed to cache counterparty; %s", err.Error())

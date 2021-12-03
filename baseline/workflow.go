@@ -43,7 +43,7 @@ const workflowStatusFailed = "failed"
 type Workflow struct {
 	baseline.Workflow
 	Name         *string        `json:"name"`
-	Participants []*Participant `gorm:"many2many:workflows_participants" json:"participants"`
+	Participants []*Participant `gorm:"many2many:workflows_participants" json:"participants,omitempty"`
 	WorkgroupID  *uuid.UUID     `json:"workgroup_id"`
 	WorkflowID   *uuid.UUID     `json:"workflow_id"` // when nil, indicates the workflow is a prototype (not an instance)
 	Worksteps    []*Workstep    `json:"worksteps,omitempty"`
@@ -407,6 +407,19 @@ func (w *Workflow) Create(tx *gorm.DB) bool {
 		if !_tx.NewRecord(w) {
 			success = rowsAffected > 0
 
+			if success {
+				workflowParticipants := _tx.Model(&w).Association("Participants").Find(&w.Participants)
+
+				if w.Participants == nil || len(w.Participants) == 0 {
+					workgroup := FindWorkgroupByID(*w.WorkgroupID)
+					participants := make([]*Participant, 0)
+					_tx.Model(&workgroup).Association("Participants").Find(&participants)
+					for _, p := range participants {
+						workflowParticipants.Append(p)
+					}
+				}
+			}
+
 			if success && !w.isPrototype() {
 				for _, workstep := range FindWorkstepsByWorkflowID(*w.WorkflowID) {
 					raw, _ := json.Marshal(workstep)
@@ -420,6 +433,15 @@ func (w *Workflow) Create(tx *gorm.DB) bool {
 
 					if len(instance.Errors) == 0 {
 						common.Log.Debugf("spawned workstep instance %s for workflow: %s; cardinality: %d; workstep prototype: %s", instance.ID, instance.WorkflowID, instance.Cardinality, instance.WorkstepID)
+
+						workstepParticipants := _tx.Model(&instance).Association("Participants").Find(&instance.Participants)
+						if instance.Participants == nil || len(instance.Participants) == 0 {
+							participants := make([]*Participant, 0)
+							_tx.Model(&w).Association("Participants").Find(&participants)
+							for _, p := range participants {
+								workstepParticipants.Append(p)
+							}
+						}
 					} else {
 						err := fmt.Errorf("failed to spawn workstep instance for workflow: %s; workstep cardinality: %d; %s", w.ID, instance.Cardinality, *instance.Errors[0].Message)
 						common.Log.Warningf(err.Error())

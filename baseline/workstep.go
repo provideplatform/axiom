@@ -648,6 +648,16 @@ func (w *Workstep) Create(tx *gorm.DB) bool {
 	}
 
 	if success {
+		workstepParticipants := _tx.Model(&w).Association("Participants").Find(&w.Participants)
+		if w.Participants == nil || len(w.Participants) == 0 {
+			workflow := FindWorkflowByID(*w.WorkflowID)
+			participants := make([]*Participant, 0)
+			_tx.Model(&workflow).Association("Participants").Find(&participants)
+			for _, p := range participants {
+				workstepParticipants.Append(p)
+			}
+		}
+
 		_tx.Commit()
 	}
 
