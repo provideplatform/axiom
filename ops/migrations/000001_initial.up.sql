@@ -204,10 +204,13 @@ ALTER TABLE ONLY public.worksteps
 
 CREATE TABLE public.worksteps_participants (
     workstep_id uuid NOT NULL,
-    participant varchar(64) NOT NULL
+    participant varchar(64) NOT NULL,
+    witness_secret_id uuid,
+    witnessed_at timestamp with time zone,
+    proof text
 );
 
-CREATE INDEX idx_worksteps_participants_workstep_id_participant ON public.worksteps_participants USING btree (workstep_id, participant);
+CREATE UNIQUE INDEX idx_worksteps_participants_workstep_id_participant ON public.worksteps_participants USING btree (workstep_id, participant);
 
 ALTER TABLE ONLY public.worksteps_participants
   ADD CONSTRAINT worksteps_participants_workgroup_id_foreign FOREIGN KEY (workstep_id) REFERENCES public.worksteps(id) ON UPDATE CASCADE ON DELETE CASCADE;
