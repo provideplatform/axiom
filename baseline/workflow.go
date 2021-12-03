@@ -381,22 +381,38 @@ func (w *Workflow) isPrototype() bool {
 	return w.WorkflowID == nil
 }
 
+func (w *Workflow) participantsCount(tx *gorm.DB) int {
+	rows, err := tx.Raw("SELECT count(*) FROM workflows_participants WHERE workflow_id=?", w.ID).Rows()
+	if err != nil {
+		common.Log.Warningf("failed to read workflow participants count; %s", err.Error())
+		return 0
+	}
+
+	var len int
+	for rows.Next() {
+		err = rows.Scan(&len)
+		if err != nil {
+			common.Log.Warningf("failed to read workflow participants count; %s", err.Error())
+			return 0
+		}
+	}
+
+	return len
+}
+
 func (w *Workflow) listParticipants(tx *gorm.DB) []*Participant {
-	participants := make([]*Participant, 0)
+	participants := make([]*Participant, w.participantsCount(tx))
 	rows, err := tx.Raw("SELECT * FROM workflows_participants WHERE workflow_id=?", w.ID).Rows()
 	if err != nil {
-		common.Log.Warningf("failed to read workflow participants; %s", err.Error())
+		common.Log.Warningf("failed to list workflow participants; %s", err.Error())
 		return participants
 	}
 
-	for rows.Next() {
-		var p *Participant
-		err = rows.Scan(&p)
-		if err != nil {
-			common.Log.Warningf("failed to read workflow participants; %s", err.Error())
-			return participants
-		}
-		participants = append(participants, p)
+	rows.Next()
+	rows.Scan(&participants)
+	if err != nil {
+		common.Log.Warningf("failed to list workflow participants; %s", err.Error())
+		return participants
 	}
 
 	return participants

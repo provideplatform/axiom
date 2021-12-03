@@ -523,22 +523,38 @@ func (w *Workstep) isPrototype() bool {
 	return w.WorkstepID == nil
 }
 
+func (w *Workstep) participantsCount(tx *gorm.DB) int {
+	rows, err := tx.Raw("SELECT count(*) FROM worksteps_participants WHERE worksteps_id=?", w.ID).Rows()
+	if err != nil {
+		common.Log.Warningf("failed to read worksteps participants count; %s", err.Error())
+		return 0
+	}
+
+	var len int
+	for rows.Next() {
+		err = rows.Scan(&len)
+		if err != nil {
+			common.Log.Warningf("failed to read worksteps participants count; %s", err.Error())
+			return 0
+		}
+	}
+
+	return len
+}
+
 func (w *Workstep) listParticipants(tx *gorm.DB) []*WorkstepParticipant {
-	participants := make([]*WorkstepParticipant, 0)
+	participants := make([]*WorkstepParticipant, w.participantsCount(tx))
 	rows, err := tx.Raw("SELECT * FROM worksteps_participants WHERE workstep_id=?", w.ID).Rows()
 	if err != nil {
 		common.Log.Warningf("failed to list workstep participants; %s", err.Error())
 		return participants
 	}
 
-	for rows.Next() {
-		var p *WorkstepParticipant
-		err = rows.Scan(&p)
-		if err != nil {
-			common.Log.Warningf("failed to list workstep participants; %s", err.Error())
-			return participants
-		}
-		participants = append(participants, p)
+	rows.Next()
+	err = rows.Scan(&participants)
+	if err != nil {
+		common.Log.Warningf("failed to list workstep participants; %s", err.Error())
+		return participants
 	}
 
 	return participants
