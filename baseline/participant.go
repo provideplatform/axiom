@@ -13,9 +13,9 @@ import (
 type Participant struct {
 	baseline.Participant
 	Address    *string      `json:"address"`
-	Workgroups []*Workgroup `gorm:"many2many:workgroups_participants" json:"workgroups,omitempty"`
-	Workflows  []*Workflow  `gorm:"many2many:workflows_participants" json:"workflows,omitempty"`
-	Worksteps  []*Workstep  `gorm:"many2many:worksteps_participants" json:"worksteps,omitempty"`
+	Workgroups []*Workgroup `sql:"-" json:"workgroups,omitempty"`
+	Workflows  []*Workflow  `sql:"-" json:"workflows,omitempty"`
+	Worksteps  []*Workstep  `sql:"-" json:"worksteps,omitempty"`
 }
 
 func (p *Participant) Cache() error {
