@@ -513,7 +513,7 @@ func (w *Workstep) listParticipants(tx *gorm.DB) []*Participant {
 
 func (w *Workstep) addParticipant(participant string, tx *gorm.DB) bool {
 	common.Log.Debugf("adding participant %s to workstep: %s", participant, w.ID)
-	result := tx.Exec("INSERT INTO worksteps_participants (workstep_id, participant) VALUES (?, ?, ?)", w.ID, participant)
+	result := tx.Exec("INSERT INTO worksteps_participants (workstep_id, participant) VALUES (?, ?)", w.ID, participant)
 	success := result.RowsAffected == 1
 	if success {
 		common.Log.Debugf("added participant %s from workstep: %s", participant, w.ID)

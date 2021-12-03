@@ -388,7 +388,7 @@ func (w *Workflow) listParticipants(tx *gorm.DB) []*Participant {
 
 func (w *Workflow) addParticipant(participant string, tx *gorm.DB) bool {
 	common.Log.Debugf("adding participant %s to workflow: %s", participant, w.ID)
-	result := tx.Exec("INSERT INTO workflows_participants (workstep_id, participant) VALUES (?, ?, ?)", w.ID, participant)
+	result := tx.Exec("INSERT INTO workflows_participants (workstep_id, participant) VALUES (?, ?)", w.ID, participant)
 	success := result.RowsAffected == 1
 	if success {
 		common.Log.Debugf("added participant %s to workflow: %s", participant, w.ID)
