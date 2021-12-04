@@ -400,8 +400,8 @@ func (w *Workflow) participantsCount(tx *gorm.DB) int {
 	return len
 }
 
-func (w *Workflow) listParticipants(tx *gorm.DB) []*Participant {
-	participants := make([]*Participant, w.participantsCount(tx))
+func (w *Workflow) listParticipants(tx *gorm.DB) []*WorkflowParticipant {
+	participants := make([]*WorkflowParticipant, w.participantsCount(tx))
 	rows, err := tx.Raw("SELECT * FROM workflows_participants WHERE workflow_id=?", w.ID).Rows()
 	if err != nil {
 		common.Log.Warningf("failed to list workflow participants; %s", err.Error())

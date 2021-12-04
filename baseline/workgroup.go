@@ -209,8 +209,8 @@ func (w *Workgroup) participantsCount(tx *gorm.DB) int {
 	return len
 }
 
-func (w *Workgroup) listParticipants(tx *gorm.DB) []*Participant {
-	participants := make([]*Participant, w.participantsCount(tx))
+func (w *Workgroup) listParticipants(tx *gorm.DB) []*WorkgroupParticipant {
+	participants := make([]*WorkgroupParticipant, w.participantsCount(tx))
 	rows, err := tx.Raw("SELECT * FROM workgroups_participants WHERE workgroup_id=?", w.ID).Rows()
 	if err != nil {
 		common.Log.Warningf("failed to list workgroup participants; %s", err.Error())
