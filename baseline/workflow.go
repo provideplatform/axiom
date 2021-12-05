@@ -401,18 +401,21 @@ func (w *Workflow) participantsCount(tx *gorm.DB) int {
 }
 
 func (w *Workflow) listParticipants(tx *gorm.DB) []*WorkflowParticipant {
-	participants := make([]*WorkflowParticipant, w.participantsCount(tx))
+	participants := make([]*WorkflowParticipant, 0)
 	rows, err := tx.Raw("SELECT * FROM workflows_participants WHERE workflow_id=?", w.ID).Rows()
 	if err != nil {
 		common.Log.Warningf("failed to list workflow participants; %s", err.Error())
 		return participants
 	}
 
-	rows.Next()
-	rows.Scan(&participants)
-	if err != nil {
-		common.Log.Warningf("failed to list workflow participants; %s", err.Error())
-		return participants
+	for rows.Next() {
+		var p *WorkflowParticipant
+		err = tx.ScanRows(rows, &p)
+		if err != nil {
+			common.Log.Warningf("failed to list workflow participants; %s", err.Error())
+			return participants
+		}
+		participants = append(participants, p)
 	}
 
 	return participants

@@ -210,18 +210,21 @@ func (w *Workgroup) participantsCount(tx *gorm.DB) int {
 }
 
 func (w *Workgroup) listParticipants(tx *gorm.DB) []*WorkgroupParticipant {
-	participants := make([]*WorkgroupParticipant, w.participantsCount(tx))
+	participants := make([]*WorkgroupParticipant, 0)
 	rows, err := tx.Raw("SELECT * FROM workgroups_participants WHERE workgroup_id=?", w.ID).Rows()
 	if err != nil {
 		common.Log.Warningf("failed to list workgroup participants; %s", err.Error())
 		return participants
 	}
 
-	rows.Next()
-	err = rows.Scan(&participants)
-	if err != nil {
-		common.Log.Warningf("failed to list workgroup participants; %s", err.Error())
-		return participants
+	for rows.Next() {
+		var p *WorkgroupParticipant
+		err = tx.ScanRows(rows, &p)
+		if err != nil {
+			common.Log.Warningf("failed to list workgroup participants; %s", err.Error())
+			return participants
+		}
+		participants = append(participants, p)
 	}
 
 	return participants
