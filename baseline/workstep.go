@@ -896,8 +896,12 @@ func (w *Workstep) Validate(tx *gorm.DB) bool {
 			Message: common.StringOrNil("cardinality out of bounds"),
 		})
 	} else if w.Cardinality == 0 {
-		if workflow.isPrototype() {
+		if w.isPrototype() {
 			w.Cardinality = len(worksteps) + 1
+		} else {
+			proto := &Workstep{}
+			tx.Where("workstep_id = ?", w.WorkstepID).Find(&proto)
+			w.Cardinality = proto.Cardinality
 		}
 	} else if w.Cardinality > len(worksteps) {
 		w.Errors = append(w.Errors, &provide.Error{
