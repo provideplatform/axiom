@@ -21,7 +21,7 @@ type Participant struct {
 
 // WorkgroupParticipant is a party to a baseline workgroup
 type WorkgroupParticipant struct {
-	Address     *string     `gorm:"column:participant" json:"address"`
+	Participant *string     `json:"address"`
 	Proof       *string     `json:"proof"`
 	Witness     interface{} `json:"witness"`
 	WitnessedAt *time.Time  `json:"witnessed_at"`
@@ -29,7 +29,7 @@ type WorkgroupParticipant struct {
 
 // WorkflowParticipant is a party to a baseline workflow
 type WorkflowParticipant struct {
-	Address     *string     `gorm:"column:participant" json:"address"`
+	Participant *string     `json:"address"`
 	Proof       *string     `json:"proof"`
 	Witness     interface{} `json:"witness"`
 	WitnessedAt *time.Time  `json:"witnessed_at"`
@@ -37,7 +37,7 @@ type WorkflowParticipant struct {
 
 // WorkstepParticipant is a party to a baseline workstep
 type WorkstepParticipant struct {
-	Address     *string     `gorm:"column:participant" json:"address"`
+	Participant *string     `json:"address"`
 	Proof       *string     `json:"proof"`
 	Witness     interface{} `json:"witness"`
 	WitnessedAt *time.Time  `json:"witnessed_at"`

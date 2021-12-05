@@ -493,7 +493,7 @@ func (w *Workflow) Create(tx *gorm.DB) bool {
 					participants := workgroup.listParticipants(_tx)
 					common.Log.Debugf("no participants added to workflow; defaulting to %d workgroup participant(s)", len(participants))
 					for _, p := range participants {
-						w.addParticipant(*p.Address, _tx)
+						w.addParticipant(*p.Participant, _tx)
 					}
 				}
 			}
@@ -516,7 +516,7 @@ func (w *Workflow) Create(tx *gorm.DB) bool {
 							participants := workstep.listParticipants(_tx)
 							common.Log.Debugf("no participants added to workstep; defaulting to %d workstep prototype participant(s)", len(participants))
 							for _, p := range participants {
-								instance.addParticipant(*p.Address, _tx)
+								instance.addParticipant(*p.Participant, _tx)
 							}
 						}
 					} else {

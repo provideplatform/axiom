@@ -563,7 +563,7 @@ func (w *Workstep) listParticipants(tx *gorm.DB) []*WorkstepParticipant {
 func (w *Workstep) setParticipantExecutionPayload(token, address string, payload *baseline.ProtocolMessagePayload, tx *gorm.DB) error {
 	participating := false
 	for _, p := range w.listParticipants(tx) {
-		if p.Address != nil && strings.EqualFold(strings.ToLower(*p.Address), strings.ToLower(address)) {
+		if p.Participant != nil && strings.EqualFold(strings.ToLower(*p.Participant), strings.ToLower(address)) {
 			participating = true
 		}
 	}
@@ -792,7 +792,7 @@ func (w *Workstep) Create(tx *gorm.DB) bool {
 			participants := workflow.listParticipants(_tx)
 			common.Log.Debugf("no participants added to workstep; defaulting to %d workflow participant(s)", len(participants))
 			for _, p := range participants {
-				w.addParticipant(*p.Address, _tx)
+				w.addParticipant(*p.Participant, _tx)
 			}
 		}
 
