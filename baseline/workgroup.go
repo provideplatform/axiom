@@ -218,7 +218,7 @@ func (w *Workgroup) listParticipants(tx *gorm.DB) []*WorkgroupParticipant {
 	}
 
 	for rows.Next() {
-		var p *WorkgroupParticipant
+		p := &WorkgroupParticipant{}
 		err = tx.ScanRows(rows, &p)
 		if err != nil {
 			common.Log.Warningf("failed to list workgroup participants; %s", err.Error())

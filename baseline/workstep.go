@@ -551,7 +551,7 @@ func (w *Workstep) listParticipants(tx *gorm.DB) []*WorkstepParticipant {
 	}
 
 	for rows.Next() {
-		var p *WorkstepParticipant
+		p := &WorkstepParticipant{}
 		err = tx.ScanRows(rows, &p)
 		if err != nil {
 			common.Log.Warningf("failed to list workstep participants; %s", err.Error())

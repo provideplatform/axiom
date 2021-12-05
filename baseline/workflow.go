@@ -409,7 +409,7 @@ func (w *Workflow) listParticipants(tx *gorm.DB) []*WorkflowParticipant {
 	}
 
 	for rows.Next() {
-		var p *WorkflowParticipant
+		p := &WorkflowParticipant{}
 		err = tx.ScanRows(rows, &p)
 		if err != nil {
 			common.Log.Warningf("failed to list workflow participants; %s", err.Error())
