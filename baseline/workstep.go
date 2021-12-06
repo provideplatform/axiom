@@ -544,7 +544,7 @@ func (w *Workstep) participantsCount(tx *gorm.DB) int {
 
 func (w *Workstep) listParticipants(tx *gorm.DB) []*WorkstepParticipant {
 	participants := make([]*WorkstepParticipant, 0)
-	rows, err := tx.Raw("SELECT * FROM workstep_participants WHERE workstep_id=?", w.ID).Rows()
+	rows, err := tx.Raw("SELECT * FROM worksteps_participants WHERE workstep_id=?", w.ID).Rows()
 	if err != nil {
 		common.Log.Warningf("failed to list workstep participants; %s", err.Error())
 		return participants
