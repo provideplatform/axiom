@@ -480,7 +480,7 @@ func consumeDispatchProtocolMessageSubscriptionsMsg(msg *nats.Msg) {
 		// request a VC from the counterparty
 		jwt, err = requestBaselineOrganizationIssuedVC(*protomsg.Recipient)
 		if err != nil {
-			resolveBaselineCounterparties() // HACK-- this should not re-resolve all counterparties...
+			resolveWorkgroupParticipants() // HACK-- this should not re-resolve all counterparties...
 
 			common.Log.Warningf("failed to request verifiable credential from recipient counterparty: %s; %s", *protomsg.Recipient, err.Error())
 			msg.Nak()
@@ -512,7 +512,7 @@ func consumeDispatchProtocolMessageSubscriptionsMsg(msg *nats.Msg) {
 		// counterparty.MessagingEndpoint = nil
 		// counterparty.Cache()
 
-		resolveBaselineCounterparties() // HACK-- this should not re-resolve all counterparties...
+		resolveWorkgroupParticipants() // HACK-- this should not re-resolve all counterparties...
 
 		common.Log.Warningf("failed to publish protocol message to recipient: %s; %s", *protomsg.Recipient, err.Error())
 		msg.Nak()
