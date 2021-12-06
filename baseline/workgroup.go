@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/jinzhu/gorm"
@@ -44,14 +43,14 @@ func init() {
 	redisutil.RequireRedis()
 
 	common.Log.Debug("attempting to resolve baseline counterparties")
-	resolveBaselineCounterparties()
+	resolveWorkgroupParticipants()
 
 	go func() {
 		timer := time.NewTicker(requireCounterpartiesTickerInterval)
 		for {
 			select {
 			case <-timer.C:
-				resolveBaselineCounterparties()
+				resolveWorkgroupParticipants()
 			default:
 				time.Sleep(requireCounterpartiesSleepInterval)
 			}
@@ -59,7 +58,7 @@ func init() {
 	}()
 }
 
-func resolveBaselineCounterparties() {
+func resolveWorkgroupParticipants() {
 	workgroupID, err := uuid.FromString(os.Getenv("BASELINE_WORKGROUP_ID"))
 	if err != nil {
 		common.Log.Panicf("failed to read BASELINE_WORKGROUP_ID from environment; %s", err.Error())
@@ -131,7 +130,7 @@ func resolveBaselineCounterparties() {
 		}
 
 		for _, participant := range counterparties {
-			if participant.Address != nil && !strings.EqualFold(strings.ToLower(*participant.Address), strings.ToLower(*common.BaselineOrganizationAddress)) {
+			if participant.Address != nil {
 				exists := lookupBaselineOrganization(*participant.Address) != nil
 
 				workgroup.addParticipant(*participant.Address, db)
