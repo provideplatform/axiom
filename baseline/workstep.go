@@ -448,7 +448,7 @@ func (w *Workstep) execute(token string, payload *baseline.ProtocolMessagePayloa
 	success := rowsAffected > 0 && len(errors) == 0
 	if success {
 		common.Log.Debugf("executed workstep %s; proof: %s", w.ID, *proof.Proof)
-		w.setParticipantExecutionPayload(token, *common.BaselineOrganizationAddress, payload, db)
+		w.setParticipantExecutionPayload(token, *common.BaselineOrganizationAddress, proof, payload, db)
 		// FIXME-- this is just inserting executions for the participant running this baseline stack instance...
 		// we need to also make sure the other witnesses are inserted upon processing by way of baseline inbound...
 
@@ -563,7 +563,7 @@ func (w *Workstep) listParticipants(tx *gorm.DB) []*WorkstepParticipant {
 	return participants
 }
 
-func (w *Workstep) setParticipantExecutionPayload(token, address string, payload *baseline.ProtocolMessagePayload, tx *gorm.DB) error {
+func (w *Workstep) setParticipantExecutionPayload(token, address string, proof *privacy.ProveResponse, payload *baseline.ProtocolMessagePayload, tx *gorm.DB) error {
 	participating := false
 	for _, p := range w.listParticipants(tx) {
 		if p.Participant != nil && strings.EqualFold(strings.ToLower(*p.Participant), strings.ToLower(address)) {
@@ -594,7 +594,7 @@ func (w *Workstep) setParticipantExecutionPayload(token, address string, payload
 	}
 
 	witnessedAt := time.Now()
-	result := tx.Exec("UPDATE worksteps_participants SET proof=?, witness_secret_id=?, witnessed_at=? WHERE workstep_id=? AND participant=?", *payload.Proof, secret.ID, witnessedAt, w.ID, address)
+	result := tx.Exec("UPDATE worksteps_participants SET proof=?, witness_secret_id=?, witnessed_at=? WHERE workstep_id=? AND participant=?", *proof.Proof, secret.ID, witnessedAt, w.ID, address)
 	success := result.RowsAffected == 1
 	if !success {
 		err := fmt.Errorf("failed to set workstep execution proof and witness data for participant: %s", address)
