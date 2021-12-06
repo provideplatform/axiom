@@ -859,6 +859,12 @@ func (w *Workstep) Delete() bool {
 				tx.Save(&workstep)
 			}
 		}
+
+		updatedAt := time.Now()
+		workflow := FindWorkflowByID(*w.WorkflowID)
+		workflow.WorkstepsCount = w.Cardinality
+		workflow.UpdatedAt = &updatedAt
+		tx.Save(&workflow)
 	}
 
 	tx.Commit()
