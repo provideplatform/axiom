@@ -762,6 +762,9 @@ func (w *Workstep) Update(other *Workstep) bool {
 	}
 	success := rowsAffected >= 1 && len(errors) == 0
 	if success {
+		updatedAt := time.Now()
+		workflow.UpdatedAt = &updatedAt
+		tx.Save(&workflow)
 		tx.Commit()
 	}
 	return success
