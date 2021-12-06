@@ -716,6 +716,10 @@ func (w *Workstep) Update(other *Workstep) bool {
 		return false
 	}
 
+	if len(w.Errors) > 0 {
+		return false
+	}
+
 	// modify the status
 	w.Name = other.Name
 	w.Description = other.Description
