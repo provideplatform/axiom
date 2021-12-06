@@ -460,6 +460,7 @@ func (w *Workstep) execute(token string, payload *baseline.ProtocolMessagePayloa
 			}
 		}
 		if pc == len(participants) {
+			common.Log.Debugf("completed workstep: %s", w.ID)
 			w.Status = common.StringOrNil(workstepStatusCompleted)
 			db.Save(&w)
 		}
