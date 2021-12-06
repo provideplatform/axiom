@@ -118,6 +118,7 @@ ALTER TABLE ONLY public.workgroups_participants
 CREATE TABLE public.workflows (
     id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
     created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone,
     deployed_at timestamp with time zone,
     name text NOT NULL,
     description text,
@@ -126,6 +127,7 @@ CREATE TABLE public.workflows (
     version text,
     workgroup_id uuid NOT NULL,
     workflow_id uuid,
+    worksteps_count integer NOT NULL DEFAULT 0,
     metadata json DEFAULT '{}'
 );
 

@@ -797,14 +797,19 @@ func (w *Workstep) Create(tx *gorm.DB) bool {
 	}
 
 	if success {
+		workflow := FindWorkflowByID(*w.WorkflowID)
 		if w.Participants == nil || len(w.Participants) == 0 {
-			workflow := FindWorkflowByID(*w.WorkflowID)
 			participants := workflow.listParticipants(_tx)
 			common.Log.Debugf("no participants added to workstep; defaulting to %d workflow participant(s)", len(participants))
 			for _, p := range participants {
 				w.addParticipant(*p.Participant, _tx)
 			}
 		}
+
+		updatedAt := time.Now()
+		workflow.UpdatedAt = &updatedAt
+		workflow.WorkstepsCount = w.Cardinality
+		_tx.Save(&workflow)
 
 		_tx.Commit()
 	}
