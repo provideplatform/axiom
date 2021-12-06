@@ -936,6 +936,17 @@ func createWorkstepHandler(c *gin.Context) {
 	// workstep.OrganizationID = organizationID
 	workstep.WorkflowID = &workflowID
 
+	workflow := FindWorkflowByID(workflowID)
+	if workflow != nil && !workflow.isPrototype() {
+		provide.RenderError("cannot add workstep to workflow instance", 400, c)
+		return
+	}
+
+	if workflow != nil && workflow.Status != nil && *workflow.Status != workflowStatusDraft {
+		provide.RenderError("cannot add worksteps to non-draft workflow prototype", 400, c)
+		return
+	}
+
 	if workstep.Create(nil) {
 		provide.Render(workstep, 201, c)
 	} else if len(workstep.Errors) > 0 {
