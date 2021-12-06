@@ -654,10 +654,6 @@ func (w *Workstep) Update(other *Workstep) bool {
 	tx := db.Begin()
 	defer tx.RollbackUnlessCommitted()
 
-	if !w.Validate(tx) {
-		return false
-	}
-
 	workflow := FindWorkflowByID(*w.WorkflowID)
 	worksteps := FindWorkstepsByWorkflowID(*w.WorkflowID)
 	adjustsCardinality := false
@@ -723,6 +719,10 @@ func (w *Workstep) Update(other *Workstep) bool {
 	w.Description = other.Description
 	w.RequireFinality = other.RequireFinality
 	w.Status = other.Status
+
+	if !w.Validate(tx) {
+		return false
+	}
 
 	result := tx.Save(&w)
 
