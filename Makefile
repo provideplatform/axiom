@@ -7,9 +7,9 @@ clean:
 
 build: clean mod
 	go fmt ./...
-	go build -v -o ./.bin/baseline_api ./cmd/api
-	go build -v -o ./.bin/baseline_consumer ./cmd/consumer
-	go build -v -o ./.bin/baseline_migrate ./cmd/migrate
+	CGO_ENABLED=0 go build -v -o ./.bin/baseline_api ./cmd/api
+	CGO_ENABLED=0 go build -v -o ./.bin/baseline_consumer ./cmd/consumer
+	CGO_ENABLED=0 go build -v -o ./.bin/baseline_migrate ./cmd/migrate
 
 ecs_deploy:
 	./ops/ecs_deploy.sh
