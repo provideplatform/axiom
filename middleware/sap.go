@@ -98,16 +98,16 @@ func InitSAPService(token *string) *SAPService {
 }
 
 func (s *SAPService) requestURI(uri string) string {
-	_uri := fmt.Sprintf("%s", uri)
+	_uri := string(uri)
 	if s.clientID != nil || s.clientSecret != nil {
 		_uri = fmt.Sprintf("%s?", _uri)
 
 		if s.clientID != nil {
-			_uri = fmt.Sprintf("%sclient_id=%s&", url.QueryEscape(*s.clientID))
+			_uri = fmt.Sprintf("%sclient_id=%s&", _uri, url.QueryEscape(*s.clientID))
 		}
 
 		if s.clientSecret != nil {
-			_uri = fmt.Sprintf("%sclient_secret=%s&", url.QueryEscape(*s.clientSecret))
+			_uri = fmt.Sprintf("%sclient_secret=%s&", _uri, url.QueryEscape(*s.clientSecret))
 		}
 
 		_uri = _uri[0 : len(_uri)-2]
