@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 	"sync"
@@ -20,7 +21,9 @@ const defaultSAPPassword = "unibright"
 // SAPService for the SAP API
 type SAPService struct {
 	api.Client
-	mutex sync.Mutex
+	mutex        sync.Mutex
+	clientID     *string
+	clientSecret *string
 }
 
 // InitDefaultSAPService convenience method to initialize a default `sap.SAPService` (i.e., production) instance
@@ -35,6 +38,8 @@ func InitDefaultSAPService(token *string) *SAPService {
 			Password: provide.StringOrNil(defaultSAPPassword),
 		},
 		sync.Mutex{},
+		nil,
+		nil,
 	}
 }
 
@@ -65,6 +70,18 @@ func InitSAPService(token *string) *SAPService {
 		password = os.Getenv("SAP_API_PASSWORD")
 	}
 
+	var clientID *string
+	if os.Getenv("SAP_API_CLIENT_ID") != "" {
+		_clientID := os.Getenv("SAP_API_CLIENT_ID")
+		clientID = &_clientID
+	}
+
+	var clientSecret *string
+	if os.Getenv("SAP_API_CLIENT_SECRET") != "" {
+		_clientSecret := os.Getenv("SAP_API_CLIENT_SECRET")
+		clientSecret = &_clientSecret
+	}
+
 	return &SAPService{
 		api.Client{
 			Host:     host,
@@ -75,7 +92,28 @@ func InitSAPService(token *string) *SAPService {
 			Password: provide.StringOrNil(password),
 		},
 		sync.Mutex{},
+		clientID,
+		clientSecret,
 	}
+}
+
+func (s *SAPService) requestURI(uri string) string {
+	_uri := fmt.Sprintf("%s", uri)
+	if s.clientID != nil || s.clientSecret != nil {
+		_uri = fmt.Sprintf("%s?", _uri)
+
+		if s.clientID != nil {
+			_uri = fmt.Sprintf("%sclient_id=%s&", url.QueryEscape(*s.clientID))
+		}
+
+		if s.clientSecret != nil {
+			_uri = fmt.Sprintf("%sclient_secret=%s&", url.QueryEscape(*s.clientSecret))
+		}
+
+		_uri = _uri[0 : len(_uri)-2]
+	}
+
+	return _uri
 }
 
 // Authenticate a user by email address and password, returning a newly-authorized X-CSRF-Token token
@@ -84,7 +122,7 @@ func (s *SAPService) Authenticate() error {
 	s.Headers = map[string][]string{
 		"X-CSRF-Token": {"Fetch"},
 	}
-	status, resp, err := s.Head("ubc/auth", map[string]interface{}{})
+	status, resp, err := s.Head(s.requestURI("ubc/auth"), map[string]interface{}{})
 	if err != nil {
 		return fmt.Errorf("failed to authenticate user; status: %v; %s", status, err.Error())
 	}
@@ -131,7 +169,7 @@ func (s *SAPService) ConfigureProxy(params map[string]interface{}) error {
 		params["company_code"] = companyCode
 	}
 
-	status, _, err := s.Post("ubc/proxies", params)
+	status, _, err := s.Post(s.requestURI("ubc/proxies"), params)
 	if err != nil {
 		return err
 	}
@@ -157,7 +195,7 @@ func (s *SAPService) GetSchema(recordType string, params map[string]interface{})
 		return nil, err
 	}
 
-	uri := fmt.Sprintf("ubc/business_object_models/%s", recordType)
+	uri := s.requestURI(fmt.Sprintf("ubc/business_object_models/%s", recordType))
 	status, resp, err := s.Get(uri, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch business object model; status: %v; %s", status, err.Error())
@@ -184,7 +222,7 @@ func (s *SAPService) CreateObject(params map[string]interface{}) (interface{}, e
 		params["object_connection_id"] = baselineID
 	}
 
-	status, resp, err := s.Post("ubc/business_objects", params)
+	status, resp, err := s.Post(s.requestURI("ubc/business_objects"), params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create business object; status: %v; %s", status, err.Error())
 	}
@@ -210,7 +248,7 @@ func (s *SAPService) UpdateObject(id string, params map[string]interface{}) erro
 		params["object_connection_id"] = baselineID
 	}
 
-	uri := fmt.Sprintf("ubc/business_objects/%s", id)
+	uri := s.requestURI(fmt.Sprintf("ubc/business_objects/%s", id))
 	status, _, err := s.Put(uri, params)
 	if err != nil {
 		return fmt.Errorf("failed to update business object; status: %v; %s", status, err.Error())
@@ -237,7 +275,7 @@ func (s *SAPService) UpdateObjectStatus(id string, params map[string]interface{}
 		params["object_connection_id"] = baselineID
 	}
 
-	uri := fmt.Sprintf("ubc/business_objects/%s/status", id)
+	uri := s.requestURI(fmt.Sprintf("ubc/business_objects/%s/status", id))
 	status, _, err := s.Put(uri, params)
 	if err != nil {
 		provide.Log.Warningf("failed to update business object status; status: %v; %s", status, err.Error())
@@ -263,7 +301,7 @@ func (s *SAPService) DeleteProxyConfiguration(organizationID string) error {
 		return err
 	}
 
-	uri := fmt.Sprintf("ubc/organizations/%s/proxy", organizationID)
+	uri := s.requestURI(fmt.Sprintf("ubc/organizations/%s/proxy", organizationID))
 	status, _, err := s.Delete(uri)
 	if err != nil {
 		return fmt.Errorf("failed to delete proxy config for organization %s; status: %v; %s", organizationID, status, err.Error())
@@ -286,7 +324,7 @@ func (s *SAPService) HealthCheck() error {
 		return err
 	}
 
-	status, _, err := s.Get("ubc/status", map[string]interface{}{})
+	status, _, err := s.Get(s.requestURI("ubc/status"), map[string]interface{}{})
 	if err != nil {
 		return fmt.Errorf("failed to complete health check; status: %v; %s", status, err.Error())
 	}
@@ -308,7 +346,7 @@ func (s *SAPService) ProxyHealthCheck(organizationID string) error {
 		return err
 	}
 
-	uri := fmt.Sprintf("ubc/organizations/%s/proxy", organizationID)
+	uri := s.requestURI(fmt.Sprintf("ubc/organizations/%s/proxy", organizationID))
 	status, _, err := s.Get(uri, map[string]interface{}{})
 	if err != nil {
 		return fmt.Errorf("failed to complete proxy health check for organization %s; status: %v; %s", organizationID, status, err.Error())
@@ -331,7 +369,7 @@ func (s *SAPService) InitiateBusinessObject(params map[string]interface{}) (inte
 		return nil, err
 	}
 
-	status, resp, err := s.Post("zcona/test", params)
+	status, resp, err := s.Post(s.requestURI("zcona/test"), params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initiate business object; status: %v; %s", status, err.Error())
 	}
