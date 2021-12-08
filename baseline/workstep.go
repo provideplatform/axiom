@@ -726,6 +726,7 @@ func (w *Workstep) Update(other *Workstep) bool {
 	w.Description = other.Description
 	w.RequireFinality = other.RequireFinality
 	w.Status = other.Status
+	w.Metadata, _ = other.Metadata
 
 	if !w.Validate(tx) {
 		return false
