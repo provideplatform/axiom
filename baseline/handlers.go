@@ -797,7 +797,7 @@ func updateWorkflowHandler(c *gin.Context) {
 	}
 
 	if workflow.Update(_workflow) {
-		provide.Render(workflow, 202, c)
+		provide.Render(nil, 204, c)
 	} else if len(workflow.Errors) > 0 {
 		obj := map[string]interface{}{}
 		obj["errors"] = workflow.Errors
@@ -1008,7 +1008,7 @@ func updateWorkstepHandler(c *gin.Context) {
 	}
 
 	if workstep.Update(_workstep) {
-		provide.Render(workstep, 202, c)
+		provide.Render(nil, 204, c)
 	} else if len(workstep.Errors) > 0 {
 		obj := map[string]interface{}{}
 		obj["errors"] = workstep.Errors
