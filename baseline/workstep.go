@@ -939,15 +939,16 @@ func (w *Workstep) Validate(tx *gorm.DB) bool {
 		})
 	}
 
-	if *w.Status != workstepStatusDraft &&
-		*w.Status != workstepStatusDeployed &&
-		*w.Status != workstepStatusDeprecated &&
-		*w.Status != workstepStatusPendingDeployment &&
-		*w.Status != workstepStatusInit &&
-		*w.Status != workstepStatusRunning &&
-		*w.Status != workstepStatusCompleted &&
-		*w.Status != workstepStatusCanceled &&
-		*w.Status != workstepStatusFailed {
+	if w.Status == nil ||
+		(*w.Status != workstepStatusDraft &&
+			*w.Status != workstepStatusDeployed &&
+			*w.Status != workstepStatusDeprecated &&
+			*w.Status != workstepStatusPendingDeployment &&
+			*w.Status != workstepStatusInit &&
+			*w.Status != workstepStatusRunning &&
+			*w.Status != workstepStatusCompleted &&
+			*w.Status != workstepStatusCanceled &&
+			*w.Status != workstepStatusFailed) {
 		w.Errors = append(w.Errors, &provide.Error{
 			Message: common.StringOrNil(fmt.Sprintf("invalid status: %s", *w.Status)),
 		})

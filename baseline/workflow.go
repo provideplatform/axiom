@@ -661,15 +661,16 @@ func (w *Workflow) Validate() bool {
 		})
 	}
 
-	if *w.Status != workflowStatusDraft &&
-		*w.Status != workflowStatusDeployed &&
-		*w.Status != workflowStatusPendingDeployment &&
-		*w.Status != workflowStatusDeprecated &&
-		*w.Status != workflowStatusInit &&
-		*w.Status != workflowStatusRunning &&
-		*w.Status != workflowStatusCompleted &&
-		*w.Status != workflowStatusCanceled &&
-		*w.Status != workflowStatusFailed {
+	if w.Status == nil ||
+		(*w.Status != workflowStatusDraft &&
+			*w.Status != workflowStatusDeployed &&
+			*w.Status != workflowStatusPendingDeployment &&
+			*w.Status != workflowStatusDeprecated &&
+			*w.Status != workflowStatusInit &&
+			*w.Status != workflowStatusRunning &&
+			*w.Status != workflowStatusCompleted &&
+			*w.Status != workflowStatusCanceled &&
+			*w.Status != workflowStatusFailed) {
 		w.Errors = append(w.Errors, &provide.Error{
 			Message: common.StringOrNil(fmt.Sprintf("invalid status: %s", *w.Status)),
 		})
