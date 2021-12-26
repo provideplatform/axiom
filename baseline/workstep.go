@@ -950,7 +950,9 @@ func (w *Workstep) Validate(tx *gorm.DB) bool {
 			*w.Status != workstepStatusCanceled &&
 			*w.Status != workstepStatusFailed) {
 		w.Errors = append(w.Errors, &provide.Error{
-			Message: common.StringOrNil(fmt.Sprintf("invalid status: %s", *w.Status)),
+			if w.Status != nil {
+				Message: common.StringOrNil(fmt.Sprintf("invalid status: %s", *w.Status))
+			}
 		})
 	}
 
