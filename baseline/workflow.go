@@ -336,7 +336,7 @@ func (w *Workflow) deploy() bool {
 
 	if w.Version == nil {
 		w.Errors = append(w.Errors, &provide.Error{
-			Message: common.StringOrNil("cannot deploy unversioned workflow")),
+			Message: common.StringOrNil("cannot deploy unversioned workflow"),
 		})
 		return false
 	}
