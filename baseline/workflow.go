@@ -334,6 +334,13 @@ func (w *Workflow) deploy() bool {
 		return false
 	}
 
+	if w.Version == nil {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil("cannot deploy unversioned workflow")),
+		})
+		return false
+	}
+
 	w.Status = common.StringOrNil(workflowStatusPendingDeployment)
 	worksteps := FindWorkstepsByWorkflowID(w.ID)
 

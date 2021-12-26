@@ -743,12 +743,7 @@ func deployWorkflowHandler(c *gin.Context) {
 
 	_workflow := &Workflow{}
 	_workflow.Status = common.StringOrNil(workflowStatusDeployed) // HACK!!!
-
-	if version, versionOk := params["version"].(string); versionOk {
-		_workflow.Version = common.StringOrNil(version)
-	} else {
-		_workflow.Version = workflow.Version
-	}
+	_workflow.Version = workflow.Version
 
 	if workflow.Update(_workflow) {
 		provide.Render(workflow, 202, c)
