@@ -14,6 +14,10 @@ import (
 	"github.com/provideplatform/provide-go/common/util"
 )
 
+const configGracePeriodTickInterval = 1000 * time.Millisecond
+const configGracePeriodSleepInterval = 25 * time.Millisecond
+const configGracePeriodTimeout = 60000 * time.Millisecond
+
 var (
 	// BaselineOrganizationAddress is the baseline organization address
 	BaselineOrganizationAddress *string
@@ -64,7 +68,7 @@ var (
 func init() {
 	requireLogger()
 
-	requireOrganization()
+	go requireOrganization()
 	requireVault()
 
 	requireInternalSOR()
@@ -163,25 +167,46 @@ func requireInternalSOR() {
 }
 
 func requireOrganization() {
-	if os.Getenv("PROVIDE_ORGANIZATION_ID") == "" {
-		Log.Warningf("PROVIDE_ORGANIZATION_ID not provided")
-	}
-	OrganizationID = StringOrNil(os.Getenv("PROVIDE_ORGANIZATION_ID"))
+	timer := time.NewTicker(configGracePeriodTickInterval)
+	defer timer.Stop()
 
-	if os.Getenv("PROVIDE_ORGANIZATION_REFRESH_TOKEN") == "" {
-		Log.Warningf("PROVIDE_ORGANIZATION_REFRESH_TOKEN not provided")
-	}
-	OrganizationRefreshToken = StringOrNil(os.Getenv("PROVIDE_ORGANIZATION_REFRESH_TOKEN"))
+	startedAt := time.Now()
+	resolvedOrganization := false
 
-	OrganizationMessagingEndpoint = StringOrNil(os.Getenv("BASELINE_ORGANIZATION_MESSAGING_ENDPOINT"))
-	if OrganizationMessagingEndpoint == nil {
-		Log.Warningf("BASELINE_ORGANIZATION_MESSAGING_ENDPOINT not provided")
+	for !resolvedOrganization {
+		select {
+		case <-timer.C:
+			OrganizationID = StringOrNil(os.Getenv("PROVIDE_ORGANIZATION_ID"))
+			OrganizationRefreshToken = StringOrNil(os.Getenv("PROVIDE_ORGANIZATION_REFRESH_TOKEN"))
+			OrganizationMessagingEndpoint = StringOrNil(os.Getenv("BASELINE_ORGANIZATION_MESSAGING_ENDPOINT"))
+			OrganizationProxyEndpoint = StringOrNil(os.Getenv("BASELINE_ORGANIZATION_PROXY_ENDPOINT"))
+
+			resolvedOrganization = OrganizationID != nil && OrganizationRefreshToken != nil && OrganizationMessagingEndpoint != nil && OrganizationProxyEndpoint != nil
+		default:
+			if time.Now().After(startedAt.Add(configGracePeriodTimeout)) {
+				if os.Getenv("PROVIDE_ORGANIZATION_ID") == "" {
+					Log.Warningf("PROVIDE_ORGANIZATION_ID not provided")
+				}
+
+				if os.Getenv("PROVIDE_ORGANIZATION_REFRESH_TOKEN") == "" {
+					Log.Warningf("PROVIDE_ORGANIZATION_REFRESH_TOKEN not provided")
+				}
+
+				if OrganizationMessagingEndpoint == nil {
+					Log.Warningf("BASELINE_ORGANIZATION_MESSAGING_ENDPOINT not provided")
+				}
+
+				if OrganizationProxyEndpoint == nil {
+					Log.Warningf("BASELINE_ORGANIZATION_PROXY_ENDPOINT not provided")
+				}
+
+				Log.Panicf("failed to require organization")
+			}
+
+			time.Sleep(configGracePeriodSleepInterval)
+		}
 	}
 
-	OrganizationProxyEndpoint = StringOrNil(os.Getenv("BASELINE_ORGANIZATION_PROXY_ENDPOINT"))
-	if OrganizationProxyEndpoint == nil {
-		Log.Panicf("BASELINE_ORGANIZATION_PROXY_ENDPOINT is required")
-	}
 }
 
 func requireVault() {
