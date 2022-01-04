@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/jinzhu/gorm"
@@ -146,8 +145,7 @@ func baselineWorkflowFactory(objectType string, identifier *string) (*WorkflowIn
 	}
 
 	// FIXME -- read all workgroup participants from cache
-	workgroupID := os.Getenv("BASELINE_WORKGROUP_ID")
-	orgs, err := ident.ListApplicationOrganizations(*token, workgroupID, map[string]interface{}{})
+	orgs, err := ident.ListApplicationOrganizations(*token, *common.WorkgroupID, map[string]interface{}{})
 	if err != nil {
 		return nil, err
 	}

@@ -467,6 +467,8 @@ github.com/nats-io/stan.go v0.7.0/go.mod h1:Ci6mUIpGQTjl++MqK2XzkWI/0vF+Bl72uScx
 github.com/nxadm/tail v1.4.4/go.mod h1:kenIhsEOeOJmVchQTgglprH7qJGnHDVpk1VPCcaMI8A=
 github.com/nxadm/tail v1.4.8 h1:nPr65rt6Y5JFSKQO7qToXr7pePgD6Gwiw05lkbyAQTE=
 github.com/nxadm/tail v1.4.8/go.mod h1:+ncqLTQzXmGhMZNUePPaPqPvBxHAIsmXswZKocGu+AU=
+github.com/ockam-network/did v0.1.3 h1:qJGdccOV4bLfsS/eFM+Aj+CdCRJKNMxbmJevQclw44k=
+github.com/ockam-network/did v0.1.3/go.mod h1:ZsbTIuVGt8OrQEbqWrSztUISN4joeMabdsinbLubbzw=
 github.com/oklog/ulid v1.3.1/go.mod h1:CirwcVhetQ6Lv90oh/F+FBtV6XMibvdAFo93nm5qn4U=
 github.com/olekukonko/tablewriter v0.0.1/go.mod h1:vsDQFd/mU46D+Z4whnwzcISnGGzXWMclvtLoiIKAKIo=
 github.com/olekukonko/tablewriter v0.0.2-0.20190409134802-7e037d187b0c/go.mod h1:vsDQFd/mU46D+Z4whnwzcISnGGzXWMclvtLoiIKAKIo=
@@ -533,8 +535,8 @@ github.com/prometheus/tsdb v0.10.0/go.mod h1:oi49uRhEe9dPUTlS3JRZOwJuVi6tmh10QSg
 github.com/provideplatform/ident v0.9.10-0.20210903195520-28bcb83ac5d6 h1:/yGxRvW9G36tk+DDCdmMDcrCfc5YfLJxUCZc84J8QQU=
 github.com/provideplatform/ident v0.9.10-0.20210903195520-28bcb83ac5d6/go.mod h1:s+hRD5W4u66saaYadkmL9hGyirrtmcwojL5XhZ7imHk=
 github.com/provideplatform/provide-go v0.0.0-20210624064849-d7328258f0d8/go.mod h1:q0/Q8KaZxYg84rdwBIIE7ZwHluzM5zw7zJJoJOqAbzg=
-github.com/provideplatform/provide-go v0.0.0-20211203084100-a1c212be1b12 h1:tBPnwB+ULFImMTQ0m90KItfuSyv453EBW8vOCZsxX78=
-github.com/provideplatform/provide-go v0.0.0-20211203084100-a1c212be1b12/go.mod h1:q0/Q8KaZxYg84rdwBIIE7ZwHluzM5zw7zJJoJOqAbzg=
+github.com/provideplatform/provide-go v0.0.0-20220104054058-629404224a0a h1:vGTxjS9F1hmIU7SoJXKfIs9zwuVpXTpyPhYtrFxmaaA=
+github.com/provideplatform/provide-go v0.0.0-20220104054058-629404224a0a/go.mod h1:3XKCmsPvXOLfHQhMwmJGwK7CD/OqW2Y4HMJVfvkBIys=
 github.com/rcrowley/go-metrics v0.0.0-20190826022208-cac0b30c2563/go.mod h1:bCqnVzQkZxMG4s8nGwiZ5l3QUCyqpo9Y+/ZMZ9VjZe4=
 github.com/rivo/uniseg v0.1.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
 github.com/rivo/uniseg v0.2.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=

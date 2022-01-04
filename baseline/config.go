@@ -14,6 +14,10 @@ type Config struct {
 }
 
 func (c *Config) apply() bool {
+	if common.WorkgroupID == nil && c.WorkgroupID != nil {
+		common.WorkgroupID = common.StringOrNil(c.WorkgroupID.String())
+	}
+
 	if c.NetworkID != nil {
 		common.NChainBaselineNetworkID = common.StringOrNil(c.NetworkID.String())
 	}
@@ -28,7 +32,10 @@ func (c *Config) apply() bool {
 	}
 	if c.RegistryContractAddress != nil {
 		common.BaselineRegistryContractAddress = c.RegistryContractAddress
-		common.ResolveBaselineContract()
+
+		if common.OrganizationID != nil {
+			common.ResolveBaselineContract()
+		}
 	}
 
 	if c.Env != nil {

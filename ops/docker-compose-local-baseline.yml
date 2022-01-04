@@ -3,6 +3,7 @@ version: '3.5'
 services:
   prvd-postgres:
     image: postgres
+    container_name: postgres-local
     environment:
       - POSTGRES_DB=prvd
       - POSTGRES_USER=prvd
@@ -24,6 +25,7 @@ services:
 
   prvd-redis:
     image: redis
+    container_name: redis-local
     healthcheck:
       test: ['CMD', 'redis-cli', 'ping']
       interval: 1m
@@ -39,6 +41,7 @@ services:
 
   prvd-nats:
     image: provide/nats-server:2.5.0-PRVD
+    container_name: nats-local
     command:
       [
         '--js',
@@ -86,6 +89,7 @@ services:
   baseline:
     build: ../
     entrypoint: ./ops/run_api.sh
+    container_name: baseline-local-api
     depends_on:
       - prvd-nats
       - prvd-postgres
@@ -97,29 +101,29 @@ services:
       - DATABASE_NAME=baseline_dev
       - DATABASE_USER=baseline
       - DATABASE_PASSWORD=baseline
-      - IDENT_API_HOST=localhost:8081
+      - IDENT_API_HOST=host.docker.internal:8081
       - IDENT_API_SCHEME=http
       - LOG_LEVEL=DEBUG
       - NATS_CLIENT_PREFIX=baseline
       - NATS_URL=nats://prvd-nats:4224
       - NATS_JETSTREAM_URL=nats://prvd-nats:4224
-      - NCHAIN_API_HOST=localhost:8084
+      - NCHAIN_API_HOST=host.docker.internal:8084
       - NCHAIN_API_SCHEME=http
       - NCHAIN_BASELINE_NETWORK_ID=66d44f30-9092-4182-a3c4-bc02736d6ae5
-      - PRIVACY_API_HOST=localhost:8083
+      - PRIVACY_API_HOST=host.docker.internal:8083
       - PRIVACY_API_SCHEME=http
       - PROVIDE_ORGANIZATION_ID=
       - PROVIDE_ORGANIZATION_REFRESH_TOKEN=
-      - PROVIDE_SOR_IDENTIFIER=
+      - BASELINE_WORKGROUP_ID=
+      - PROVIDE_SOR_IDENTIFIER=ephemeral
       - PROVIDE_SOR_URL=
-      - REDIS_HOSTS=prvd-redis:6380
-      - VAULT_API_HOST=localhost:8082
+      - REDIS_HOSTS=prvd-redis:6379
+      - VAULT_API_HOST=host.docker.internal:8082
       - VAULT_API_SCHEME=http
       - VAULT_REFRESH_TOKEN=eyJhbGciOiJSUzI1NiIsImtpZCI6IjEwOjJlOmQ5OmUxOmI4OmEyOjM0OjM3Ojk5OjNhOjI0OmZjOmFhOmQxOmM4OjU5IiwidHlwIjoiSldUIn0.eyJhdWQiOiJodHRwczovL3Byb3ZpZGUuc2VydmljZXMvYXBpL3YxIiwiaWF0IjoxNjA1NzkxMjQ4LCJpc3MiOiJodHRwczovL2lkZW50LnByb3ZpZGUuc2VydmljZXMiLCJqdGkiOiI5YjUxNGIxNS01NTdlLTRhYWQtYTcwOC0wMTcwZTAwZWE1ZmIiLCJuYXRzIjp7InBlcm1pc3Npb25zIjp7InN1YnNjcmliZSI6eyJhbGxvdyI6WyJhcHBsaWNhdGlvbi4zNjAxNTdmOC1kNWExLTQ0NDAtOTE4Yi1mNjhiYjM5YzBkODAiLCJ1c2VyLjIzY2MwN2UwLTM4NTEtNDBkZC1iNjc1LWRmNzY4MDY3MmY3ZCIsIm5ldHdvcmsuKi5jb25uZWN0b3IuKiIsIm5ldHdvcmsuKi5zdGF0dXMiLCJwbGF0Zm9ybS5cdTAwM2UiXX19fSwicHJ2ZCI6eyJhcHBsaWNhdGlvbl9pZCI6IjM2MDE1N2Y4LWQ1YTEtNDQ0MC05MThiLWY2OGJiMzljMGQ4MCIsImV4dGVuZGVkIjp7InBlcm1pc3Npb25zIjp7IioiOjUxMH19LCJwZXJtaXNzaW9ucyI6NTEwLCJ1c2VyX2lkIjoiMjNjYzA3ZTAtMzg1MS00MGRkLWI2NzUtZGY3NjgwNjcyZjdkIn0sInN1YiI6ImFwcGxpY2F0aW9uOjM2MDE1N2Y4LWQ1YTEtNDQ0MC05MThiLWY2OGJiMzljMGQ4MCJ9.SUh84MKBNstdu3KFu1zEAQq03xbPw1D0lLXeogz1HfBJy77bIGf7HLvCuc6bjkh0xj3cEuEus1dC1Dj3BvlZoSXsvz_biTzSapkXzJjpkwOL6qkYDmqTPZvXwqmk-mUNrHTPkqdiIJL7xA46tzHW3E_hjSA9HjEk1kXjPdJQ6_ifkgWNoAaSD--kudIrhZ7vLnfy0H1JEAOsXzSAMoc5_pNG2n79m0ywvb_4l9BqdsHW8N3xSQOFjcp9gD_tqo6ffug3pkpoy-RSguM_OaMR2lj_CHhYxAt0phtjUceDD3K1h5iZ38kSl7izhOdULMmGBhVpBMoSy6_R6ZzpCL3pj8FcReX9RXR5oYpm8PDtlmWqblQzjwY00-uYLfOX0_iS4MGfEsjadZPfTmJLcOTYC7H4PL9ZRu_XtMDUrGBQQz5b_ad2ZzMXbBNeU6vbxVKDG8VFKWOHAemqHTcvuOAsOCLIqOu-eJpZHlXbx-FXPTYledd-GBDe7IjaC9ll_JK3utCOnCq0qUs6lnXIrQ_Sp1LcTKJJ7aY5f9TxeoAuL-ghDbQ3Xkw6huKyPCz2evOwVLwrB9ZRMlQXgmTnB1OeQvWii1WbmkyV1Zhbz_RPB8ckK7_mFxuPvsXK8wTFiWFmj96sRX470kV-ooSfM5CzKZhSLqgyyaUNC0VaCPq0uuE
-      - BASELINE_ORGANIZATION_MESSAGING_ENDPOINT=nats://localhost:4223
-      - BASELINE_ORGANIZATION_PROXY_ENDPOINT=http://localhost:8085
+      - BASELINE_ORGANIZATION_MESSAGING_ENDPOINT=nats://prvd-nats:4223
+      - BASELINE_ORGANIZATION_PROXY_ENDPOINT=http://prvd-baseline:8080
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:8085/status']
       interval: 1m
       timeout: 1s
       retries: 2
@@ -134,6 +138,7 @@ services:
   baseline-consumer:
     build: ../
     entrypoint: ./ops/run_consumer.sh
+    container_name: baseline-local-consumer
     depends_on:
       - prvd-nats
       - prvd-postgres
@@ -145,29 +150,30 @@ services:
       - DATABASE_NAME=baseline_dev
       - DATABASE_USER=baseline
       - DATABASE_PASSWORD=baseline
-      - IDENT_API_HOST=localhost:8081
+      - IDENT_API_HOST=host.docker.internal:8081
       - IDENT_API_SCHEME=http
       - LOG_LEVEL=DEBUG
       - NATS_CLIENT_PREFIX=baseline
       - NATS_URL=nats://prvd-nats:4224
       - NATS_JETSTREAM_URL=nats://prvd-nats:4224
-      - NCHAIN_API_HOST=localhost:8084
+      - NCHAIN_API_HOST=host.docker.internal:8084
       - NCHAIN_API_SCHEME=http
       - NCHAIN_BASELINE_NETWORK_ID=66d44f30-9092-4182-a3c4-bc02736d6ae5
-      - PRIVACY_API_HOST=localhost:8083
+      - PRIVACY_API_HOST=host.docker.internal:8083
       - PRIVACY_API_SCHEME=http
       - PROVIDE_ORGANIZATION_ID=
       - PROVIDE_ORGANIZATION_REFRESH_TOKEN=
-      - PROVIDE_SOR_IDENTIFIER=
+      - BASELINE_WORKGROUP_ID=
+      - PROVIDE_SOR_IDENTIFIER=ephemeral
       - PROVIDE_SOR_URL=
-      - REDIS_HOSTS=prvd-redis:6380
-      - VAULT_API_HOST=localhost:8082
+      - REDIS_HOSTS=prvd-redis:6379
+      - VAULT_API_HOST=host.docker.internal:8082
       - VAULT_API_SCHEME=http
       - VAULT_REFRESH_TOKEN=eyJhbGciOiJSUzI1NiIsImtpZCI6IjEwOjJlOmQ5OmUxOmI4OmEyOjM0OjM3Ojk5OjNhOjI0OmZjOmFhOmQxOmM4OjU5IiwidHlwIjoiSldUIn0.eyJhdWQiOiJodHRwczovL3Byb3ZpZGUuc2VydmljZXMvYXBpL3YxIiwiaWF0IjoxNjA1NzkxMjQ4LCJpc3MiOiJodHRwczovL2lkZW50LnByb3ZpZGUuc2VydmljZXMiLCJqdGkiOiI5YjUxNGIxNS01NTdlLTRhYWQtYTcwOC0wMTcwZTAwZWE1ZmIiLCJuYXRzIjp7InBlcm1pc3Npb25zIjp7InN1YnNjcmliZSI6eyJhbGxvdyI6WyJhcHBsaWNhdGlvbi4zNjAxNTdmOC1kNWExLTQ0NDAtOTE4Yi1mNjhiYjM5YzBkODAiLCJ1c2VyLjIzY2MwN2UwLTM4NTEtNDBkZC1iNjc1LWRmNzY4MDY3MmY3ZCIsIm5ldHdvcmsuKi5jb25uZWN0b3IuKiIsIm5ldHdvcmsuKi5zdGF0dXMiLCJwbGF0Zm9ybS5cdTAwM2UiXX19fSwicHJ2ZCI6eyJhcHBsaWNhdGlvbl9pZCI6IjM2MDE1N2Y4LWQ1YTEtNDQ0MC05MThiLWY2OGJiMzljMGQ4MCIsImV4dGVuZGVkIjp7InBlcm1pc3Npb25zIjp7IioiOjUxMH19LCJwZXJtaXNzaW9ucyI6NTEwLCJ1c2VyX2lkIjoiMjNjYzA3ZTAtMzg1MS00MGRkLWI2NzUtZGY3NjgwNjcyZjdkIn0sInN1YiI6ImFwcGxpY2F0aW9uOjM2MDE1N2Y4LWQ1YTEtNDQ0MC05MThiLWY2OGJiMzljMGQ4MCJ9.SUh84MKBNstdu3KFu1zEAQq03xbPw1D0lLXeogz1HfBJy77bIGf7HLvCuc6bjkh0xj3cEuEus1dC1Dj3BvlZoSXsvz_biTzSapkXzJjpkwOL6qkYDmqTPZvXwqmk-mUNrHTPkqdiIJL7xA46tzHW3E_hjSA9HjEk1kXjPdJQ6_ifkgWNoAaSD--kudIrhZ7vLnfy0H1JEAOsXzSAMoc5_pNG2n79m0ywvb_4l9BqdsHW8N3xSQOFjcp9gD_tqo6ffug3pkpoy-RSguM_OaMR2lj_CHhYxAt0phtjUceDD3K1h5iZ38kSl7izhOdULMmGBhVpBMoSy6_R6ZzpCL3pj8FcReX9RXR5oYpm8PDtlmWqblQzjwY00-uYLfOX0_iS4MGfEsjadZPfTmJLcOTYC7H4PL9ZRu_XtMDUrGBQQz5b_ad2ZzMXbBNeU6vbxVKDG8VFKWOHAemqHTcvuOAsOCLIqOu-eJpZHlXbx-FXPTYledd-GBDe7IjaC9ll_JK3utCOnCq0qUs6lnXIrQ_Sp1LcTKJJ7aY5f9TxeoAuL-ghDbQ3Xkw6huKyPCz2evOwVLwrB9ZRMlQXgmTnB1OeQvWii1WbmkyV1Zhbz_RPB8ckK7_mFxuPvsXK8wTFiWFmj96sRX470kV-ooSfM5CzKZhSLqgyyaUNC0VaCPq0uuE
-      - BASELINE_ORGANIZATION_MESSAGING_ENDPOINT=nats://localhost:4223
-      - BASELINE_ORGANIZATION_PROXY_ENDPOINT=http://localhost:8085
+      - BASELINE_ORGANIZATION_MESSAGING_ENDPOINT=nats://prvd-nats:4223
+      - BASELINE_ORGANIZATION_PROXY_ENDPOINT=http://prvd-baseline:8080
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:8085/status']
+      test: ['CMD', 'curl', '-f', 'http://prvd-baseline:8080/status']
       interval: 1m
       timeout: 1s
       retries: 2

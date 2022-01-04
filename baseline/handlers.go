@@ -101,6 +101,13 @@ func InstallWorkstepsAPI(r *gin.Engine) {
 
 func configurationHandler(c *gin.Context) {
 	organizationID := util.AuthorizedSubjectID(c, "organization")
+
+	// TODO: KT
+	if common.OrganizationID == nil {
+		common.OrganizationID = common.StringOrNil(organizationID.String())
+		common.Log.Debugf("previously unset organization id initialized by bearer: %s", organizationID)
+	}
+
 	if organizationID == nil {
 		provide.RenderError("unauthorized", 401, c)
 		return

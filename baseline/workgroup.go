@@ -3,7 +3,6 @@ package baseline
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/jinzhu/gorm"
@@ -59,9 +58,15 @@ func init() {
 }
 
 func resolveWorkgroupParticipants() {
-	workgroupID, err := uuid.FromString(os.Getenv("BASELINE_WORKGROUP_ID"))
+	if common.WorkgroupID == nil {
+		common.Log.Warningf("workgroup id not configured")
+		return
+	}
+
+	workgroupID, err := uuid.FromString(*common.WorkgroupID)
 	if err != nil {
-		common.Log.Panicf("failed to read BASELINE_WORKGROUP_ID from environment; %s", err.Error())
+		common.Log.Warningf("failed to require workgroupID; %s", err.Error())
+		return
 	}
 
 	workgroup := FindWorkgroupByID(workgroupID)
