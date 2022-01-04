@@ -117,9 +117,7 @@ func requireBaseline() {
 	}
 	WorkgroupID = common.StringOrNil(os.Getenv("BASELINE_WORKGROUP_ID"))
 
-	if OrganizationID != nil {
-		ResolveBaselineContract()
-	}
+	ResolveBaselineContract()
 }
 
 func requireBaselinePublicWorkgroup() {

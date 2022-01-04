@@ -75,6 +75,11 @@ func ResolveBaselineContract() {
 		return
 	}
 
+	if OrganizationID == nil {
+		Log.Warning("organization id not set to resolve baseline contract")
+		return
+	}
+
 	token, err := ident.CreateToken(*OrganizationRefreshToken, map[string]interface{}{
 		"grant_type":      "refresh_token",
 		"organization_id": *OrganizationID,

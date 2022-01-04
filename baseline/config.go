@@ -16,6 +16,8 @@ type Config struct {
 func (c *Config) apply() bool {
 	if common.WorkgroupID == nil && c.WorkgroupID != nil {
 		common.WorkgroupID = common.StringOrNil(c.WorkgroupID.String())
+		resolveWorkgroupParticipants()
+		common.Log.Debugf("previously unset workgroup id initialized to: %s", *common.WorkgroupID)
 	}
 
 	if c.NetworkID != nil {
@@ -32,10 +34,7 @@ func (c *Config) apply() bool {
 	}
 	if c.RegistryContractAddress != nil {
 		common.BaselineRegistryContractAddress = c.RegistryContractAddress
-
-		if common.OrganizationID != nil {
-			common.ResolveBaselineContract()
-		}
+		common.ResolveBaselineContract()
 	}
 
 	if c.Env != nil {
