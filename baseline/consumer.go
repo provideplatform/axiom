@@ -379,6 +379,11 @@ func consumeBaselineWorkstepDeploySubscriptionsMsg(msg *nats.Msg) {
 
 	workstep := FindWorkstepByID(workstepID)
 
+	if common.OrganizationID == nil {
+		common.Log.Warning("organization id not set")
+		return
+	}
+
 	token, err := ident.CreateToken(*common.OrganizationRefreshToken, map[string]interface{}{
 		"grant_type":      "refresh_token",
 		"organization_id": *common.OrganizationID,
