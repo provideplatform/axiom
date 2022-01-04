@@ -16,7 +16,7 @@ import (
 
 const configGracePeriodTickInterval = 1000 * time.Millisecond
 const configGracePeriodSleepInterval = 25 * time.Millisecond
-const configGracePeriodTimeout = 60000 * time.Millisecond
+const configGracePeriodTimeout = 10 * time.Minute
 
 var (
 	// BaselineOrganizationAddress is the baseline organization address
@@ -60,6 +60,9 @@ var (
 
 	// OrganizationRefreshToken is the refresh token for the org
 	OrganizationRefreshToken *string
+
+	// WorkgroupID is the id of the workgroup
+	WorkgroupID *string
 
 	// Vault is the vault instance
 	Vault *vault.Vault
@@ -109,7 +112,14 @@ func requireBaseline() {
 	}
 	NChainBaselineNetworkID = common.StringOrNil(os.Getenv("NCHAIN_BASELINE_NETWORK_ID"))
 
-	ResolveBaselineContract()
+	if os.Getenv("BASELINE_WORKGROUP_ID") == "" {
+		Log.Warningf("BASELINE_WORKGROUP_ID not provided")
+	}
+	WorkgroupID = common.StringOrNil(os.Getenv("BASELINE_WORKGROUP_ID"))
+
+	if OrganizationID != nil {
+		ResolveBaselineContract()
+	}
 }
 
 func requireBaselinePublicWorkgroup() {
