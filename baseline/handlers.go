@@ -59,7 +59,8 @@ func InstallObjectsAPI(r *gin.Engine) {
 	r.POST("/api/v1/objects", createObjectHandler)
 	r.PUT("/api/v1/objects/:id", updateObjectHandler)
 
-	r.PUT("/api/v1/config", configurationHandler)
+	r.GET("/api/v1/config", configDetailsHandler)
+	r.PUT("/api/v1/config", updateConfigHandler)
 
 	// remain backward compatible for now...
 	r.POST("/api/v1/business_objects", createObjectHandler)
@@ -99,7 +100,53 @@ func InstallWorkstepsAPI(r *gin.Engine) {
 	r.POST("/api/v1/workflows/:id/worksteps/:workstepId/execute", executeWorkstepHandler)
 }
 
-func configurationHandler(c *gin.Context) {
+func configDetailsHandler(c *gin.Context) {
+	if common.OrganizationID == nil {
+		provide.RenderError("config not initialized", 404, c)
+		return
+	}
+
+	organizationID := util.AuthorizedSubjectID(c, "organization")
+	if organizationID != nil && organizationID.String() != *common.OrganizationID {
+		provide.RenderError("forbidden", 403, c)
+		return
+	}
+
+	// TODO-- implement this pattern and refactor common vars into common.Config
+	// raw := json.Marshal(common.Config)
+	// var cfg *Config
+	// err := json.Unmarshal(raw, &cfg)
+
+	var workgroupUUID, organizationUUID, networkUUID *uuid.UUID
+	if common.WorkgroupID != nil {
+		id := uuid.FromStringOrNil(*common.WorkgroupID)
+		workgroupUUID = &id
+	}
+	if common.OrganizationID != nil {
+		id := uuid.FromStringOrNil(*common.OrganizationID)
+		organizationUUID = &id
+	}
+	if common.NChainBaselineNetworkID != nil {
+		id := uuid.FromStringOrNil(*common.NChainBaselineNetworkID)
+		networkUUID = &id
+	}
+
+	cfg := &baseline.Config{
+		WorkgroupID:              workgroupUUID,
+		NetworkID:                networkUUID,
+		OrganizationAddress:      common.BaselineOrganizationAddress,
+		OrganizationID:           organizationUUID,
+		OrganizationRefreshToken: common.OrganizationRefreshToken,
+		RegistryContractAddress:  common.BaselineRegistryContractAddress,
+	}
+	if organizationID == nil {
+		cfg.OrganizationRefreshToken = nil
+	}
+
+	provide.Render(cfg, 200, c)
+}
+
+func updateConfigHandler(c *gin.Context) {
 	organizationID := util.AuthorizedSubjectID(c, "organization")
 
 	// TODO: KT

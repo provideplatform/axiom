@@ -380,7 +380,7 @@ func consumeBaselineWorkstepDeploySubscriptionsMsg(msg *nats.Msg) {
 	workstep := FindWorkstepByID(workstepID)
 
 	if common.OrganizationID == nil {
-		common.Log.Warning("organization id not set")
+		common.Log.Panicf("organization id not set")
 		return
 	}
 

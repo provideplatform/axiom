@@ -184,28 +184,39 @@ func requireOrganization() {
 	for !resolvedOrganization {
 		select {
 		case <-timer.C:
-			OrganizationID = StringOrNil(os.Getenv("PROVIDE_ORGANIZATION_ID"))
-			OrganizationRefreshToken = StringOrNil(os.Getenv("PROVIDE_ORGANIZATION_REFRESH_TOKEN"))
-			OrganizationMessagingEndpoint = StringOrNil(os.Getenv("BASELINE_ORGANIZATION_MESSAGING_ENDPOINT"))
-			OrganizationProxyEndpoint = StringOrNil(os.Getenv("BASELINE_ORGANIZATION_PROXY_ENDPOINT"))
+			if OrganizationID == nil {
+				OrganizationID = StringOrNil(os.Getenv("PROVIDE_ORGANIZATION_ID"))
+			}
+
+			if OrganizationRefreshToken == nil {
+				OrganizationRefreshToken = StringOrNil(os.Getenv("PROVIDE_ORGANIZATION_REFRESH_TOKEN"))
+			}
+
+			if OrganizationMessagingEndpoint == nil {
+				OrganizationMessagingEndpoint = StringOrNil(os.Getenv("BASELINE_ORGANIZATION_MESSAGING_ENDPOINT"))
+			}
+
+			if OrganizationProxyEndpoint == nil {
+				OrganizationProxyEndpoint = StringOrNil(os.Getenv("BASELINE_ORGANIZATION_PROXY_ENDPOINT"))
+			}
 
 			resolvedOrganization = OrganizationID != nil && OrganizationRefreshToken != nil && OrganizationMessagingEndpoint != nil && OrganizationProxyEndpoint != nil
 		default:
 			if time.Now().After(startedAt.Add(configGracePeriodTimeout)) {
-				if os.Getenv("PROVIDE_ORGANIZATION_ID") == "" {
-					Log.Warningf("PROVIDE_ORGANIZATION_ID not provided")
+				if OrganizationID == nil {
+					Log.Warning("PROVIDE_ORGANIZATION_ID not configured")
 				}
 
-				if os.Getenv("PROVIDE_ORGANIZATION_REFRESH_TOKEN") == "" {
-					Log.Warningf("PROVIDE_ORGANIZATION_REFRESH_TOKEN not provided")
+				if OrganizationRefreshToken == nil {
+					Log.Warning("PROVIDE_ORGANIZATION_REFRESH_TOKEN not configured")
 				}
 
 				if OrganizationMessagingEndpoint == nil {
-					Log.Warningf("BASELINE_ORGANIZATION_MESSAGING_ENDPOINT not provided")
+					Log.Warning("BASELINE_ORGANIZATION_MESSAGING_ENDPOINT not configured")
 				}
 
 				if OrganizationProxyEndpoint == nil {
-					Log.Warningf("BASELINE_ORGANIZATION_PROXY_ENDPOINT not provided")
+					Log.Warning("BASELINE_ORGANIZATION_PROXY_ENDPOINT not configured")
 				}
 
 				Log.Panicf("failed to require organization")
