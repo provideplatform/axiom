@@ -63,6 +63,11 @@ func resolveWorkgroupParticipants() {
 		return
 	}
 
+	if common.OrganizationID == nil {
+		common.Log.Warningf("organization id not configured")
+		return
+	}
+
 	workgroupID, err := uuid.FromString(*common.WorkgroupID)
 	if err != nil {
 		common.Log.Warningf("failed to require workgroupID; %s", err.Error())
