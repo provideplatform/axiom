@@ -349,6 +349,21 @@ func (w *Workflow) deploy() bool {
 		return false
 	}
 
+	for _, workstep := range worksteps {
+		var proverParams map[string]interface{}
+		metadata := workstep.ParseMetadata()
+		if params, paramsOk := metadata["prover"].(map[string]interface{}); paramsOk {
+			proverParams = params
+		}
+
+		if proverParams == nil {
+			w.Errors = append(w.Errors, &provide.Error{
+				Message: common.StringOrNil("failed to deploy workflow; prover is required on each workstep"),
+			})
+			return false
+		}
+	}
+
 	finalWorkstep := worksteps[len(worksteps)-1]
 	if !finalWorkstep.RequireFinality {
 		w.Errors = append(w.Errors, &provide.Error{
