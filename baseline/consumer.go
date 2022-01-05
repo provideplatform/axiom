@@ -100,8 +100,8 @@ func init() {
 			common.Log.Panicf("failed to marshal response; %s", err.Error())
 		}
 		
-		cfg := &Config{}
-		err = json.Unmarshal(buf, cfg)
+		var cfg *Config
+		err = json.Unmarshal(buf, &cfg)
 		if err != nil {
 			common.Log.Panicf("failed to unmarshal response into struct; %s", err.Error())
 		}
