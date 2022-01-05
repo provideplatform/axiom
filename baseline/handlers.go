@@ -155,7 +155,7 @@ func updateConfigHandler(c *gin.Context) {
 	organizationID := util.AuthorizedSubjectID(c, "organization")
 
 	// TODO: KT
-	if common.OrganizationID == nil {
+	if common.OrganizationID == nil && organizationID != nil {
 		common.OrganizationID = common.StringOrNil(organizationID.String())
 		common.Log.Debugf("previously unset organization id initialized by bearer: %s", organizationID)
 	}
