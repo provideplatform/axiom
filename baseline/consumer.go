@@ -95,7 +95,35 @@ func init() {
 			common.Log.Panicf("failed to get config details with code %d", status)
 		}
 
-		common.Log.Debugf("get config details res: %s", res)
+		buf, err := json.Marshal(res)
+		if err != nil {
+			common.Log.Panicf("failed to marshal response; %s", err.Error())
+		}
+		
+		cfg := &Config{}
+		err = json.Unmarshal(buf, cfg)
+		if err != nil {
+			common.Log.Panicf("failed to unmarshal response into struct; %s", err.Error())
+		}
+
+		if cfg.WorkgroupID != nil {
+			common.WorkgroupID = common.StringOrNil(cfg.WorkgroupID.String())
+		}
+		if cfg.NetworkID != nil {
+			common.NChainBaselineNetworkID = common.StringOrNil(cfg.NetworkID.String())
+		}
+		if cfg.OrganizationAddress != nil {
+			common.BaselineOrganizationAddress = cfg.OrganizationAddress
+		}
+		if cfg.OrganizationID != nil {
+			common.OrganizationID = common.StringOrNil(cfg.OrganizationID.String())
+		}
+		if cfg.OrganizationRefreshToken != nil {
+			common.OrganizationRefreshToken = cfg.OrganizationRefreshToken
+		}
+		if cfg.RegistryContractAddress != nil {
+			common.BaselineRegistryContractAddress = cfg.RegistryContractAddress
+		}
 	}
 
 	createNatsBaselineProxySubscriptions(&waitGroup)

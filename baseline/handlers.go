@@ -142,9 +142,11 @@ func configDetailsHandler(c *gin.Context) {
 		OrganizationRefreshToken: common.OrganizationRefreshToken,
 		RegistryContractAddress:  common.BaselineRegistryContractAddress,
 	}
-	if organizationID == nil {
-		cfg.OrganizationRefreshToken = nil
-	}
+
+	// FIXME
+	// if organizationID == nil {
+	// 	cfg.OrganizationRefreshToken = nil
+	// }
 
 	provide.Render(cfg, 200, c)
 }
