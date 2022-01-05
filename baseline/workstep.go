@@ -658,8 +658,8 @@ func (w *Workstep) Update(other *Workstep) bool {
 	workflow := FindWorkflowByID(*w.WorkflowID)
 	worksteps := FindWorkstepsByWorkflowID(*w.WorkflowID)
 	adjustsCardinality := false
-	newCardinality := other.Cardinality
 	previousCardinality := w.Cardinality
+	newCardinality := other.Cardinality
 
 	if workflow.isPrototype() {
 		if workflow.Status != nil && *workflow.Status != workflowStatusDraft && other.Status != nil && *other.Status != *w.Status {
@@ -679,13 +679,13 @@ func (w *Workstep) Update(other *Workstep) bool {
 			return false
 		}
 
-		if newCardinality > len(worksteps) {
+		if newCardinality > len(worksteps) || newCardinality < 1 {
 			w.Errors = append(w.Errors, &provide.Error{
 				Message: common.StringOrNil("cardinality out of bounds"),
 			})
 		}
 
-		common.Log.Debugf("previous cardinality: %d; new cardinality: %d", previousCardinality, newCardinality)
+		common.Log.Debugf("workstep id: %s; previous cardinality: %d; new cardinality: %d", w.ID, previousCardinality, newCardinality)
 
 		if newCardinality != 0 && w.Cardinality != newCardinality {
 			for i, workstep := range worksteps {
@@ -703,7 +703,7 @@ func (w *Workstep) Update(other *Workstep) bool {
 					adjustsCardinality = true
 
 					// cardinality moved right... adjust all affected cardinalities - 1
-					if i >= previousCardinality-1 && i <= newCardinality-1 {
+					if i > previousCardinality-1 && i <= newCardinality-1 {
 						workstep.Cardinality--
 						workstep.Cardinality *= -1
 						common.Log.Debugf("left to right; workstep id %s; new cardinality %d", workstep.ID, workstep.Cardinality)
@@ -750,7 +750,7 @@ func (w *Workstep) Update(other *Workstep) bool {
 				}
 			} else if previousCardinality < newCardinality {
 				// cardinality moved right... adjust all affected cardinalities - 1
-				if i >= previousCardinality-1 && i <= newCardinality-1 {
+				if i > previousCardinality-1 && i <= newCardinality-1 {
 					workstep.Cardinality *= -1
 					common.Log.Debugf("left to right; ABS VALUE; workstep id %s; new cardinality %d", workstep.ID, workstep.Cardinality)
 					tx.Save(&workstep)
@@ -758,6 +758,12 @@ func (w *Workstep) Update(other *Workstep) bool {
 			}
 		}
 	}
+	
+	postWorksteps := FindWorkstepsByWorkflowID(*w.WorkflowID)
+	for _, item := range postWorksteps {
+		common.Log.Debugf("AFTER CHANGES; workstep id: %s; cardinality: %d", item.ID, item.Cardinality)
+	}
+
 
 	rowsAffected := result.RowsAffected
 	errors := result.GetErrors()
