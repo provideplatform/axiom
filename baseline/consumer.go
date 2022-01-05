@@ -79,6 +79,25 @@ func init() {
 		fmt.Sprintf("%s.>", defaultNatsStream),
 	})
 
+	if common.OrganizationID == nil {
+		organizationRefreshToken := ""
+		if common.OrganizationID != nil {
+			organizationRefreshToken = *common.OrganizationID
+		}
+
+		client := baseline.InitBaselineService(organizationRefreshToken)
+		status, res, err := client.Get("config", map[string]interface{}{})
+		if err != nil {
+			common.Log.Panicf("failed to get config details; %s", err.Error())
+		}
+
+		if status >= 400 {
+			common.Log.Panicf("failed to get config details with code %d", status)
+		}
+
+		common.Log.Debugf("get config details res: %s", res)
+	}
+
 	createNatsBaselineProxySubscriptions(&waitGroup)
 	createNatsBaselineWorkflowDeploySubscriptions(&waitGroup)
 	createNatsBaselineWorkstepDeploySubscriptions(&waitGroup)
