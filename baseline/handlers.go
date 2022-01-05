@@ -41,6 +41,12 @@ func InstallBPIAPI(r *gin.Engine) {
 	r.PUT("/api/v1/subjects/:id/accounts/:accountId", updateSubjectAccountsHandler)
 }
 
+// InstallConfigAPI installs public API for interacting with the local baseline stack config
+func InstallConfigAPI(r *gin.Engine) {
+	r.GET("/api/v1/config", configDetailsHandler)
+	r.PUT("/api/v1/config", updateConfigHandler)
+}
+
 // InstallCredentialsAPI installs public API for interacting with verifiable credentials
 func InstallCredentialsAPI(r *gin.Engine) {
 	r.POST("/api/v1/credentials", issueVerifiableCredentialHandler)
@@ -58,9 +64,6 @@ func InstallMappingsAPI(r *gin.Engine) {
 func InstallObjectsAPI(r *gin.Engine) {
 	r.POST("/api/v1/objects", createObjectHandler)
 	r.PUT("/api/v1/objects/:id", updateObjectHandler)
-
-	r.GET("/api/v1/config", configDetailsHandler)
-	r.PUT("/api/v1/config", updateConfigHandler)
 
 	// remain backward compatible for now...
 	r.POST("/api/v1/business_objects", createObjectHandler)
