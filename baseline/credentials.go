@@ -121,6 +121,7 @@ func encodeJWTNatsClaims() (map[string]interface{}, error) {
 	var responsesTTL *time.Duration
 
 	// subscribeAllow = append(subscribeAllow, "baseline.>")
+	publishAllow = append(publishAllow, "baseline")
 	publishAllow = append(publishAllow, "baseline.>")
 
 	var publishPermissions map[string]interface{}
