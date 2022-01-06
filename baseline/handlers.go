@@ -1056,6 +1056,16 @@ func updateWorkstepHandler(c *gin.Context) {
 		return
 	}
 
+	var __workstep map[string]interface{}
+	err = json.Unmarshal(buf, &__workstep)
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+	if _, ok := __workstep["cardinality"].(float64); ok {
+		_workstep.userInputCardinality = true
+	}
+
 	if workstep.Status != nil && _workstep.Status != nil && *workstep.Status != *_workstep.Status {
 		provide.RenderError("cannot modify workstep status", 400, c)
 		return

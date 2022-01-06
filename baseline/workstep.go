@@ -43,6 +43,8 @@ type Workstep struct {
 	Description  *string        `json:"description"`
 	Participants []*Participant `sql:"-" json:"participants,omitempty"`
 	WorkstepID   *uuid.UUID     `json:"workstep_id"` // when nil, indicates the workstep is a prototype (not an instance)
+
+	userInputCardinality bool `json:"-"`
 }
 
 // WorkstepInstance is a baseline workstep instance
@@ -679,13 +681,13 @@ func (w *Workstep) Update(other *Workstep) bool {
 			return false
 		}
 
-		if newCardinality > len(worksteps) || newCardinality < 1 {
+		if newCardinality > len(worksteps) || (newCardinality < 1 && other.userInputCardinality) {
 			w.Errors = append(w.Errors, &provide.Error{
 				Message: common.StringOrNil("cardinality out of bounds"),
 			})
 		}
 
-		common.Log.Debugf("workstep id: %s; previous cardinality: %d; new cardinality: %d", w.ID, previousCardinality, newCardinality)
+		common.Log.Tracef("updating workstep id: %s; previous cardinality: %d; new cardinality: %d", w.ID, previousCardinality, newCardinality)
 
 		if newCardinality != 0 && w.Cardinality != newCardinality {
 			for i, workstep := range worksteps {
@@ -695,8 +697,8 @@ func (w *Workstep) Update(other *Workstep) bool {
 					// cardinality moved left... adjust all affectedcardinalities + 1
 					if i >= newCardinality-1 && i < previousCardinality-1 {
 						workstep.Cardinality++
+						common.Log.Tracef("updating workstep id: %s; new cardinality %d (right to left)", workstep.ID, workstep.Cardinality)
 						workstep.Cardinality *= -1
-						common.Log.Debugf("right to left; workstep id %s; new cardinality %d", workstep.ID, workstep.Cardinality)
 						tx.Save(&workstep)
 					}
 				} else if previousCardinality < newCardinality {
@@ -705,8 +707,8 @@ func (w *Workstep) Update(other *Workstep) bool {
 					// cardinality moved right... adjust all affected cardinalities - 1
 					if i > previousCardinality-1 && i <= newCardinality-1 {
 						workstep.Cardinality--
+						common.Log.Tracef("updating workstep id: %s; new cardinality %d (left to right)", workstep.ID, workstep.Cardinality)
 						workstep.Cardinality *= -1
-						common.Log.Debugf("left to right; workstep id %s; new cardinality %d", workstep.ID, workstep.Cardinality)
 						tx.Save(&workstep)
 					}
 				}
@@ -744,26 +746,20 @@ func (w *Workstep) Update(other *Workstep) bool {
 			if previousCardinality > newCardinality {
 				// cardinality moved left... adjust all affectedcardinalities + 1
 				if i >= newCardinality-1 && i < previousCardinality-1 {
+					common.Log.Tracef("updating workstep id: %s; new cardinality ABS(%d)", workstep.ID, workstep.Cardinality)
 					workstep.Cardinality *= -1
-					common.Log.Debugf("right to left; ABS VALUE; workstep id %s; new cardinality %d", workstep.ID, workstep.Cardinality)
 					tx.Save(&workstep)
 				}
 			} else if previousCardinality < newCardinality {
 				// cardinality moved right... adjust all affected cardinalities - 1
 				if i > previousCardinality-1 && i <= newCardinality-1 {
+					common.Log.Tracef("updating workstep id: %s; new cardinality ABS(%d)", workstep.ID, workstep.Cardinality)
 					workstep.Cardinality *= -1
-					common.Log.Debugf("left to right; ABS VALUE; workstep id %s; new cardinality %d", workstep.ID, workstep.Cardinality)
 					tx.Save(&workstep)
 				}
 			}
 		}
 	}
-	
-	postWorksteps := FindWorkstepsByWorkflowID(*w.WorkflowID)
-	for _, item := range postWorksteps {
-		common.Log.Debugf("AFTER CHANGES; workstep id: %s; cardinality: %d", item.ID, item.Cardinality)
-	}
-
 
 	rowsAffected := result.RowsAffected
 	errors := result.GetErrors()
