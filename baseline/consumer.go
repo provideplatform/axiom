@@ -1,19 +1,24 @@
 package baseline
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
 
+	"github.com/dgrijalva/jwt-go"
 	dbconf "github.com/kthomas/go-db-config"
 	natsutil "github.com/kthomas/go-natsutil"
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/nats-io/nats.go"
+	"github.com/ockam-network/did"
 	"github.com/provideplatform/baseline/common"
 	"github.com/provideplatform/provide-go/api/baseline"
 	"github.com/provideplatform/provide-go/api/ident"
 	"github.com/provideplatform/provide-go/api/privacy"
+	"github.com/provideplatform/provide-go/api/vault"
+	didkit "github.com/spruceid/didkit-go"
 )
 
 const defaultNatsStream = "baseline"
@@ -198,6 +203,8 @@ func createNatsDispatchProtocolMessageSubscriptions(wg *sync.WaitGroup) {
 
 func consumeBaselineProxyInboundSubscriptionsMsg(msg *nats.Msg) {
 	common.Log.Debugf("consuming %d-byte NATS inbound protocol message on internal subject: %s", len(msg.Data), msg.Subject)
+
+	// decrypt
 
 	protomsg := &ProtocolMessage{}
 	err := json.Unmarshal(msg.Data, &protomsg)
@@ -589,10 +596,10 @@ func consumeDispatchProtocolMessageSubscriptionsMsg(msg *nats.Msg) {
 		return
 	}
 
-	jwt := lookupBaselineOrganizationIssuedVC(*protomsg.Recipient)
-	if jwt == nil {
+	jwtVC := lookupBaselineOrganizationIssuedVC(*protomsg.Recipient)
+	if jwtVC == nil {
 		// request a VC from the counterparty
-		jwt, err = requestBaselineOrganizationIssuedVC(*protomsg.Recipient)
+		jwtVC, err = requestBaselineOrganizationIssuedVC(*protomsg.Recipient)
 		if err != nil {
 			subjectAccount.resolveWorkgroupParticipants() // HACK-- this should not re-resolve all counterparties...
 
@@ -602,7 +609,7 @@ func consumeDispatchProtocolMessageSubscriptionsMsg(msg *nats.Msg) {
 		}
 	}
 
-	if jwt == nil {
+	if jwtVC == nil {
 		common.Log.Warningf("failed to dispatch protocol message to recipient: %s; no bearer token resolved", *protomsg.Recipient)
 		msg.Nak()
 		return
@@ -619,7 +626,70 @@ func consumeDispatchProtocolMessageSubscriptionsMsg(msg *nats.Msg) {
 
 	defer conn.Close()
 
-	err = conn.Publish(natsBaselineSubject, msg.Data)
+	var didSub *string
+	_, err = jwt.Parse(*jwtVC, func(_jwtToken *jwt.Token) (interface{}, error) {
+		if subclm, ok := _jwtToken.Claims.(jwt.MapClaims)["sub"].(string); ok {
+			didSub = &subclm
+		}
+
+		return nil, nil
+	})
+
+	did, err := did.Parse(*didSub)
+	if err != nil {
+		common.Log.Warningf("failed to parse JWT subject as a DID: %s", didSub)
+		msg.Nak()
+		return
+	}
+
+	didDocumentStr, err := didkit.ResolveDID(did.String(), "{}")
+	if err != nil {
+		common.Log.Warningf("failed to resolve DID document for subject: %s", didSub)
+		msg.Nak()
+		return
+	}
+
+	var didDocument map[string]interface{}
+	err = json.Unmarshal([]byte(didDocumentStr), &didDocument)
+	if err != nil {
+		common.Log.Warningf("failed to unmarshal DID document result: %s", didSub)
+		msg.Nak()
+		return
+	}
+
+	var msgData []byte
+	hex.Encode(msgData, msg.Data)
+
+	keys := didDocument["publicKey"].([]interface{})
+	first := keys[0].(map[string]interface{})
+	key := first["x"].(string)
+
+	var publicKey []byte
+	hex.Encode(publicKey, []byte(key))
+
+	token, err := ident.CreateToken(*common.OrganizationRefreshToken, map[string]interface{}{
+		"grant_type":      "refresh_token",
+		"organization_id": *common.OrganizationID,
+	})
+	if err != nil {
+		common.Log.Warningf("failed to vend organization access token; %s", err.Error())
+		return
+	}
+
+	encryptedData, err := vault.EncryptDetached(
+		*token.AccessToken,
+		"Ed25519-ECIS",
+		string(msgData),
+		string(publicKey),
+		map[string]interface{}{})
+
+	if err != nil {
+		common.Log.Warningf("failed to encrypt message data using DID public key: %s", didSub)
+		msg.Nak()
+		return
+	}
+
+	err = conn.Publish(natsBaselineSubject, []byte(*encryptedData.Data))
 	if err != nil {
 		// clear cached endpoint so it will be re-fetched...
 		// counterparty := lookupBaselineOrganization(*protomsg.Recipient)
@@ -631,8 +701,8 @@ func consumeDispatchProtocolMessageSubscriptionsMsg(msg *nats.Msg) {
 		common.Log.Warningf("failed to publish protocol message to recipient: %s; %s", *protomsg.Recipient, err.Error())
 		msg.Nak()
 		return
-	}
 
+	}
 	common.Log.Debugf("broadcast %d-byte protocol message to recipient: %s", len(msg.Data), *protomsg.Recipient)
 	msg.Ack()
 }

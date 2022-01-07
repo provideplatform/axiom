@@ -23,10 +23,14 @@ require (
 	github.com/kthomas/go.uuid v1.2.1-0.20190324131420-28d1fa77e9a4
 	github.com/mitchellh/mapstructure v1.4.1 // indirect
 	github.com/nats-io/nats.go v1.12.0
+	github.com/ockam-network/did v0.1.3
 	github.com/onsi/ginkgo v1.15.1
 	github.com/onsi/gomega v1.11.0
 	github.com/provideplatform/ident v0.9.10-0.20210903195520-28bcb83ac5d6
 	github.com/provideplatform/provide-go v0.0.0-20220322034927-931261bc2722
+	github.com/spruceid/didkit-go v0.0.0-00010101000000-000000000000
 	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97
 	nhooyr.io/websocket v1.8.7 // indirect
 )
+
+replace github.com/spruceid/didkit-go => ../../../../../code/provide.network/didkit/lib/didkit-go
