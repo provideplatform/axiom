@@ -71,7 +71,7 @@ func FindWorkstepByID(id uuid.UUID) *Workstep {
 func FindWorkstepsByWorkflowID(id uuid.UUID) []*Workstep {
 	worksteps := make([]*Workstep, 0)
 	db := dbconf.DatabaseConnection()
-	db.Where("workflow_id = ?", id.String()).Find(&worksteps)
+	db.Where("workflow_id = ?", id.String()).Order("cardinality ASC").Find(&worksteps)
 	return worksteps
 }
 
