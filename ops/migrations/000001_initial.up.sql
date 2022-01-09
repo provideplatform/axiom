@@ -171,8 +171,6 @@ CREATE TABLE public.workflows_versions (
 CREATE UNIQUE INDEX idx_workflows_versions_initial_workflow_id_workflow_id_version ON public.workflows_versions USING btree (initial_workflow_id, version);
 CREATE UNIQUE INDEX idx_workflows_versions_workflow_id ON public.workflows_versions USING btree (workflow_id);
 
-CREATE INDEX idx_workflows_versions_workflow_id ON public.worksteps USING btree (workflow_id);
-
 ALTER TABLE ONLY public.workflows_versions
   ADD CONSTRAINT workflows_versions_initial_workflow_id_foreign FOREIGN KEY (initial_workflow_id) REFERENCES public.workflows(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
