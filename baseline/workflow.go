@@ -553,9 +553,9 @@ func (w *Workflow) Create(tx *gorm.DB) bool {
 						return false
 					}
 				}
-
+			} else if success && w.isPrototype() {
 				initialWorkflowID, _ := w.initialWorkflowVersion(_tx)
-				if initialWorkflowID == nil {
+				if initialWorkflowID == nil && w.Version != nil {
 					common.Log.Debugf("no initial workflow version resolved for workflow: %s", w.ID)
 					success = w.addVersion(*w.Version, _tx)
 				}
