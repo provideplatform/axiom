@@ -553,6 +553,12 @@ func (w *Workflow) Create(tx *gorm.DB) bool {
 						return false
 					}
 				}
+
+				initialWorkflowID, _ := w.initialWorkflowVersion(_tx)
+				if initialWorkflowID == nil {
+					common.Log.Debugf("no initial workflow version resolved for workflow: %s", w.ID)
+					success = w.addVersion(*w.Version, _tx)
+				}
 			}
 		}
 	}
@@ -621,6 +627,120 @@ func (w *Workflow) Update(other *Workflow) bool {
 		}
 	}
 	return rowsAffected == 1 && len(errors) == 0
+}
+
+// Version the workflow instance using the previous workflow
+func (w *Workflow) createVersion(previous *Workflow, version string) bool {
+	// these validations are for update only...
+	if previous.isPrototype() {
+		if *w.Status != workflowStatusDeployed {
+			w.Errors = append(w.Errors, &provide.Error{
+				Message: common.StringOrNil("cannot version undeployed workflow"),
+			})
+			return false
+		}
+	}
+
+	w.ID = uuid.Nil
+	w.Status = common.StringOrNil(workflowStatusDraft)
+	w.Version = common.StringOrNil(version)
+
+	if !w.Validate() {
+		return false
+	}
+
+	db := dbconf.DatabaseConnection()
+	tx := db.Begin()
+	defer tx.RollbackUnlessCommitted()
+
+	result := tx.Save(&w)
+	rowsAffected := result.RowsAffected
+	errors := result.GetErrors()
+	if len(errors) > 0 {
+		for _, err := range errors {
+			w.Errors = append(w.Errors, &provide.Error{
+				Message: common.StringOrNil(err.Error()),
+			})
+		}
+	}
+
+	success := rowsAffected == 1 && len(errors) == 0
+	if success {
+		if !w.addVersion(version, tx) {
+			return false
+		}
+
+		worksteps := FindWorkstepsByWorkflowID(previous.ID)
+		for _, wrkstp := range worksteps {
+			raw, _ := json.Marshal(wrkstp)
+
+			var workstep *Workstep
+			err := json.Unmarshal(raw, &workstep)
+			if err != nil {
+				return false
+			}
+
+			workstep.ID = uuid.Nil
+			workstep.Shield = nil
+			workstep.Prover = nil
+			workstep.ProverID = nil
+			workstep.WorkflowID = &w.ID
+			if !workstep.Create(tx) {
+				for _, err := range workstep.Errors {
+					w.Errors = append(w.Errors, &provide.Error{
+						Message: common.StringOrNil(*err.Message),
+					})
+				}
+			}
+		}
+
+		tx.Commit()
+	}
+
+	return success
+}
+
+func (w *Workflow) addVersion(version string, tx *gorm.DB) bool {
+	common.Log.Debugf("adding workflow version %s; workflow: %s", version, w.ID)
+	initialWorkflowID, _ := w.initialWorkflowVersion(tx)
+	result := tx.Exec("INSERT INTO workflows_versions (initial_workflow_id, workflow_id, version) VALUES (?, ?, ?)", initialWorkflowID, w.ID, version)
+	success := result.RowsAffected == 1
+	if success {
+		common.Log.Debugf("added workflow version %s; workflow: %s", version, w.ID)
+	} else {
+		common.Log.Warningf("failed to add workflow version %s; workflow: %s", version, w.ID)
+		errors := result.GetErrors()
+		if len(errors) > 0 {
+			for _, err := range errors {
+				w.Errors = append(w.Errors, &provide.Error{
+					Message: common.StringOrNil(err.Error()),
+				})
+			}
+		}
+	}
+
+	return len(w.Errors) == 0
+}
+
+func (w *Workflow) initialWorkflowVersion(tx *gorm.DB) (*uuid.UUID, *string) {
+	rows, err := tx.Raw("SELECT initial_workflow_id, version FROM workflows_versions WHERE workflow_id=?", w.ID).Rows()
+	if err != nil {
+		common.Log.Warningf("failed to read initial workflow version; %s", err.Error())
+		return nil, nil
+	}
+
+	var initialWorkflowID *uuid.UUID
+	var version *string
+
+	for rows.Next() {
+		err = rows.Scan(&initialWorkflowID, &version)
+		if err != nil {
+			common.Log.Warningf("failed to read initial workflow version; %s", err.Error())
+			return nil, nil
+		}
+	}
+
+	return initialWorkflowID, version
 }
 
 func (w *Workflow) Delete() bool {

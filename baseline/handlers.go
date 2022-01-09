@@ -89,6 +89,7 @@ func InstallWorkflowsAPI(r *gin.Engine) {
 	r.POST("/api/v1/workflows", createWorkflowHandler)
 	r.PUT("/api/v1/workflows/:id", updateWorkflowHandler)
 	r.POST("/api/v1/workflows/:id/deploy", deployWorkflowHandler)
+	r.POST("/api/v1/workflows/:id/version", versionWorkflowHandler)
 	r.DELETE("/api/v1/workflows/:id", deleteWorkflowHandler)
 }
 
@@ -806,6 +807,90 @@ func deployWorkflowHandler(c *gin.Context) {
 
 	if workflow.Update(_workflow) {
 		provide.Render(workflow, 202, c)
+	} else if len(workflow.Errors) > 0 {
+		obj := map[string]interface{}{}
+		obj["errors"] = workflow.Errors
+		provide.Render(obj, 422, c)
+	} else {
+		provide.RenderError("internal persistence error", 500, c)
+	}
+}
+
+func versionWorkflowHandler(c *gin.Context) {
+	organizationID := util.AuthorizedSubjectID(c, "organization")
+	if organizationID == nil {
+		provide.RenderError("unauthorized", 401, c)
+		return
+	} else if common.OrganizationID != nil && organizationID.String() != *common.OrganizationID {
+		provide.RenderError("forbidden", 403, c)
+		return
+	}
+
+	buf, err := c.GetRawData()
+	if err != nil {
+		provide.RenderError(err.Error(), 400, c)
+		return
+	}
+
+	workflowID, err := uuid.FromString(c.Param("id"))
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	workflow := FindWorkflowByID(workflowID)
+	if workflow == nil {
+		provide.RenderError("not found", 404, c)
+		return
+	}
+
+	var params map[string]interface{}
+	err = json.Unmarshal(buf, &params)
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	var name *string
+	if nme, ok := params["name"].(string); ok {
+		name = common.StringOrNil(nme)
+	}
+
+	var description *string
+	if desc, ok := params["description"].(string); ok {
+		name = common.StringOrNil(desc)
+	}
+
+	var version *string
+	if vrsn, ok := params["version"].(string); ok {
+		version = common.StringOrNil(vrsn)
+	} else {
+		provide.RenderError("version is required", 422, c)
+		return
+	}
+
+	raw, err := json.Marshal(workflow)
+	if err != nil {
+		provide.RenderError(err.Error(), 500, c)
+		return
+	}
+
+	var _workflow *Workflow
+	err = json.Unmarshal(raw, &workflow)
+	_workflow.ID = uuid.Nil
+	_workflow.Status = common.StringOrNil(workflowStatusDraft)
+	_workflow.Version = version
+
+	if name != nil {
+		_workflow.Name = name
+	}
+
+	if description != nil {
+		_workflow.Description = description
+	}
+
+	if _workflow.createVersion(workflow, *version) {
+		provide.Render(_workflow, 201, c)
 	} else if len(workflow.Errors) > 0 {
 		obj := map[string]interface{}{}
 		obj["errors"] = workflow.Errors

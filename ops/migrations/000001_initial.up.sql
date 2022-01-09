@@ -159,7 +159,25 @@ CREATE TABLE public.workflows_participants (
 CREATE UNIQUE INDEX idx_workflows_participants_workflow_id_participant ON public.workflows_participants USING btree (workflow_id, participant);
 
 ALTER TABLE ONLY public.workflows_participants
-  ADD CONSTRAINT workflows_participants_workgroup_id_foreign FOREIGN KEY (workflow_id) REFERENCES public.workflows(id) ON UPDATE CASCADE ON DELETE CASCADE;
+  ADD CONSTRAINT workflows_participants_workflow_id_foreign FOREIGN KEY (workflow_id) REFERENCES public.workflows(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+CREATE TABLE public.workflows_versions (
+    created_at timestamp with time zone NOT NULL,
+    initial_workflow_id uuid NOT NULL,
+    workflow_id uuid NOT NULL,
+    version text NOT NULL
+);
+
+CREATE UNIQUE INDEX idx_workflows_versions_initial_workflow_id_workflow_id_version ON public.workflows_versions USING btree (initial_workflow_id, version);
+CREATE UNIQUE INDEX idx_workflows_versions_workflow_id ON public.workflows_versions USING btree (workflow_id);
+
+CREATE INDEX idx_workflows_versions_workflow_id ON public.worksteps USING btree (workflow_id);
+
+ALTER TABLE ONLY public.workflows_versions
+  ADD CONSTRAINT workflows_versions_initial_workflow_id_foreign FOREIGN KEY (initial_workflow_id) REFERENCES public.workflows(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.workflows_versions
+  ADD CONSTRAINT workflows_versions_workflow_id_foreign FOREIGN KEY (workflow_id) REFERENCES public.workflows(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 --
 -- Name: worksteps; Type: TABLE; Schema: public; Owner: baseline

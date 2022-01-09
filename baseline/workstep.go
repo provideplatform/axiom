@@ -710,7 +710,7 @@ func (w *Workstep) Update(other *Workstep) bool {
 					}
 				}
 			}
-			
+
 			// modify the cardinality
 			w.Cardinality = newCardinality
 		}
