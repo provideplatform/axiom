@@ -703,7 +703,12 @@ func (w *Workflow) createVersion(previous *Workflow, version string) bool {
 func (w *Workflow) addVersion(version string, tx *gorm.DB) bool {
 	common.Log.Debugf("adding workflow version %s; workflow: %s", version, w.ID)
 	initialWorkflowID, _ := w.initialWorkflowVersion(tx)
-	result := tx.Exec("INSERT INTO workflows_versions (initial_workflow_id, workflow_id, version) VALUES (?, ?, ?)", initialWorkflowID, w.ID, version)
+	var result *gorm.DB
+	if initialWorkflowID != nil {
+		result = tx.Exec("INSERT INTO workflows_versions (initial_workflow_id, workflow_id, version) VALUES (?, ?, ?)", initialWorkflowID, w.ID, version)
+	} else {
+		result = tx.Exec("INSERT INTO workflows_versions (workflow_id, version) VALUES (?, ?)", w.ID, version)
+	}
 	success := result.RowsAffected == 1
 	if success {
 		common.Log.Debugf("added workflow version %s; workflow: %s", version, w.ID)
