@@ -706,9 +706,9 @@ func (w *Workflow) addVersion(version string, tx *gorm.DB) bool {
 	var result *gorm.DB
 	createdAt := time.Now()
 	if initialWorkflowID != nil {
-		result = tx.Exec("INSERT INTO workflows_versions (created_at, initial_workflow_id, workflow_id, version) VALUES (?, ?, ?)", createdAt, initialWorkflowID, w.ID, version)
+		result = tx.Exec("INSERT INTO workflows_versions (created_at, initial_workflow_id, workflow_id, version) VALUES (?, ?, ?, ?)", createdAt, initialWorkflowID, w.ID, version)
 	} else {
-		result = tx.Exec("INSERT INTO workflows_versions (created_at, workflow_id, version) VALUES (?, ?)", createdAt, w.ID, version)
+		result = tx.Exec("INSERT INTO workflows_versions (created_at, workflow_id, version) VALUES (?, ?, ?)", createdAt, w.ID, version)
 	}
 	success := result.RowsAffected == 1
 	if success {
