@@ -99,7 +99,7 @@ func init() {
 		if err != nil {
 			common.Log.Panicf("failed to marshal response; %s", err.Error())
 		}
-		
+
 		var cfg *Config
 		err = json.Unmarshal(buf, &cfg)
 		if err != nil {
