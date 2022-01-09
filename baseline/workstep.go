@@ -690,10 +690,9 @@ func (w *Workstep) Update(other *Workstep) bool {
 		common.Log.Tracef("updating workstep id: %s; previous cardinality: %d; new cardinality: %d", w.ID, previousCardinality, newCardinality)
 
 		if newCardinality != 0 && w.Cardinality != newCardinality {
+			adjustsCardinality = true
 			for i, workstep := range worksteps {
 				if previousCardinality > newCardinality {
-					adjustsCardinality = true
-
 					// cardinality moved left... adjust all affectedcardinalities + 1
 					if i >= newCardinality-1 && i < previousCardinality-1 {
 						workstep.Cardinality++
@@ -702,8 +701,6 @@ func (w *Workstep) Update(other *Workstep) bool {
 						tx.Save(&workstep)
 					}
 				} else if previousCardinality < newCardinality {
-					adjustsCardinality = true
-
 					// cardinality moved right... adjust all affected cardinalities - 1
 					if i > previousCardinality-1 && i <= newCardinality-1 {
 						workstep.Cardinality--
@@ -713,10 +710,10 @@ func (w *Workstep) Update(other *Workstep) bool {
 					}
 				}
 			}
+			
+			// modify the cardinality
+			w.Cardinality = newCardinality
 		}
-
-		// modify the cardinality
-		w.Cardinality = newCardinality
 	} else if newCardinality != 0 && previousCardinality != newCardinality {
 		w.Errors = append(w.Errors, &provide.Error{
 			Message: common.StringOrNil("cannot modify instantiated workstep cardinality"),
