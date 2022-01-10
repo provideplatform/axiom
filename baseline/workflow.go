@@ -633,7 +633,7 @@ func (w *Workflow) Update(other *Workflow) bool {
 func (w *Workflow) createVersion(previous *Workflow, version string) bool {
 	// these validations are for update only...
 	if previous.isPrototype() {
-		if *w.Status != workflowStatusDeployed {
+		if *previous.Status != workflowStatusDeployed {
 			w.Errors = append(w.Errors, &provide.Error{
 				Message: common.StringOrNil("cannot version undeployed workflow"),
 			})
@@ -664,6 +664,14 @@ func (w *Workflow) createVersion(previous *Workflow, version string) bool {
 		}
 	}
 
+	participants := previous.listParticipants(tx)
+	for _, participant := range participants {
+		if !w.addParticipant(*participant.Participant, tx) {
+			return false
+		}
+	}
+
+
 	success := rowsAffected == 1 && len(errors) == 0
 	if success {
 		if !w.addVersion(version, tx) {
@@ -684,13 +692,16 @@ func (w *Workflow) createVersion(previous *Workflow, version string) bool {
 			workstep.Shield = nil
 			workstep.Prover = nil
 			workstep.ProverID = nil
+			workstep.Cardinality = 0
 			workstep.WorkflowID = &w.ID
+
 			if !workstep.Create(tx) {
 				for _, err := range workstep.Errors {
 					w.Errors = append(w.Errors, &provide.Error{
 						Message: common.StringOrNil(*err.Message),
 					})
 				}
+				return false
 			}
 		}
 

@@ -782,8 +782,8 @@ func (w *Workstep) Create(tx *gorm.DB) bool {
 	if _tx == nil {
 		db := dbconf.DatabaseConnection()
 		_tx = db.Begin()
+		defer _tx.RollbackUnlessCommitted()
 	}
-	defer _tx.RollbackUnlessCommitted()
 
 	if !w.Validate(_tx) {
 		return false

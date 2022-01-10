@@ -876,7 +876,12 @@ func versionWorkflowHandler(c *gin.Context) {
 	}
 
 	var _workflow *Workflow
-	err = json.Unmarshal(raw, &workflow)
+	err = json.Unmarshal(raw, &_workflow)
+	if err != nil {
+		provide.RenderError(err.Error(), 500, c)
+		return
+	}
+
 	_workflow.ID = uuid.Nil
 	_workflow.Status = common.StringOrNil(workflowStatusDraft)
 	_workflow.Version = version
@@ -891,9 +896,9 @@ func versionWorkflowHandler(c *gin.Context) {
 
 	if _workflow.createVersion(workflow, *version) {
 		provide.Render(_workflow, 201, c)
-	} else if len(workflow.Errors) > 0 {
+	} else if len(_workflow.Errors) > 0 {
 		obj := map[string]interface{}{}
-		obj["errors"] = workflow.Errors
+		obj["errors"] = _workflow.Errors
 		provide.Render(obj, 422, c)
 	} else {
 		provide.RenderError("internal persistence error", 500, c)
