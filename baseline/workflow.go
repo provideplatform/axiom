@@ -653,7 +653,7 @@ func (w *Workflow) createVersion(previous *Workflow, version string) bool {
 	tx := db.Begin()
 	defer tx.RollbackUnlessCommitted()
 
-	result := tx.Save(&w)
+	result := tx.Create(&w)
 	rowsAffected := result.RowsAffected
 	errors := result.GetErrors()
 	if len(errors) > 0 {
@@ -687,11 +687,12 @@ func (w *Workflow) createVersion(previous *Workflow, version string) bool {
 				return false
 			}
 
+			workstep.Cardinality = 0
 			workstep.ID = uuid.Nil
-			workstep.Shield = nil
 			workstep.Prover = nil
 			workstep.ProverID = nil
-			workstep.Cardinality = 0
+			workstep.Shield = nil
+			workstep.Status = common.StringOrNil(workstepStatusDraft)
 			workstep.WorkflowID = &w.ID
 
 			if !workstep.Create(tx) {
