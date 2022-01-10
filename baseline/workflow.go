@@ -695,6 +695,18 @@ func (w *Workflow) createVersion(previous *Workflow, version string) bool {
 			workstep.Status = common.StringOrNil(workstepStatusDraft)
 			workstep.WorkflowID = &w.ID
 
+			result := tx.Create(&workstep)
+			rowsAffected = result.RowsAffected
+			errors := result.GetErrors()
+			if len(errors) > 0 {
+				for _, err := range errors {
+					w.Errors = append(w.Errors, &provide.Error{
+						Message: common.StringOrNil(err.Error()),
+					})
+				}
+				return false
+			}
+
 			if !workstep.Create(tx) {
 				for _, err := range workstep.Errors {
 					w.Errors = append(w.Errors, &provide.Error{
