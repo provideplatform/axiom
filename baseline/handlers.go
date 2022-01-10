@@ -103,9 +103,9 @@ func InstallWorkstepsAPI(r *gin.Engine) {
 	r.PUT("/api/v1/workflows/:id/worksteps/:workstepId", updateWorkstepHandler)
 	r.DELETE("/api/v1/workflows/:id/worksteps/:workstepId", deleteWorkstepHandler)
 	r.POST("/api/v1/workflows/:id/worksteps/:workstepId/execute", executeWorkstepHandler)
-	// r.GET("/api/v1/workflows/:id/worksteps/:workstepId/participants", listWorkstepParticipantsHandler)
-	// r.POST("/api/v1/workflows/:id/worksteps/:workstepId/participants", createWorkstepParticipantHandler)
-	// r.DELETE("/api/v1/workflows/:id/worksteps/:workstepId/participants/:participantId", deleteWorkstepParticipantHandler)
+	r.GET("/api/v1/workflows/:id/worksteps/:workstepId/participants", listWorkstepParticipantsHandler)
+	r.POST("/api/v1/workflows/:id/worksteps/:workstepId/participants", createWorkstepParticipantHandler)
+	r.DELETE("/api/v1/workflows/:id/worksteps/:workstepId/participants/:participantId", deleteWorkstepParticipantHandler)
 }
 
 func configDetailsHandler(c *gin.Context) {
@@ -1448,6 +1448,160 @@ func issueVerifiableCredentialHandler(c *gin.Context) {
 		provide.Render(&baseline.IssueVerifiableCredentialResponse{
 			VC: credential,
 		}, 201, c)
+	} else {
+		obj := map[string]interface{}{}
+		obj["errors"] = []interface{}{} // FIXME
+		provide.Render(obj, 422, c)
+	}
+}
+
+func listWorkstepParticipantsHandler(c *gin.Context) {
+	organizationID := util.AuthorizedSubjectID(c, "organization")
+	if organizationID == nil {
+		provide.RenderError("unauthorized", 401, c)
+		return
+	} else if common.OrganizationID != nil && organizationID.String() != *common.OrganizationID {
+		provide.RenderError("forbidden", 403, c)
+		return
+	}
+
+	workflowID, err := uuid.FromString(c.Param("id"))
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	workstepID, err := uuid.FromString(c.Param("workstepId"))
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	workstep := FindWorkstepByID(workstepID)
+	if workstep == nil {
+		provide.RenderError("not found", 404, c)
+		return
+	} else if workstep.WorkflowID == nil || workstep.WorkflowID.String() != workflowID.String() {
+		provide.RenderError("forbidden", 403, c)
+		return
+	}
+
+	db := dbconf.DatabaseConnection()
+	participants := workstep.listParticipants(db)
+	// var participants []*WorkstepParticipant
+	// query := workstep.listParticipantsQuery()
+	// provide.Paginate(c, query, &WorkstepParticipant{}).Find(&participants)
+	provide.Render(participants, 200, c)
+}
+
+func createWorkstepParticipantHandler(c *gin.Context) {
+	organizationID := util.AuthorizedSubjectID(c, "organization")
+	if organizationID == nil {
+		provide.RenderError("unauthorized", 401, c)
+		return
+	} else if common.OrganizationID != nil && organizationID.String() != *common.OrganizationID {
+		provide.RenderError("forbidden", 403, c)
+		return
+	}
+
+	var participant *WorkstepParticipant
+
+	buf, err := c.GetRawData()
+	if err != nil {
+		provide.RenderError(err.Error(), 400, c)
+		return
+	}
+
+	err = json.Unmarshal(buf, &participant)
+	if err != nil {
+		msg := fmt.Sprintf("failed to umarshal participant; %s", err.Error())
+		common.Log.Warning(msg)
+		provide.RenderError(msg, 422, c)
+		return
+	}
+
+	workflowID, err := uuid.FromString(c.Param("id"))
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	workstepID, err := uuid.FromString(c.Param("workstepId"))
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	workstep := FindWorkstepByID(workstepID)
+	if workstep == nil {
+		provide.RenderError("not found", 404, c)
+		return
+	} else if workstep.WorkflowID == nil || workstep.WorkflowID.String() != workflowID.String() {
+		provide.RenderError("forbidden", 403, c)
+		return
+	}
+
+	if workstep.Status == nil || *workstep.Status != workstepStatusDraft {
+		provide.RenderError("cannot execute workstep", 400, c)
+		return
+	}
+
+	if participant.Participant == nil {
+		provide.RenderError("address required", 422, c)
+		return
+	}
+
+	db := dbconf.DatabaseConnection()
+	if !workstep.addParticipant(*participant.Participant, db) {
+		provide.Render(nil, 204, c)
+	} else {
+		obj := map[string]interface{}{}
+		obj["errors"] = []interface{}{} // FIXME
+		provide.Render(obj, 422, c)
+	}
+}
+
+func deleteWorkstepParticipantHandler(c *gin.Context) {
+	organizationID := util.AuthorizedSubjectID(c, "organization")
+	if organizationID == nil {
+		provide.RenderError("unauthorized", 401, c)
+		return
+	} else if common.OrganizationID != nil && organizationID.String() != *common.OrganizationID {
+		provide.RenderError("forbidden", 403, c)
+		return
+	}
+
+	address := c.Param("participantId")
+
+	workflowID, err := uuid.FromString(c.Param("id"))
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	workstepID, err := uuid.FromString(c.Param("workstepId"))
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	workstep := FindWorkstepByID(workstepID)
+	if workstep == nil {
+		provide.RenderError("not found", 404, c)
+		return
+	} else if workstep.WorkflowID == nil || workstep.WorkflowID.String() != workflowID.String() {
+		provide.RenderError("forbidden", 403, c)
+		return
+	}
+
+	if workstep.Status == nil || *workstep.Status != workstepStatusDraft {
+		provide.RenderError("cannot execute workstep", 400, c)
+		return
+	}
+
+	db := dbconf.DatabaseConnection()
+	if !workstep.removeParticipant(address, db) {
+		provide.Render(nil, 204, c)
 	} else {
 		obj := map[string]interface{}{}
 		obj["errors"] = []interface{}{} // FIXME
