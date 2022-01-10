@@ -557,7 +557,7 @@ func (w *Workflow) Create(tx *gorm.DB) bool {
 				initialWorkflowID, _ := w.initialWorkflowVersion(_tx)
 				if initialWorkflowID == nil && w.Version != nil {
 					common.Log.Debugf("no initial workflow version resolved for workflow: %s", w.ID)
-					success = w.addVersion(*w.Version, _tx)
+					success = w.addVersion(w.ID, *w.Version, _tx)
 				}
 			}
 		}
@@ -673,7 +673,15 @@ func (w *Workflow) createVersion(previous *Workflow, version string) bool {
 
 	success := rowsAffected == 1 && len(errors) == 0
 	if success {
-		if !w.addVersion(version, tx) {
+		initialWorkflowID, _ := previous.initialWorkflowVersion(tx)
+		if initialWorkflowID == nil {
+			w.Errors = append(w.Errors, &provide.Error{
+				Message: common.StringOrNil(fmt.Sprintf("failed to resolve initial version for workflow: %s", previous.ID)),
+			})
+			return false
+		}
+
+		if !w.addVersion(*initialWorkflowID, version, tx) {
 			return false
 		}
 
@@ -696,7 +704,6 @@ func (w *Workflow) createVersion(previous *Workflow, version string) bool {
 			workstep.WorkflowID = &w.ID
 
 			result := tx.Create(&workstep)
-			rowsAffected = result.RowsAffected
 			errors := result.GetErrors()
 			if len(errors) > 0 {
 				for _, err := range errors {
@@ -721,15 +728,10 @@ func (w *Workflow) createVersion(previous *Workflow, version string) bool {
 	return success
 }
 
-func (w *Workflow) addVersion(version string, tx *gorm.DB) bool {
+func (w *Workflow) addVersion(initialWorkflowID uuid.UUID, version string, tx *gorm.DB) bool {
 	common.Log.Debugf("adding workflow version %s; workflow: %s", version, w.ID)
-	initialWorkflowID, _ := w.initialWorkflowVersion(tx)
-	var result *gorm.DB
 	createdAt := time.Now()
-	if initialWorkflowID == nil {
-		initialWorkflowID = &w.ID
-	}
-	result = tx.Exec("INSERT INTO workflows_versions (created_at, initial_workflow_id, workflow_id, version) VALUES (?, ?, ?, ?)", createdAt, initialWorkflowID, w.ID, version)
+	result := tx.Exec("INSERT INTO workflows_versions (created_at, initial_workflow_id, workflow_id, version) VALUES (?, ?, ?, ?)", createdAt, initialWorkflowID, w.ID, version)
 	success := result.RowsAffected == 1
 	if success {
 		common.Log.Debugf("added workflow version %s; workflow: %s", version, w.ID)
