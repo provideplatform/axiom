@@ -707,15 +707,6 @@ func (w *Workflow) createVersion(previous *Workflow, version string) bool {
 				return false
 			}
 
-			if !workstep.Create(tx) {
-				for _, err := range workstep.Errors {
-					w.Errors = append(w.Errors, &provide.Error{
-						Message: common.StringOrNil(*err.Message),
-					})
-				}
-				return false
-			}
-
 			workstepParticipants := wrkstp.listParticipants(tx)
 			for _, prtcpt := range workstepParticipants {
 				if !workstep.addParticipant(*prtcpt.Participant, tx) {
