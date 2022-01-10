@@ -671,7 +671,6 @@ func (w *Workflow) createVersion(previous *Workflow, version string) bool {
 		}
 	}
 
-
 	success := rowsAffected == 1 && len(errors) == 0
 	if success {
 		if !w.addVersion(version, tx) {
@@ -702,6 +701,13 @@ func (w *Workflow) createVersion(previous *Workflow, version string) bool {
 					})
 				}
 				return false
+			}
+
+			workstepParticipants := wrkstp.listParticipants(tx)
+			for _, prtcpt := range workstepParticipants {
+				if !workstep.addParticipant(*prtcpt.Participant, tx) {
+					return false
+				}
 			}
 		}
 
