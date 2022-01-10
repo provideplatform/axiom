@@ -862,7 +862,7 @@ func versionWorkflowHandler(c *gin.Context) {
 
 	var description *string
 	if desc, ok := params["description"].(string); ok {
-		name = common.StringOrNil(desc)
+		description = common.StringOrNil(desc)
 	}
 
 	var version *string
