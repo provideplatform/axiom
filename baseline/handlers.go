@@ -89,7 +89,8 @@ func InstallWorkflowsAPI(r *gin.Engine) {
 	r.POST("/api/v1/workflows", createWorkflowHandler)
 	r.PUT("/api/v1/workflows/:id", updateWorkflowHandler)
 	r.POST("/api/v1/workflows/:id/deploy", deployWorkflowHandler)
-	r.POST("/api/v1/workflows/:id/version", versionWorkflowHandler)
+	r.GET("/api/v1/workflows/:id/versions", listWorkflowVersionsHandler)
+	r.POST("/api/v1/workflows/:id/versions", versionWorkflowHandler)
 	r.DELETE("/api/v1/workflows/:id", deleteWorkflowHandler)
 }
 
@@ -102,6 +103,9 @@ func InstallWorkstepsAPI(r *gin.Engine) {
 	r.PUT("/api/v1/workflows/:id/worksteps/:workstepId", updateWorkstepHandler)
 	r.DELETE("/api/v1/workflows/:id/worksteps/:workstepId", deleteWorkstepHandler)
 	r.POST("/api/v1/workflows/:id/worksteps/:workstepId/execute", executeWorkstepHandler)
+	// r.GET("/api/v1/workflows/:id/worksteps/:workstepId/participants", listWorkstepParticipantsHandler)
+	// r.POST("/api/v1/workflows/:id/worksteps/:workstepId/participants", createWorkstepParticipantHandler)
+	// r.DELETE("/api/v1/workflows/:id/worksteps/:workstepId/participants/:participantId", deleteWorkstepParticipantHandler)
 }
 
 func configDetailsHandler(c *gin.Context) {
@@ -903,6 +907,36 @@ func versionWorkflowHandler(c *gin.Context) {
 	} else {
 		provide.RenderError("internal persistence error", 500, c)
 	}
+}
+
+func listWorkflowVersionsHandler(c *gin.Context) {
+	organizationID := util.AuthorizedSubjectID(c, "organization")
+	if organizationID == nil {
+		provide.RenderError("unauthorized", 401, c)
+		return
+	} else if common.OrganizationID != nil && organizationID.String() != *common.OrganizationID {
+		provide.RenderError("forbidden", 403, c)
+		return
+	}
+
+	workflowID, err := uuid.FromString(c.Param("id"))
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	workflow := FindWorkflowByID(workflowID)
+	if workflow == nil {
+		provide.RenderError("not found", 404, c)
+		return
+	}
+
+	db := dbconf.DatabaseConnection()
+	versions := workflow.listVersions(db)
+	// var versions []*WorkflowVersion
+	// query := workflow.listVersionsQuery()
+	// provide.Paginate(c, query, &WorkflowVersion{}).Find(&versions)
+	provide.Render(versions, 200, c)
 }
 
 func updateWorkflowHandler(c *gin.Context) {

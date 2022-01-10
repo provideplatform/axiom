@@ -51,6 +51,13 @@ type Workflow struct {
 	WorkstepsCount int            `json:"worksteps_count,omitempty"`
 }
 
+// WorkflowVersion is a version of a workflow referenced by the initial workflow id
+type WorkflowVersion struct {
+	InitialWorkflowID uuid.UUID `json:"initial_workflow_id"`
+	WorkflowID        uuid.UUID `json:"workflow_id"`
+	Version           string    `json:"version"`
+}
+
 // WorkflowInstance is a baseline workflow instance
 type WorkflowInstance struct {
 	baseline.WorkflowInstance
@@ -747,6 +754,29 @@ func (w *Workflow) addVersion(initialWorkflowID uuid.UUID, version string, tx *g
 	}
 
 	return len(w.Errors) == 0
+}
+
+func (w *Workflow) listVersions(tx *gorm.DB) []*WorkflowVersion {
+	initialWorkflowID, _ := w.initialWorkflowVersion(tx)
+
+	versions := make([]*WorkflowVersion, 0)
+	rows, err := tx.Raw("SELECT * FROM workflows_versions WHERE initial_workflow_id=?", initialWorkflowID).Rows()
+	if err != nil {
+		common.Log.Warningf("failed to list workflow versions; %s", err.Error())
+		return versions
+	}
+
+	for rows.Next() {
+		v := &WorkflowVersion{}
+		err = tx.ScanRows(rows, &v)
+		if err != nil {
+			common.Log.Warningf("failed to list workflow versions; %s", err.Error())
+			return versions
+		}
+		versions = append(versions, v)
+	}
+
+	return versions
 }
 
 func (w *Workflow) initialWorkflowVersion(tx *gorm.DB) (*uuid.UUID, *string) {
