@@ -695,7 +695,6 @@ func (w *Workflow) createVersion(previous *Workflow, version string) bool {
 				return false
 			}
 
-			workstep.Cardinality = 0
 			workstep.ID = uuid.Nil
 			workstep.Prover = nil
 			workstep.ProverID = nil
