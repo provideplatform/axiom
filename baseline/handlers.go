@@ -1552,12 +1552,14 @@ func createWorkstepParticipantHandler(c *gin.Context) {
 	}
 
 	db := dbconf.DatabaseConnection()
-	if !workstep.addParticipant(*participant.Participant, db) {
+	if workstep.addParticipant(*participant.Participant, db) {
 		provide.Render(nil, 204, c)
-	} else {
+	} else if len(workstep.Errors) > 0 {
 		obj := map[string]interface{}{}
-		obj["errors"] = []interface{}{} // FIXME
+		obj["errors"] = workstep.Errors
 		provide.Render(obj, 422, c)
+	} else {
+		provide.RenderError("internal persistence error", 500, c)
 	}
 }
 
@@ -1600,12 +1602,14 @@ func deleteWorkstepParticipantHandler(c *gin.Context) {
 	}
 
 	db := dbconf.DatabaseConnection()
-	if !workstep.removeParticipant(address, db) {
+	if workstep.removeParticipant(address, db) {
 		provide.Render(nil, 204, c)
-	} else {
+	} else if len(workstep.Errors) > 0 {
 		obj := map[string]interface{}{}
-		obj["errors"] = []interface{}{} // FIXME
+		obj["errors"] = workstep.Errors
 		provide.Render(obj, 422, c)
+	} else {
+		provide.RenderError("internal persistence error", 500, c)
 	}
 }
 
