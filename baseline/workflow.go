@@ -656,6 +656,29 @@ func (w *Workflow) createVersion(previous *Workflow, version string) bool {
 		return false
 	}
 
+	newVersionParsed, err := common.ParseIntFromString(version)
+	if err != nil {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil(err.Error()),
+		})
+		return false
+	}
+
+	previousVersionParsed, err := common.ParseIntFromString(*previous.Version)
+	if err != nil {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil(err.Error()),
+		})
+		return false
+	}
+
+	if newVersionParsed < previousVersionParsed {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil("cannot version workflow with older version"),
+		})
+		return false
+	}
+
 	db := dbconf.DatabaseConnection()
 	tx := db.Begin()
 	defer tx.RollbackUnlessCommitted()

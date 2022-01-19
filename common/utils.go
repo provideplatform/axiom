@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -161,4 +163,11 @@ func SHA256(str string) string {
 	digest := sha256.New()
 	digest.Write([]byte(str))
 	return hex.EncodeToString(digest.Sum(nil))
+}
+
+func ParseIntFromString(str string) (int, error) {
+	re := regexp.MustCompile("[0-9]+")
+	strArr := re.FindAllString(str, -1)
+	intStr := strings.Join(strArr, "")
+	return strconv.Atoi(intStr)
 }
