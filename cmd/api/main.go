@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -78,7 +79,7 @@ func configureSOR() {
 	}
 
 	sorConfigurationJSON, _ := json.MarshalIndent(sorConfiguration, "", "  ")
-	common.Log.Debugf("SOR configured:\n%s",sorConfigurationJSION)
+	common.Log.Debugf("SOR configured:\n%s", sorConfigurationJSON)
 }
 
 func main() {
