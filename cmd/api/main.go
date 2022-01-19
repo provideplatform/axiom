@@ -65,15 +65,20 @@ func configureSOR() {
 		common.Log.Debugf("SOR API endpoint: %s", sorURL)
 	}
 
-	err = sor.ConfigureProxy(map[string]interface{}{
+	sorConfiguration := map[string]interface{}{
 		"organization_id": common.OrganizationID,
 		"ident_endpoint":  fmt.Sprintf("%s://%s", os.Getenv("IDENT_API_SCHEME"), os.Getenv("IDENT_API_HOST")),
 		"proxy_endpoint":  common.OrganizationProxyEndpoint,
 		"refresh_token":   common.OrganizationRefreshToken,
-	})
+	}
+
+	err = sor.ConfigureProxy(sorConfiguration)
 	if err != nil {
 		panic(err.Error())
 	}
+
+	sorConfigurationJSON, _ := json.MarshalIndent(sorConfiguration, "", "  ")
+	common.Log.Debugf("SOR configured:\n%s",sorConfigurationJSION)
 }
 
 func main() {
