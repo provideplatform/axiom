@@ -192,7 +192,7 @@ func baselineWorkflowFactory(objectType string, identifier *string) (*WorkflowIn
 				*token,
 				circuitParamsFactory(
 					"PO",
-					baselineWorkflowTypeGeneralConsistency,
+					baselineWorkflowTypeProcureToPay,
 					nil,
 					nil,
 				),
@@ -207,7 +207,7 @@ func baselineWorkflowFactory(objectType string, identifier *string) (*WorkflowIn
 				*token,
 				circuitParamsFactory(
 					"SO",
-					baselineWorkflowTypeGeneralConsistency,
+					baselineWorkflowTypeProcureToPay,
 					common.StringOrNil(circuit.NoteStoreID.String()),
 					common.StringOrNil(circuit.NullifierStoreID.String()),
 				),
