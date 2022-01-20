@@ -218,50 +218,50 @@ func baselineWorkflowFactory(objectType string, identifier *string) (*WorkflowIn
 			}
 			workflow.Worksteps = append(workflow.Worksteps, baselineWorkstepFactory(nil, common.StringOrNil(workflow.ID.String()), circuit))
 
-			circuit, err = privacy.CreateCircuit(
-				*token,
-				circuitParamsFactory(
-					"SN",
-					baselineWorkflowTypeGeneralConsistency,
-					common.StringOrNil(circuit.NoteStoreID.String()),
-					common.StringOrNil(circuit.NullifierStoreID.String()),
-				),
-			)
-			if err != nil {
-				common.Log.Errorf("failed to deploy circuit; %s", err.Error())
-				return nil, err
-			}
-			workflow.Worksteps = append(workflow.Worksteps, baselineWorkstepFactory(nil, common.StringOrNil(workflow.ID.String()), circuit))
+			// circuit, err = privacy.CreateCircuit(
+			// 	*token,
+			// 	circuitParamsFactory(
+			// 		"SN",
+			// 		baselineWorkflowTypeGeneralConsistency,
+			// 		common.StringOrNil(circuit.NoteStoreID.String()),
+			// 		common.StringOrNil(circuit.NullifierStoreID.String()),
+			// 	),
+			// )
+			// if err != nil {
+			// 	common.Log.Errorf("failed to deploy circuit; %s", err.Error())
+			// 	return nil, err
+			// }
+			// workflow.Worksteps = append(workflow.Worksteps, baselineWorkstepFactory(nil, common.StringOrNil(workflow.ID.String()), circuit))
 
-			circuit, err = privacy.CreateCircuit(
-				*token,
-				circuitParamsFactory(
-					"GR",
-					baselineWorkflowTypeGeneralConsistency,
-					common.StringOrNil(circuit.NoteStoreID.String()),
-					common.StringOrNil(circuit.NullifierStoreID.String()),
-				),
-			)
-			if err != nil {
-				common.Log.Errorf("failed to deploy circuit; %s", err.Error())
-				return nil, err
-			}
-			workflow.Worksteps = append(workflow.Worksteps, baselineWorkstepFactory(nil, common.StringOrNil(workflow.ID.String()), circuit))
+			// circuit, err = privacy.CreateCircuit(
+			// 	*token,
+			// 	circuitParamsFactory(
+			// 		"GR",
+			// 		baselineWorkflowTypeGeneralConsistency,
+			// 		common.StringOrNil(circuit.NoteStoreID.String()),
+			// 		common.StringOrNil(circuit.NullifierStoreID.String()),
+			// 	),
+			// )
+			// if err != nil {
+			// 	common.Log.Errorf("failed to deploy circuit; %s", err.Error())
+			// 	return nil, err
+			// }
+			// workflow.Worksteps = append(workflow.Worksteps, baselineWorkstepFactory(nil, common.StringOrNil(workflow.ID.String()), circuit))
 
-			circuit, err = privacy.CreateCircuit(
-				*token,
-				circuitParamsFactory(
-					"Invoice",
-					baselineWorkflowTypeGeneralConsistency,
-					common.StringOrNil(circuit.NoteStoreID.String()),
-					common.StringOrNil(circuit.NullifierStoreID.String()),
-				),
-			)
-			if err != nil {
-				common.Log.Errorf("failed to deploy circuit; %s", err.Error())
-				return nil, err
-			}
-			workflow.Worksteps = append(workflow.Worksteps, baselineWorkstepFactory(nil, common.StringOrNil(workflow.ID.String()), circuit))
+			// circuit, err = privacy.CreateCircuit(
+			// 	*token,
+			// 	circuitParamsFactory(
+			// 		"Invoice",
+			// 		baselineWorkflowTypeGeneralConsistency,
+			// 		common.StringOrNil(circuit.NoteStoreID.String()),
+			// 		common.StringOrNil(circuit.NullifierStoreID.String()),
+			// 	),
+			// )
+			// if err != nil {
+			// 	common.Log.Errorf("failed to deploy circuit; %s", err.Error())
+			// 	return nil, err
+			// }
+			// workflow.Worksteps = append(workflow.Worksteps, baselineWorkstepFactory(nil, common.StringOrNil(workflow.ID.String()), circuit))
 
 		case baselineWorkflowTypeServiceNowIncident:
 			circuit, err = privacy.CreateCircuit(*token, circuitParamsFactory("Incident", baselineWorkflowTypeGeneralConsistency, nil, nil))
