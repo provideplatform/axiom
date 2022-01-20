@@ -192,7 +192,7 @@ func baselineWorkflowFactory(objectType string, identifier *string) (*WorkflowIn
 				*token,
 				circuitParamsFactory(
 					"PO",
-					"purchase_order",
+					baselineWorkflowTypeGeneralConsistency,
 					nil,
 					nil,
 				),
@@ -207,7 +207,7 @@ func baselineWorkflowFactory(objectType string, identifier *string) (*WorkflowIn
 				*token,
 				circuitParamsFactory(
 					"SO",
-					"sales_order",
+					baselineWorkflowTypeGeneralConsistency,
 					common.StringOrNil(circuit.NoteStoreID.String()),
 					common.StringOrNil(circuit.NullifierStoreID.String()),
 				),
@@ -222,7 +222,7 @@ func baselineWorkflowFactory(objectType string, identifier *string) (*WorkflowIn
 				*token,
 				circuitParamsFactory(
 					"SN",
-					"shipment_notification",
+					baselineWorkflowTypeGeneralConsistency,
 					common.StringOrNil(circuit.NoteStoreID.String()),
 					common.StringOrNil(circuit.NullifierStoreID.String()),
 				),
@@ -237,7 +237,7 @@ func baselineWorkflowFactory(objectType string, identifier *string) (*WorkflowIn
 				*token,
 				circuitParamsFactory(
 					"GR",
-					"goods_receipt",
+					baselineWorkflowTypeGeneralConsistency,
 					common.StringOrNil(circuit.NoteStoreID.String()),
 					common.StringOrNil(circuit.NullifierStoreID.String()),
 				),
@@ -252,7 +252,7 @@ func baselineWorkflowFactory(objectType string, identifier *string) (*WorkflowIn
 				*token,
 				circuitParamsFactory(
 					"Invoice",
-					"invoice",
+					baselineWorkflowTypeGeneralConsistency,
 					common.StringOrNil(circuit.NoteStoreID.String()),
 					common.StringOrNil(circuit.NullifierStoreID.String()),
 				),
@@ -264,7 +264,7 @@ func baselineWorkflowFactory(objectType string, identifier *string) (*WorkflowIn
 			workflow.Worksteps = append(workflow.Worksteps, baselineWorkstepFactory(nil, common.StringOrNil(workflow.ID.String()), circuit))
 
 		case baselineWorkflowTypeServiceNowIncident:
-			circuit, err = privacy.CreateCircuit(*token, circuitParamsFactory("Incident", "purchase_order", nil, nil))
+			circuit, err = privacy.CreateCircuit(*token, circuitParamsFactory("Incident", baselineWorkflowTypeGeneralConsistency, nil, nil))
 			if err != nil {
 				common.Log.Errorf("failed to deploy circuit; %s", err.Error())
 				return nil, err
