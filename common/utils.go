@@ -165,9 +165,10 @@ func SHA256(str string) string {
 	return hex.EncodeToString(digest.Sum(nil))
 }
 
-func ParseIntFromString(str string) (int, error) {
+func ParseIntFromString(str string) (uint64, error) {
 	re := regexp.MustCompile("[0-9]+")
 	strArr := re.FindAllString(str, -1)
 	intStr := strings.Join(strArr, "")
-	return strconv.Atoi(intStr)
+	int, err := strconv.Atoi(intStr)
+	return uint64(int), err
 }
