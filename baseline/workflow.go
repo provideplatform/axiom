@@ -600,11 +600,6 @@ func (w *Workflow) Update(other *Workflow) bool {
 				Message: common.StringOrNil("invalid state transition; cannot modify status of deprecated workflow"),
 			})
 			return false
-		} else if *w.Status != workflowStatusDraft {
-			w.Errors = append(w.Errors, &provide.Error{
-				Message: common.StringOrNil("invalid state transition; referenced workflow is not mutable"),
-			})
-			return false
 		}
 
 		if *w.Status != workflowStatusDeployed && *w.Status != workflowStatusPendingDeployment && *w.Status != workflowStatusDeprecated {
@@ -615,6 +610,11 @@ func (w *Workflow) Update(other *Workflow) bool {
 					return false
 				}
 			}
+		} else if *w.Status != workflowStatusDraft {
+			w.Errors = append(w.Errors, &provide.Error{
+				Message: common.StringOrNil("invalid state transition; referenced workflow is not mutable"),
+			})
+			return false
 		}
 	} else {
 		w.Errors = append(w.Errors, &provide.Error{
