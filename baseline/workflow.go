@@ -622,6 +622,10 @@ func (w *Workflow) Update(other *Workflow) bool {
 		w.Name = other.Name
 	}
 
+	if other.Description != nil {
+		w.Description = other.Description
+	}
+
 	db := dbconf.DatabaseConnection()
 	result := db.Save(&w)
 	rowsAffected := result.RowsAffected
