@@ -610,7 +610,7 @@ func (w *Workflow) Update(other *Workflow) bool {
 					return false
 				}
 			}
-		} else if *w.Status != workflowStatusDraft {
+		} else if *w.Status != workflowStatusDraft && other.Status != nil && *other.Status != workstepStatusDeprecated {
 			w.Errors = append(w.Errors, &provide.Error{
 				Message: common.StringOrNil("invalid state transition; referenced workflow is not mutable"),
 			})
