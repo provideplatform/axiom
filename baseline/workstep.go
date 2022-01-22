@@ -681,9 +681,14 @@ func (w *Workstep) Update(other *Workstep) bool {
 				Message: common.StringOrNil("invalid state transition"),
 			})
 			return false
-		} else if *w.Status == workflowStatusDeprecated && other.Status != nil && *w.Status != *other.Status {
+		} else if *w.Status == workstepStatusDeprecated && other.Status != nil && *w.Status != *other.Status {
 			w.Errors = append(w.Errors, &provide.Error{
 				Message: common.StringOrNil("invalid state transition; cannot modify status of deprecated workstep"),
+			})
+			return false
+		} else if *w.Status != workstepStatusDraft {
+			w.Errors = append(w.Errors, &provide.Error{
+				Message: common.StringOrNil("invalid state transition; referenced workstep is not mutable"),
 			})
 			return false
 		}
