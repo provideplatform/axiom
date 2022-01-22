@@ -663,6 +663,13 @@ func (w *Workstep) Update(other *Workstep) bool {
 	previousCardinality := w.Cardinality
 	newCardinality := other.Cardinality
 
+	if !workflow.isPrototype() {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil("invalid state transition; referenced workflow is not mutable"),
+		})
+		return false
+	}
+
 	if workflow.isPrototype() {
 		if workflow.Status != nil && *workflow.Status != workflowStatusDraft && other.Status != nil && *other.Status != *w.Status {
 			w.Errors = append(w.Errors, &provide.Error{

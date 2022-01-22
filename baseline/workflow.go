@@ -611,6 +611,11 @@ func (w *Workflow) Update(other *Workflow) bool {
 				}
 			}
 		}
+	} else {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil("invalid state transition; cannot modify status of workflow prototypes"),
+		})
+		return false
 	}
 
 	if w.Status != nil && *w.Status != workflowStatusPendingDeployment {
