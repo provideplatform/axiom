@@ -932,11 +932,11 @@ func (w *Workflow) Validate() bool {
 			w.Errors = append(w.Errors, &provide.Error{
 				Message: common.StringOrNil("ineligible prototype - this is likely an ephemeral failure; please try again"),
 			})
-		} else if w.Version != nil {
+		} else if w.Version != nil && *w.Version != *proto.Version {
 			w.Errors = append(w.Errors, &provide.Error{
-				Message: common.StringOrNil("cannot manually version a workflow instance"),
+				Message: common.StringOrNil("workflow instance version must match its prototype"),
 			})
-		} else {
+		} else if w.Version == nil {
 			w.Version = proto.Version
 		}
 	}
