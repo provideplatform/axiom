@@ -881,11 +881,21 @@ func (w *Workflow) ParseMetadata() map[string]interface{} {
 }
 
 func (w *Workflow) Validate() bool {
+	var proto *Workflow
+
+	if !w.isPrototype() {
+		proto = FindWorkflowByID(*w.WorkflowID)
+	}
+
 	if w.ID == uuid.Nil && w.Status == nil {
-		if w.WorkflowID == nil {
+		if w.isPrototype(){
 			w.Status = common.StringOrNil("draft")
 		} else {
 			w.Status = common.StringOrNil("init")
+
+			if w.Version == nil && proto.Version != nil {
+				w.Version = proto.Version
+			}
 		}
 	}
 
@@ -911,7 +921,6 @@ func (w *Workflow) Validate() bool {
 	}
 
 	if !w.isPrototype() {
-		proto := FindWorkflowByID(*w.WorkflowID)
 		if !proto.isPrototype() {
 			w.Errors = append(w.Errors, &provide.Error{
 				Message: common.StringOrNil("ineligible prototype"),
@@ -936,9 +945,7 @@ func (w *Workflow) Validate() bool {
 			w.Errors = append(w.Errors, &provide.Error{
 				Message: common.StringOrNil("workflow instance version must match its prototype"),
 			})
-		} else if w.Version == nil {
-			w.Version = proto.Version
-		}
+		} 
 	}
 
 	return len(w.Errors) == 0
