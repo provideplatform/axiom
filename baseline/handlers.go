@@ -1034,22 +1034,16 @@ func listWorkflowsHandler(c *gin.Context) {
 	filterPrototypes := strings.ToLower(c.Query("filter_prototypes")) == "true"
 
 	db := dbconf.DatabaseConnection()
-	var query *gorm.DB
+	query := db.Order("workflows.created_at DESC")
 
 	if c.Query("workgroup_id") != "" {
-		query = db.Where("workflows.workgroup_id = ?", c.Query("workgroup_id"))
+		query = query.Where("workflows.workgroup_id = ?", c.Query("workgroup_id"))
 	}
 	if filterInstances {
-		query = db.Where("workflows.workflow_id IS NULL")
+		query = query.Where("workflows.workflow_id IS NULL")
 	}
 	if filterPrototypes {
-		query = db.Where("workflows.workflow_id IS NOT NULL")
-	}
-
-	if query == nil {
-		query = db.Order("workflows.created_at DESC")
-	} else {
-		query = query.Order("workflows.created_at DESC")
+		query = query.Where("workflows.workflow_id IS NOT NULL")
 	}
 
 	provide.Paginate(c, query, &Workflow{}).Find(&workflows)
