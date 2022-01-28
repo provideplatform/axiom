@@ -18,7 +18,7 @@ import (
 
 const defaultNatsStream = "baseline"
 
-const protomsgPayloadTypeCircuit = "circuit"
+const protomsgPayloadTypeCircuit = "prover"
 const protomsgPayloadTypeWorkflow = "workflow"
 
 const natsDispatchInvitationSubject = "baseline.invitation.outbound"
@@ -278,21 +278,21 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *nats.Msg) {
 		// this.workgroupCounterparties.push(payload.address);
 		// this.natsBearerTokens[messagingEndpoint] = payload.authorized_bearer_token;
 
-		// const circuit = JSON.parse(JSON.stringify(this.baselineCircuit));
-		// circuit.proving_scheme = circuit.provingScheme;
-		// circuit.verifier_contract = circuit.verifierContract;
-		// delete circuit.verifierContract;
-		// delete circuit.createdAt;
-		// delete circuit.vaultId;
-		// delete circuit.provingScheme;
-		// delete circuit.provingKeyId;
-		// delete circuit.verifyingKeyId;
-		// delete circuit.status;
+		// const prover = JSON.parse(JSON.stringify(this.baselineCircuit));
+		// prover.proving_scheme = prover.provingScheme;
+		// prover.verifier_contract = prover.verifierContract;
+		// delete prover.verifierContract;
+		// delete prover.createdAt;
+		// delete prover.vaultId;
+		// delete prover.provingScheme;
+		// delete prover.provingKeyId;
+		// delete prover.verifyingKeyId;
+		// delete prover.status;
 
-		// // sync circuit artifacts
+		// // sync prover artifacts
 		// this.sendProtocolMessage(payload.address, Opcode.Sync, {
-		//   type: 'circuit',
-		//   payload: circuit,
+		//   type: 'prover',
+		//   payload: prover,
 		// });
 
 	case baseline.ProtocolMessageOpcodeSync:
@@ -304,12 +304,12 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *nats.Msg) {
 
 		// FIXME -- use switch and attempt nack if invalid sync type...
 		if protomsg.Payload.Type != nil && *protomsg.Payload.Type == protomsgPayloadTypeCircuit {
-			circuit, err := privacy.CreateCircuit(*token, protomsg.Payload.Object)
+			prover, err := privacy.CreateProver(*token, protomsg.Payload.Object)
 			if err != nil {
-				common.Log.Warningf("failed to handle inbound sync protocol message; failed to create circuit; %s", err.Error())
+				common.Log.Warningf("failed to handle inbound sync protocol message; failed to create prover; %s", err.Error())
 				return
 			}
-			common.Log.Debugf("sync protocol message created circuit: %s", circuit.ID)
+			common.Log.Debugf("sync protocol message created prover: %s", prover.ID)
 		} else if protomsg.Payload.Type != nil && *protomsg.Payload.Type == protomsgPayloadTypeWorkflow {
 			workflow := &WorkflowInstance{}
 			raw, err := json.Marshal(protomsg.Payload.Object)
@@ -321,16 +321,16 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *nats.Msg) {
 
 			for _, workstep := range workflow.Worksteps {
 				params := map[string]interface{}{}
-				rawcircuit, _ := json.Marshal(workstep.Prover)
-				json.Unmarshal(rawcircuit, &params)
+				rawprover, _ := json.Marshal(workstep.Prover)
+				json.Unmarshal(rawprover, &params)
 
-				workstep.Prover, err = privacy.CreateCircuit(*token, params)
+				workstep.Prover, err = privacy.CreateProver(*token, params)
 				if err != nil {
-					common.Log.Warningf("failed to handle inbound sync protocol message; failed to create circuit; %s", err.Error())
+					common.Log.Warningf("failed to handle inbound sync protocol message; failed to create prover; %s", err.Error())
 					return
 				}
 				workstep.ProverID = &workstep.Prover.ID
-				common.Log.Debugf("sync protocol message created circuit: %s", workstep.Prover.ID)
+				common.Log.Debugf("sync protocol message created prover: %s", workstep.Prover.ID)
 			}
 
 			err = workflow.Cache()
