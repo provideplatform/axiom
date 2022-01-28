@@ -99,7 +99,7 @@ func (w *Workstep) Cache() error {
 	})
 }
 
-func baselineWorkstepFactory(identifier *string, workflowID *string, circuit *privacy.Circuit) *baseline.WorkstepInstance {
+func baselineWorkstepFactory(identifier *string, workflowID *string, prover *privacy.Prover) *baseline.WorkstepInstance {
 	var identifierUUID uuid.UUID
 	if identifier != nil {
 		identifierUUID, _ = uuid.FromString(*identifier)
@@ -114,8 +114,8 @@ func baselineWorkstepFactory(identifier *string, workflowID *string, circuit *pr
 
 	workstep := &baseline.WorkstepInstance{
 		baseline.Workstep{
-			Prover:       circuit,
-			ProverID:     &circuit.ID,
+			Prover:       prover,
+			ProverID:     &prover.ID,
 			Participants: make([]*baseline.Participant, 0), // FIXME
 			WorkflowID:   &workflowUUID,
 		},
@@ -132,49 +132,49 @@ func requireCircuits(token *string, workflow *WorkflowInstance) error {
 	timer := time.NewTicker(requireCircuitTickerInterval)
 	defer timer.Stop()
 
-	circuits := make([]bool, len(workflow.Worksteps))
+	provers := make([]bool, len(workflow.Worksteps))
 
 	for {
 		select {
 		case <-timer.C:
 			for i, workstep := range workflow.Worksteps {
-				if !circuits[i] {
-					circuit, err := privacy.GetCircuitDetails(*token, workstep.Prover.ID.String())
+				if !provers[i] {
+					prover, err := privacy.GetProverDetails(*token, workstep.Prover.ID.String())
 					if err != nil {
-						common.Log.Warningf("failed to fetch circuit details; %s", err.Error())
+						common.Log.Warningf("failed to fetch prover details; %s", err.Error())
 						break
 					}
-					if circuit.Status != nil && *circuit.Status == workstepCircuitStatusProvisioned {
-						common.Log.Debugf("provisioned workflow circuit: %s", circuit.ID)
-						if circuit.VerifierContract != nil {
-							if source, sourceOk := circuit.VerifierContract["source"].(string); sourceOk {
+					if prover.Status != nil && *prover.Status == workstepCircuitStatusProvisioned {
+						common.Log.Debugf("provisioned workflow prover: %s", prover.ID)
+						if prover.VerifierContract != nil {
+							if source, sourceOk := prover.VerifierContract["source"].(string); sourceOk {
 								// contractRaw, _ := json.MarshalIndent(source, "", "  ")
 								src := strings.TrimSpace(strings.ReplaceAll(source, "\\n", "\n"))
 								common.Log.Debugf("verifier contract: %s", src)
-								contractName := fmt.Sprintf("%s Verifier", *circuit.Name)
+								contractName := fmt.Sprintf("%s Verifier", *prover.Name)
 								DeployContract([]byte(contractName), []byte(src))
 							}
 						}
 
-						workflow.Worksteps[i].Prover = circuit
-						workflow.Worksteps[i].ProverID = &circuit.ID
-						circuits[i] = true
+						workflow.Worksteps[i].Prover = prover
+						workflow.Worksteps[i].ProverID = &prover.ID
+						provers[i] = true
 					}
 				}
 			}
 
 			x := 0
 			for i := range workflow.Worksteps {
-				if circuits[i] {
+				if provers[i] {
 					x++
 				}
 			}
-			if x == len(circuits) {
+			if x == len(provers) {
 				return nil
 			}
 		default:
 			if startTime.Add(requireCircuitTimeout).Before(time.Now()) {
-				msg := fmt.Sprintf("failed to provision %d workstep circuit(s)", len(workflow.Worksteps))
+				msg := fmt.Sprintf("failed to provision %d workstep prover(s)", len(workflow.Worksteps))
 				common.Log.Errorf(msg)
 				return errors.New(msg)
 			} else {
@@ -324,7 +324,7 @@ func (w *Workstep) enrich(token string) error {
 	}
 
 	var err error
-	w.Prover, err = privacy.GetCircuitDetails(token, w.ProverID.String())
+	w.Prover, err = privacy.GetProverDetails(token, w.ProverID.String())
 	if err != nil {
 		return err
 	}
@@ -353,7 +353,7 @@ func (w *Workstep) deploy(token string) bool {
 		return false
 	}
 
-	prover, err := privacy.CreateCircuit(token, proverParams)
+	prover, err := privacy.CreateProver(token, proverParams)
 	if err != nil {
 		w.Errors = append(w.Errors, &provide.Error{
 			Message: common.StringOrNil(fmt.Sprintf("failed to deploy workstep; %s", err.Error())),
@@ -486,7 +486,7 @@ func (w *Workstep) finalizeDeploy(token string) bool {
 		return false
 	}
 
-	prover, err := privacy.GetCircuitDetails(token, w.ProverID.String())
+	prover, err := privacy.GetProverDetails(token, w.ProverID.String())
 	if err != nil {
 		w.Errors = append(w.Errors, &provide.Error{
 			Message: common.StringOrNil(fmt.Sprintf("failed to finalize workstep deployment; %s", err.Error())),

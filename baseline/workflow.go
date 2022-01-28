@@ -165,16 +165,16 @@ func baselineWorkflowFactory(objectType string, identifier *string) (*WorkflowIn
 	}
 
 	if identifier == nil {
-		common.Log.Debugf("deploying workstep circuit(s) for workflow: %s", identifierUUID.String())
+		common.Log.Debugf("deploying workstep prover(s) for workflow: %s", identifierUUID.String())
 
-		var circuit *privacy.Circuit
+		var prover *privacy.Prover
 		var err error
 
 		switch objectType {
 		case baselineWorkflowTypeGeneralConsistency:
-			circuit, err = privacy.CreateCircuit(
+			prover, err = privacy.CreateProver(
 				*token,
-				circuitParamsFactory(
+				proverParamsFactory(
 					"General Consistency",
 					"purchase_order",
 					nil,
@@ -182,15 +182,15 @@ func baselineWorkflowFactory(objectType string, identifier *string) (*WorkflowIn
 				),
 			)
 			if err != nil {
-				common.Log.Errorf("failed to deploy circuit; %s", err.Error())
+				common.Log.Errorf("failed to deploy prover; %s", err.Error())
 				return nil, err
 			}
-			workflow.Worksteps = append(workflow.Worksteps, baselineWorkstepFactory(nil, common.StringOrNil(workflow.ID.String()), circuit))
+			workflow.Worksteps = append(workflow.Worksteps, baselineWorkstepFactory(nil, common.StringOrNil(workflow.ID.String()), prover))
 
 		case baselineWorkflowTypeProcureToPay:
-			circuit, err := privacy.CreateCircuit(
+			prover, err := privacy.CreateProver(
 				*token,
-				circuitParamsFactory(
+				proverParamsFactory(
 					"PO",
 					baselineWorkflowTypeProcureToPay,
 					nil,
@@ -198,78 +198,78 @@ func baselineWorkflowFactory(objectType string, identifier *string) (*WorkflowIn
 				),
 			)
 			if err != nil {
-				common.Log.Errorf("failed to deploy circuit; %s", err.Error())
+				common.Log.Errorf("failed to deploy prover; %s", err.Error())
 				return nil, err
 			}
-			workflow.Worksteps = append(workflow.Worksteps, baselineWorkstepFactory(nil, common.StringOrNil(workflow.ID.String()), circuit))
+			workflow.Worksteps = append(workflow.Worksteps, baselineWorkstepFactory(nil, common.StringOrNil(workflow.ID.String()), prover))
 
-			circuit, err = privacy.CreateCircuit(
+			prover, err = privacy.CreateProver(
 				*token,
-				circuitParamsFactory(
+				proverParamsFactory(
 					"SO",
 					baselineWorkflowTypeProcureToPay,
-					common.StringOrNil(circuit.NoteStoreID.String()),
-					common.StringOrNil(circuit.NullifierStoreID.String()),
+					common.StringOrNil(prover.NoteStoreID.String()),
+					common.StringOrNil(prover.NullifierStoreID.String()),
 				),
 			)
 			if err != nil {
-				common.Log.Errorf("failed to deploy circuit; %s", err.Error())
+				common.Log.Errorf("failed to deploy prover; %s", err.Error())
 				return nil, err
 			}
-			workflow.Worksteps = append(workflow.Worksteps, baselineWorkstepFactory(nil, common.StringOrNil(workflow.ID.String()), circuit))
+			workflow.Worksteps = append(workflow.Worksteps, baselineWorkstepFactory(nil, common.StringOrNil(workflow.ID.String()), prover))
 
-			// circuit, err = privacy.CreateCircuit(
+			// prover, err = privacy.CreateProver(
 			// 	*token,
-			// 	circuitParamsFactory(
+			// 	proverParamsFactory(
 			// 		"SN",
 			// 		baselineWorkflowTypeGeneralConsistency,
-			// 		common.StringOrNil(circuit.NoteStoreID.String()),
-			// 		common.StringOrNil(circuit.NullifierStoreID.String()),
+			// 		common.StringOrNil(prover.NoteStoreID.String()),
+			// 		common.StringOrNil(prover.NullifierStoreID.String()),
 			// 	),
 			// )
 			// if err != nil {
-			// 	common.Log.Errorf("failed to deploy circuit; %s", err.Error())
+			// 	common.Log.Errorf("failed to deploy prover; %s", err.Error())
 			// 	return nil, err
 			// }
-			// workflow.Worksteps = append(workflow.Worksteps, baselineWorkstepFactory(nil, common.StringOrNil(workflow.ID.String()), circuit))
+			// workflow.Worksteps = append(workflow.Worksteps, baselineWorkstepFactory(nil, common.StringOrNil(workflow.ID.String()), prover))
 
-			// circuit, err = privacy.CreateCircuit(
+			// prover, err = privacy.CreateProver(
 			// 	*token,
-			// 	circuitParamsFactory(
+			// 	proverParamsFactory(
 			// 		"GR",
 			// 		baselineWorkflowTypeGeneralConsistency,
-			// 		common.StringOrNil(circuit.NoteStoreID.String()),
-			// 		common.StringOrNil(circuit.NullifierStoreID.String()),
+			// 		common.StringOrNil(prover.NoteStoreID.String()),
+			// 		common.StringOrNil(prover.NullifierStoreID.String()),
 			// 	),
 			// )
 			// if err != nil {
-			// 	common.Log.Errorf("failed to deploy circuit; %s", err.Error())
+			// 	common.Log.Errorf("failed to deploy prover; %s", err.Error())
 			// 	return nil, err
 			// }
-			// workflow.Worksteps = append(workflow.Worksteps, baselineWorkstepFactory(nil, common.StringOrNil(workflow.ID.String()), circuit))
+			// workflow.Worksteps = append(workflow.Worksteps, baselineWorkstepFactory(nil, common.StringOrNil(workflow.ID.String()), prover))
 
-			// circuit, err = privacy.CreateCircuit(
+			// prover, err = privacy.CreateProver(
 			// 	*token,
-			// 	circuitParamsFactory(
+			// 	proverParamsFactory(
 			// 		"Invoice",
 			// 		baselineWorkflowTypeGeneralConsistency,
-			// 		common.StringOrNil(circuit.NoteStoreID.String()),
-			// 		common.StringOrNil(circuit.NullifierStoreID.String()),
+			// 		common.StringOrNil(prover.NoteStoreID.String()),
+			// 		common.StringOrNil(prover.NullifierStoreID.String()),
 			// 	),
 			// )
 			// if err != nil {
-			// 	common.Log.Errorf("failed to deploy circuit; %s", err.Error())
+			// 	common.Log.Errorf("failed to deploy prover; %s", err.Error())
 			// 	return nil, err
 			// }
-			// workflow.Worksteps = append(workflow.Worksteps, baselineWorkstepFactory(nil, common.StringOrNil(workflow.ID.String()), circuit))
+			// workflow.Worksteps = append(workflow.Worksteps, baselineWorkstepFactory(nil, common.StringOrNil(workflow.ID.String()), prover))
 
 		case baselineWorkflowTypeServiceNowIncident:
-			circuit, err = privacy.CreateCircuit(*token, circuitParamsFactory("Incident", baselineWorkflowTypeGeneralConsistency, nil, nil))
+			prover, err = privacy.CreateProver(*token, proverParamsFactory("Incident", baselineWorkflowTypeGeneralConsistency, nil, nil))
 			if err != nil {
-				common.Log.Errorf("failed to deploy circuit; %s", err.Error())
+				common.Log.Errorf("failed to deploy prover; %s", err.Error())
 				return nil, err
 			}
-			workflow.Worksteps = append(workflow.Worksteps, baselineWorkstepFactory(nil, common.StringOrNil(workflow.ID.String()), circuit))
+			workflow.Worksteps = append(workflow.Worksteps, baselineWorkstepFactory(nil, common.StringOrNil(workflow.ID.String()), prover))
 
 		default:
 			return nil, fmt.Errorf("failed to create workflow for type: %s", objectType)
@@ -277,7 +277,7 @@ func baselineWorkflowFactory(objectType string, identifier *string) (*WorkflowIn
 
 		err = requireCircuits(token, workflow)
 		if err != nil {
-			common.Log.Errorf("failed to provision circuit(s); %s", err.Error())
+			common.Log.Errorf("failed to provision prover(s); %s", err.Error())
 			return nil, err
 		}
 	}
@@ -310,7 +310,7 @@ func LookupBaselineWorkflowByBaselineID(baselineID string) *WorkflowInstance {
 	return LookupBaselineWorkflow(*identifier)
 }
 
-func circuitParamsFactory(name, identifier string, noteStoreID, nullifierStoreID *string) map[string]interface{} {
+func proverParamsFactory(name, identifier string, noteStoreID, nullifierStoreID *string) map[string]interface{} {
 	params := map[string]interface{}{
 		"curve":          "BN254",
 		"identifier":     identifier,
@@ -888,7 +888,7 @@ func (w *Workflow) Validate() bool {
 	}
 
 	if w.ID == uuid.Nil && w.Status == nil {
-		if w.isPrototype(){
+		if w.isPrototype() {
 			w.Status = common.StringOrNil("draft")
 		} else {
 			w.Status = common.StringOrNil("init")
@@ -945,7 +945,7 @@ func (w *Workflow) Validate() bool {
 			w.Errors = append(w.Errors, &provide.Error{
 				Message: common.StringOrNil("workflow instance version must match its prototype"),
 			})
-		} 
+		}
 	}
 
 	return len(w.Errors) == 0

@@ -239,15 +239,15 @@ func (m *Message) baselineOutbound() bool {
 		}
 
 		for _, workstep := range workflow.Worksteps {
-			circuit := workstep.Prover
-			workstep.Prover = &privacy.Circuit{
-				Artifacts:     circuit.Artifacts,
-				Name:          circuit.Name,
-				Description:   circuit.Description,
-				Identifier:    circuit.Identifier,
-				Provider:      circuit.Provider,
-				ProvingScheme: circuit.ProvingScheme,
-				Curve:         circuit.Curve,
+			prover := workstep.Prover
+			workstep.Prover = &privacy.Prover{
+				Artifacts:     prover.Artifacts,
+				Name:          prover.Name,
+				Description:   prover.Description,
+				Identifier:    prover.Identifier,
+				Provider:      prover.Provider,
+				ProvingScheme: prover.ProvingScheme,
+				Curve:         prover.Curve,
 			}
 		}
 
@@ -421,15 +421,15 @@ func (m *Message) prove() error {
 
 	index := len(baselineRecord.Context.Workflow.Worksteps) - 1
 	if index < 0 || index >= len(baselineRecord.Context.Workflow.Worksteps) {
-		return fmt.Errorf("failed to resolve workstep/circuit at index: %d; index out of range", index)
+		return fmt.Errorf("failed to resolve workstep/prover at index: %d; index out of range", index)
 	}
-	circuit := baselineRecord.Context.Workflow.Worksteps[index].Prover
+	prover := baselineRecord.Context.Workflow.Worksteps[index].Prover
 
-	resp, err := privacy.Prove(*token, circuit.ID.String(), map[string]interface{}{
+	resp, err := privacy.Prove(*token, prover.ID.String(), map[string]interface{}{
 		"witness": m.ProtocolMessage.Payload.Witness,
 	})
 	if err != nil {
-		common.Log.Warningf("failed to prove circuit: %s; %s", circuit.ID, err.Error())
+		common.Log.Warningf("failed to prove prover: %s; %s", prover.ID, err.Error())
 		return err
 	}
 
@@ -451,22 +451,22 @@ func (m *ProtocolMessage) verify(store bool) error {
 
 	index := len(baselineRecord.Context.Workflow.Worksteps) - 1
 	if index < 0 || index >= len(baselineRecord.Context.Workflow.Worksteps) {
-		return fmt.Errorf("failed to resolve workstep/circuit at index: %d; index out of range", index)
+		return fmt.Errorf("failed to resolve workstep/prover at index: %d; index out of range", index)
 	}
-	circuit := baselineRecord.Context.Workflow.Worksteps[index].Prover
+	prover := baselineRecord.Context.Workflow.Worksteps[index].Prover
 
-	resp, err := privacy.Verify(*token, circuit.ID.String(), map[string]interface{}{
+	resp, err := privacy.Verify(*token, prover.ID.String(), map[string]interface{}{
 		"store":   store,
 		"proof":   m.Payload.Proof,
 		"witness": m.Payload.Witness,
 	})
 	if err != nil {
-		common.Log.Warningf("failed to verify: %s; %s", circuit.ID, err.Error())
+		common.Log.Warningf("failed to verify: %s; %s", prover.ID, err.Error())
 		return err
 	}
 
 	if !resp.Result {
-		return fmt.Errorf("failed to verify circuit: %s", circuit.ID)
+		return fmt.Errorf("failed to verify prover: %s", prover.ID)
 	}
 
 	return nil
