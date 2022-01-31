@@ -248,13 +248,65 @@ func createNatsDispatchProtocolMessageSubscriptions(wg *sync.WaitGroup) {
 	}
 }
 
+func findVaultInformation(did did.DID) (vaultID, keyID string, err error) {
+	didDocumentStr, err := didkit.ResolveDID(did.String(), "{}")
+	if err != nil {
+		common.Log.Warningf("failed to resolve DID document for subject: %s", did.String())
+		return
+	}
+
+	var didDocument map[string]interface{}
+	err = json.Unmarshal([]byte(didDocumentStr), &didDocument)
+	if err != nil {
+		common.Log.Warningf("failed to unmarshal DID document result: %s", did.String())
+		return
+	}
+
+	// Query Vault by Public Key?
+
+	return "", "", nil
+}
+
 func consumeBaselineProxyInboundSubscriptionsMsg(msg *nats.Msg) {
 	common.Log.Debugf("consuming %d-byte NATS inbound protocol message on internal subject: %s", len(msg.Data), msg.Subject)
 
-	// decrypt
+	// === Decrypt Message
+	sender := msg.Header.Get("X-DID-Sender")
+	nonce := msg.Header.Get("X-DID-Nonce")
+	data := msg.Data
+
+	did, err := did.Parse(sender)
+	if err != nil {
+		common.Log.Warningf("failed to parse JWT subject as a DID: %s", sender)
+		return
+	}
+
+	vaultID, keyID, err := findVaultInformation(*did)
+	if err != nil {
+		common.Log.Warningf("failed to parse JWT subject as a DID: %s", sender)
+		msg.Nak()
+		return
+	}
+
+	token, err := ident.CreateToken(*common.OrganizationRefreshToken, map[string]interface{}{
+		"grant_type":      "refresh_token",
+		"organization_id": *common.OrganizationID,
+	})
+	if err != nil {
+		common.Log.Warningf("failed to vend organization access token; %s", err.Error())
+		return
+	}
+
+	decryptedData, err := vault.Decrypt(*token.AccessToken, vaultID, keyID, map[string]interface{}{
+		"data":  data,
+		"nonce": nonce,
+	})
+
+	common.Log.Infof("decrypted data: %s", decryptedData.Data)
+	// === Decrypt Message
 
 	protomsg := &ProtocolMessage{}
-	err := json.Unmarshal(msg.Data, &protomsg)
+	err = json.Unmarshal(msg.Data, &protomsg)
 	if err != nil {
 		common.Log.Warningf("failed to umarshal inbound protocol message; %s", err.Error())
 		msg.Nak()
@@ -626,6 +678,10 @@ func consumeDispatchProtocolMessageSubscriptionsMsg(msg *nats.Msg) {
 		msg.Nak()
 		return
 	}
+
+	msg.Header.Set("X-DID-Sender", did.String())
+	msg.Header.Set("X-DID-Nonce", "") // Set a nonce
+	// msg.Data = []byte(*encryptedData.Data)
 
 	err = conn.Publish(natsBaselineSubject, []byte(*encryptedData.Data))
 	if err != nil {
