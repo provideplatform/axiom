@@ -47,3 +47,6 @@ profile.out
 *.env
 *.key
 *.crt
+
+# didkit
+./.didkit
