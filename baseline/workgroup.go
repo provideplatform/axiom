@@ -79,8 +79,24 @@ func resolveWorkgroupParticipants() {
 		common.Log.Debugf("persisting workgroup: %s", workgroupID)
 		workgroup = &Workgroup{}
 		workgroup.ID = workgroupID
-		workgroup.Name = common.StringOrNil(fmt.Sprintf("Baseline workgroup %s", workgroupID))
 
+		token, err := ident.CreateToken(*common.OrganizationRefreshToken, map[string]interface{}{
+			"grant_type":      "refresh_token",
+			"organization_id": *common.OrganizationID,
+		})
+		if err != nil {
+			common.Log.Warningf("failed to vend organization access token; %s", err.Error())
+			return
+		}
+
+		application, err := ident.GetApplicationDetails(*token.AccessToken, workgroupID, map[string]interface{}{})
+		if err != nil {
+			common.Log.Warningf("failed to fetch workgroup details from ident; %s", err.Error())
+			return
+		}
+
+		workgroup.Name = application.Name
+		workgroup.Description = application.Description
 		if !workgroup.Create() {
 			common.Log.Warningf("failed to persist workgroup")
 		}
