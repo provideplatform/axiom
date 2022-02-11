@@ -89,7 +89,7 @@ func resolveWorkgroupParticipants() {
 			return
 		}
 
-		application, err := ident.GetApplicationDetails(*token.AccessToken, workgroupID, map[string]interface{}{})
+		application, err := ident.GetApplicationDetails(*token.AccessToken, workgroupID.String(), map[string]interface{}{})
 		if err != nil {
 			common.Log.Warningf("failed to fetch workgroup details from ident; %s", err.Error())
 			return
