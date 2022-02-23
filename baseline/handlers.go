@@ -1039,6 +1039,9 @@ func listWorkflowsHandler(c *gin.Context) {
 	if c.Query("workgroup_id") != "" {
 		query = query.Where("workflows.workgroup_id = ?", c.Query("workgroup_id"))
 	}
+	if c.Query("workflow_id") != "" {
+		query = query.Where("workflows.workflow_id = ?", c.Query("workflow_id"))
+	}
 	if filterInstances {
 		query = query.Where("workflows.workflow_id IS NULL")
 	}
