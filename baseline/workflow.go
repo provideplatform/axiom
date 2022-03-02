@@ -533,6 +533,7 @@ func (w *Workflow) Create(tx *gorm.DB) bool {
 			if success && !w.isPrototype() {
 				worksteps := FindWorkstepsByWorkflowID(*w.WorkflowID)
 				w.WorkstepsCount = len(worksteps)
+				tx.Save(&w)
 
 				for _, workstep := range worksteps {
 					raw, _ := json.Marshal(workstep)
