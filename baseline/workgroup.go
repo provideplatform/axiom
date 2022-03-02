@@ -68,6 +68,11 @@ func resolveWorkgroupParticipants() {
 		return
 	}
 
+	if common.OrganizationRefreshToken == nil {
+		common.Log.Warningf("organization refresh token not configured")
+		return
+	}
+
 	workgroupID, err := uuid.FromString(*common.WorkgroupID)
 	if err != nil {
 		common.Log.Warningf("failed to require workgroupID; %s", err.Error())
