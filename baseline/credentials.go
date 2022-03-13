@@ -22,13 +22,15 @@ const defaultCredentialExperationTimeout = time.Hour * 1
 // IssueVC vends a verifiable credential for the given third-party; it assumes authorization
 // has already been completed successfully for the counterparty
 func IssueVC(address string, params map[string]interface{}) (*string, error) {
+	var subjectAccount *SubjectAccount
+
 	token, err := vendOrganizationAccessToken()
 	if err != nil {
 		common.Log.Warningf("failed to request verifiable credential for baseline organization: %s; %s", address, err.Error())
 		return nil, err
 	}
 
-	keys, err := vault.ListKeys(*token, common.Vault.ID.String(), map[string]interface{}{
+	keys, err := vault.ListKeys(*token, subjectAccount.Metadata.Vault.ID.String(), map[string]interface{}{
 		"spec": "RSA-4096",
 	})
 	if err != nil {
@@ -44,10 +46,10 @@ func IssueVC(address string, params map[string]interface{}) (*string, error) {
 	issuedAt := time.Now()
 
 	claims := map[string]interface{}{
-		"aud":      common.OrganizationMessagingEndpoint,
+		"aud":      subjectAccount.Metadata.OrganizationMessagingEndpoint,
 		"exp":      issuedAt.Add(defaultCredentialExperationTimeout).Unix(),
 		"iat":      issuedAt.Unix(),
-		"iss":      fmt.Sprintf("organization:%s", *common.OrganizationID),
+		"iss":      fmt.Sprintf("organization:%s", *subjectAccount.Metadata.OrganizationID),
 		"sub":      address,
 		"baseline": params,
 	}

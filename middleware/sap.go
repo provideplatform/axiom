@@ -7,7 +7,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/provideplatform/baseline/common"
 	"github.com/provideplatform/provide-go/api"
 	provide "github.com/provideplatform/provide-go/common"
 )
@@ -165,9 +164,9 @@ func (s *SAPService) ConfigureProxy(params map[string]interface{}) error {
 		return err
 	}
 
-	if companyCode, companyCodeOk := common.InternalSOR["organization_code"].(string); companyCodeOk {
-		params["company_code"] = companyCode
-	}
+	// if companyCode, companyCodeOk := sor["organization_code"].(string); companyCodeOk {
+	// 	params["company_code"] = companyCode
+	// }
 
 	status, _, err := s.Post(s.requestURI("ubc/proxies"), params)
 	if err != nil {

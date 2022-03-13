@@ -12,7 +12,6 @@ import (
 	"github.com/provideplatform/baseline/common"
 	provide "github.com/provideplatform/provide-go/api"
 	"github.com/provideplatform/provide-go/api/baseline"
-	"github.com/provideplatform/provide-go/api/ident"
 )
 
 const requireCounterpartiesSleepInterval = time.Second * 15
@@ -21,10 +20,11 @@ const requireCounterpartiesTickerInterval = time.Second * 30 // HACK
 // Workgroup is a baseline workgroup prototype
 type Workgroup struct {
 	baseline.Workgroup
-	Name         *string        `json:"name"`
-	Description  *string        `json:"description"`
-	Participants []*Participant `sql:"-" json:"participants,omitempty"`
-	Workflows    []*Workflow    `sql:"-" json:"workflows,omitempty"`
+	Name           *string        `json:"name"`
+	Description    *string        `json:"description"`
+	OrganizationID *uuid.UUID     `json:"-"`
+	Participants   []*Participant `sql:"-" json:"participants,omitempty"`
+	Workflows      []*Workflow    `sql:"-" json:"workflows,omitempty"`
 }
 
 // FindWorkgroupByID retrieves a workgroup for the given id
@@ -40,142 +40,6 @@ func FindWorkgroupByID(id uuid.UUID) *Workgroup {
 
 func init() {
 	redisutil.RequireRedis()
-
-	common.Log.Debug("attempting to resolve baseline counterparties")
-	resolveWorkgroupParticipants()
-
-	go func() {
-		timer := time.NewTicker(requireCounterpartiesTickerInterval)
-		for {
-			select {
-			case <-timer.C:
-				resolveWorkgroupParticipants()
-			default:
-				time.Sleep(requireCounterpartiesSleepInterval)
-			}
-		}
-	}()
-}
-
-func resolveWorkgroupParticipants() {
-	if common.WorkgroupID == nil {
-		common.Log.Warningf("workgroup id not configured")
-		return
-	}
-
-	if common.OrganizationID == nil {
-		common.Log.Warningf("organization id not configured")
-		return
-	}
-
-	if common.OrganizationRefreshToken == nil {
-		common.Log.Warningf("organization refresh token not configured")
-		return
-	}
-
-	workgroupID, err := uuid.FromString(*common.WorkgroupID)
-	if err != nil {
-		common.Log.Warningf("failed to require workgroupID; %s", err.Error())
-		return
-	}
-
-	workgroup := FindWorkgroupByID(workgroupID)
-	if workgroup == nil {
-		common.Log.Debugf("persisting workgroup: %s", workgroupID)
-		workgroup = &Workgroup{}
-		workgroup.ID = workgroupID
-
-		token, err := ident.CreateToken(*common.OrganizationRefreshToken, map[string]interface{}{
-			"grant_type":      "refresh_token",
-			"organization_id": *common.OrganizationID,
-		})
-		if err != nil {
-			common.Log.Warningf("failed to vend organization access token; %s", err.Error())
-			return
-		}
-
-		application, err := ident.GetApplicationDetails(*token.AccessToken, workgroupID.String(), map[string]interface{}{})
-		if err != nil {
-			common.Log.Warningf("failed to fetch workgroup details from ident; %s", err.Error())
-			return
-		}
-
-		workgroup.Name = application.Name
-		workgroup.Description = application.Description
-		if !workgroup.Create() {
-			common.Log.Warningf("failed to persist workgroup")
-		}
-	}
-
-	db := dbconf.DatabaseConnection()
-
-	go func() {
-		common.Log.Trace("attempting to resolve baseline counterparties")
-
-		token, err := ident.CreateToken(*common.OrganizationRefreshToken, map[string]interface{}{
-			"grant_type":      "refresh_token",
-			"organization_id": *common.OrganizationID,
-		})
-		if err != nil {
-			common.Log.Warningf("failed to vend organization access token; %s", err.Error())
-			return
-		}
-
-		counterparties := make([]*Participant, 0)
-
-		for _, party := range common.DefaultCounterparties {
-			p := &Participant{
-				baseline.Participant{
-					Address:           common.StringOrNil(party["address"]),
-					APIEndpoint:       common.StringOrNil(party["api_endpoint"]),
-					MessagingEndpoint: common.StringOrNil(party["messaging_endpoint"]),
-				},
-				common.StringOrNil(party["address"]),
-				make([]*Workgroup, 0),
-				make([]*Workflow, 0),
-				make([]*Workstep, 0),
-			}
-
-			counterparties = append(counterparties, p)
-		}
-
-		orgs, err := ident.ListApplicationOrganizations(*token.AccessToken, workgroupID.String(), map[string]interface{}{})
-		if err != nil {
-			common.Log.Warningf("failed to list organizations for workgroup: %s; %s", workgroupID, err.Error())
-			return
-		}
-
-		for _, org := range orgs {
-			addr, addrOk := org.Metadata["address"].(string)
-			apiEndpoint, _ := org.Metadata["api_endpoint"].(string)
-			messagingEndpoint, _ := org.Metadata["messaging_endpoint"].(string)
-
-			if addrOk {
-				p := &Participant{}
-				p.Address = common.StringOrNil(addr)
-				p.APIEndpoint = common.StringOrNil(apiEndpoint)
-				p.MessagingEndpoint = common.StringOrNil(messagingEndpoint)
-
-				counterparties = append(counterparties, p)
-			}
-		}
-
-		for _, participant := range counterparties {
-			if participant.Address != nil {
-				exists := lookupBaselineOrganization(*participant.Address) != nil
-
-				workgroup.addParticipant(*participant.Address, db)
-				err := participant.Cache()
-				if err != nil {
-					common.Log.Warningf("failed to cache counterparty; %s", err.Error())
-					continue
-				}
-				if !exists {
-					common.Log.Debugf("cached baseline counterparty: %s", *participant.Address)
-				}
-			}
-		}
-	}()
 }
 
 func LookupBaselineWorkgroup(identifier string) *Workgroup {

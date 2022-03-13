@@ -2,8 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -16,7 +14,6 @@ import (
 
 	"github.com/provideplatform/baseline/baseline"
 	"github.com/provideplatform/baseline/common"
-	"github.com/provideplatform/baseline/middleware"
 	"github.com/provideplatform/baseline/stats"
 	identcommon "github.com/provideplatform/ident/common"
 	"github.com/provideplatform/ident/token"
@@ -46,40 +43,7 @@ func init() {
 	util.RequireGin()
 	util.RequireJWTVerifiers()
 	redisutil.RequireRedis()
-	// util.RequireVault()
 	identcommon.EnableAPIAccounting()
-	configureSOR()
-}
-
-func configureSOR() {
-	sor := middleware.SORFactory(common.InternalSOR, nil)
-	if sor == nil {
-		panic("SOR provider not resolved")
-	}
-
-	err := sor.HealthCheck()
-	if err != nil {
-		panic(err.Error())
-	}
-	common.Log.Debugf("health check completed; SOR API available")
-	if sorURL, sorURLOk := common.InternalSOR["url"].(string); sorURLOk {
-		common.Log.Debugf("SOR API endpoint: %s", sorURL)
-	}
-
-	sorConfiguration := map[string]interface{}{
-		"organization_id": common.OrganizationID,
-		"ident_endpoint":  fmt.Sprintf("%s://%s", os.Getenv("IDENT_API_SCHEME"), os.Getenv("IDENT_API_HOST")),
-		"proxy_endpoint":  common.OrganizationProxyEndpoint,
-		"refresh_token":   common.OrganizationRefreshToken,
-	}
-
-	err = sor.ConfigureProxy(sorConfiguration)
-	if err != nil {
-		panic(err.Error())
-	}
-
-	sorConfigurationJSON, _ := json.MarshalIndent(sorConfiguration, "", "  ")
-	common.Log.Debugf("SOR configured:\n%s", sorConfigurationJSON)
 }
 
 func main() {
@@ -134,7 +98,6 @@ func runAPI() {
 	baseline.InstallCredentialsAPI(r)
 
 	// public config and baseline workgroup APIs...
-	baseline.InstallConfigAPI(r)
 	baseline.InstallPublicWorkgroupAPI(r)
 
 	r.Use(token.AuthMiddleware())

@@ -203,6 +203,8 @@ func LookupBaselineWorkstep(identifier string) *baseline.WorkstepInstance {
 // FIXME -- this presence of this as a dependency here should cause
 // a check to happen during boot that ensures `which solc` resolves...
 func DeployContract(name, raw []byte) (*nchain.Contract, error) {
+	var subjectAccount *SubjectAccount
+
 	rawSoliditySource := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(string(raw), "^0.5.0", "^0.7.3"), "view", ""), "gas,", "gas(),"), "uint256[0]", "uint256[]") // HACK...
 	artifact, err := compiler.CompileSolidityString("solc", rawSoliditySource)                                                                                                                    // FIXME... parse pragma?
 	if err != nil {
@@ -229,7 +231,7 @@ func DeployContract(name, raw []byte) (*nchain.Contract, error) {
 	cntrct, err := nchain.CreateContract(*token, map[string]interface{}{
 		"address":    "0x",
 		"name":       string(name),
-		"network_id": common.NChainBaselineNetworkID,
+		"network_id": subjectAccount.Metadata.NetworkID,
 		"params": map[string]interface{}{
 			"argv":              []interface{}{},
 			"compiled_artifact": artifact,
@@ -332,7 +334,7 @@ func (w *Workstep) enrich(token string) error {
 	return nil
 }
 
-func (w *Workstep) deploy(token string) bool {
+func (w *Workstep) deploy(token string, organizationID uuid.UUID) bool {
 	if w.Status != nil && *w.Status != workstepStatusDraft {
 		w.Errors = append(w.Errors, &provide.Error{
 			Message: common.StringOrNil(fmt.Sprintf("cannot deploy workstep with status: %s", *w.Status)),
@@ -380,7 +382,8 @@ func (w *Workstep) deploy(token string) bool {
 		common.Log.Debugf("deployed prover %s for workstep: %s", prover.ID, w.ID)
 
 		params := map[string]interface{}{
-			"workstep_id": w.ID.String(),
+			"organization_id": organizationID.String(),
+			"workstep_id":     w.ID.String(),
 		}
 		payload, _ := json.Marshal(params)
 		_, err := natsutil.NatsJetstreamPublish("baseline.workstep.deploy.finalize", payload)
@@ -393,7 +396,11 @@ func (w *Workstep) deploy(token string) bool {
 	return prover.ID != uuid.Nil && err != nil
 }
 
-func (w *Workstep) execute(token string, payload *baseline.ProtocolMessagePayload) (*privacy.ProveResponse, error) {
+func (w *Workstep) execute(
+	subjectAccount *SubjectAccount,
+	token string,
+	payload *baseline.ProtocolMessagePayload,
+) (*privacy.ProveResponse, error) {
 	if w.isPrototype() {
 		w.Errors = append(w.Errors, &provide.Error{
 			Message: common.StringOrNil("cannot execute workstep prototype"),
@@ -450,7 +457,7 @@ func (w *Workstep) execute(token string, payload *baseline.ProtocolMessagePayloa
 	success := rowsAffected > 0 && len(errors) == 0
 	if success {
 		common.Log.Debugf("executed workstep %s; proof: %s", w.ID, *proof.Proof)
-		w.setParticipantExecutionPayload(token, *common.BaselineOrganizationAddress, proof, payload, db)
+		w.setParticipantExecutionPayload(token, *subjectAccount.Metadata.OrganizationAddress, proof, payload, db)
 		// FIXME-- this is just inserting executions for the participant running this baseline stack instance...
 		// we need to also make sure the other witnesses are inserted upon processing by way of baseline inbound...
 
@@ -566,7 +573,15 @@ func (w *Workstep) listParticipants(tx *gorm.DB) []*WorkstepParticipant {
 	return participants
 }
 
-func (w *Workstep) setParticipantExecutionPayload(token, address string, proof *privacy.ProveResponse, payload *baseline.ProtocolMessagePayload, tx *gorm.DB) error {
+func (w *Workstep) setParticipantExecutionPayload(
+	token,
+	address string,
+	proof *privacy.ProveResponse,
+	payload *baseline.ProtocolMessagePayload,
+	tx *gorm.DB,
+) error {
+	var subjectAccount *SubjectAccount
+
 	participating := false
 	for _, p := range w.listParticipants(tx) {
 		if p.Participant != nil && strings.EqualFold(strings.ToLower(*p.Participant), strings.ToLower(address)) {
@@ -583,7 +598,7 @@ func (w *Workstep) setParticipantExecutionPayload(token, address string, proof *
 	rawWitness, _ := json.Marshal(payload.Witness)
 	secret, err := vault.CreateSecret(
 		token,
-		common.Vault.ID.String(),
+		subjectAccount.Metadata.Vault.ID.String(),
 		string(rawWitness),
 		fmt.Sprintf("baseline.workstep.%s.participant.%s.execution", w.ID, address),
 		fmt.Sprintf("baseline workstep execution by participant %s", address),

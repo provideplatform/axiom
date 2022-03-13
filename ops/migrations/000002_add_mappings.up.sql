@@ -29,7 +29,8 @@ CREATE TABLE public.mappingmodels (
     mapping_id uuid NOT NULL,
     type text NOT NULL,
     primary_key text NOT NULL,
-    description text
+    description text,
+    standard text
 );
 
 ALTER TABLE public.mappingmodels OWNER TO baseline;
@@ -39,6 +40,7 @@ ALTER TABLE ONLY public.mappingmodels
 
 CREATE INDEX idx_mappingmodels_type ON public.mappingmodels USING btree (type);
 CREATE INDEX idx_mappingmodels_mapping_id ON public.mappingmodels USING btree (mapping_id);
+CREATE INDEX idx_mappingmodels_standard ON public.mappingmodels USING btree (standard);
 
 ALTER TABLE ONLY public.mappingmodels
   ADD CONSTRAINT mappingmodels_mapping_id_foreign FOREIGN KEY (mapping_id) REFERENCES public.mappings(id) ON UPDATE CASCADE ON DELETE CASCADE;

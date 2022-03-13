@@ -22,6 +22,7 @@ const baselineWorkflowTypeServiceNowIncident = "servicenow_incident"
 
 func (m *ProtocolMessage) baselineInbound() bool {
 	var baselineContext *BaselineContext
+	var subjectAccount *SubjectAccount
 
 	baselineRecord := lookupBaselineRecord(m.BaselineID.String())
 	if baselineRecord == nil {
@@ -98,7 +99,7 @@ func (m *ProtocolMessage) baselineInbound() bool {
 		return false
 	}
 
-	sor := middleware.SORFactoryByType(*m.Type, nil)
+	sor := middleware.SORFactoryByType(subjectAccount.Metadata.SOR, *m.Type, nil)
 
 	if baselineRecord.ID == nil {
 		// TODO -- map baseline record id -> internal record id (i.e, this is currently done but lazily on outbound message)
@@ -134,6 +135,8 @@ func (m *ProtocolMessage) baselineInbound() bool {
 }
 
 func (m *Message) baselineOutbound() bool {
+	var subjectAccount *SubjectAccount
+
 	if m.ID == nil {
 		m.Errors = append(m.Errors, &provide.Error{
 			Message: common.StringOrNil("id is required"),
@@ -153,7 +156,7 @@ func (m *Message) baselineOutbound() bool {
 		return false
 	}
 
-	sor := middleware.SORFactoryByType(*m.Type, nil)
+	sor := middleware.SORFactoryByType(subjectAccount.Metadata.SOR, *m.Type, nil)
 
 	var baselineContext *BaselineContext
 	baselineRecord := lookupBaselineRecordByInternalID(*m.ID)
@@ -379,7 +382,9 @@ func (m *Message) baselineOutbound() bool {
 }
 
 func (m *ProtocolMessage) broadcast(recipient string) error {
-	if strings.ToLower(recipient) == strings.ToLower(*common.BaselineOrganizationAddress) {
+	var subjectAccount *SubjectAccount
+
+	if strings.ToLower(recipient) == strings.ToLower(*subjectAccount.Metadata.OrganizationAddress) {
 		common.Log.Debugf("skipping no-op protocol message broadcast to self: %s", recipient)
 		return nil
 	}
@@ -388,7 +393,7 @@ func (m *ProtocolMessage) broadcast(recipient string) error {
 		baseline.ProtocolMessage{
 			BaselineID: m.BaselineID,
 			Opcode:     m.Opcode,
-			Sender:     m.Shield,
+			Sender:     m.Sender,
 			Recipient:  common.StringOrNil(recipient),
 			Shield:     m.Shield,
 			Identifier: m.Identifier,

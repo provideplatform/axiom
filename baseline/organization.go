@@ -32,6 +32,8 @@ func lookupBaselineOrganization(address string) *Participant {
 }
 
 func lookupBaselineOrganizationIssuedVC(address string) *string {
+	var subjectAccount *SubjectAccount
+
 	key := fmt.Sprintf("baseline.organization.%s.credential", address)
 	secretID, err := redisutil.Get(key)
 	if err != nil {
@@ -45,7 +47,7 @@ func lookupBaselineOrganizationIssuedVC(address string) *string {
 		return nil
 	}
 
-	resp, err := vault.FetchSecret(*token, common.Vault.ID.String(), *secretID, map[string]interface{}{})
+	resp, err := vault.FetchSecret(*token, subjectAccount.Metadata.Vault.ID.String(), *secretID, map[string]interface{}{})
 	if err != nil {
 		common.Log.Warningf("failed to retrieve cached verifiable credential for baseline organization: %s; %s", key, err.Error())
 		return nil
@@ -55,6 +57,8 @@ func lookupBaselineOrganizationIssuedVC(address string) *string {
 }
 
 func CacheBaselineOrganizationIssuedVC(address, vc string) error {
+	var subjectAccount *SubjectAccount
+
 	token, err := vendOrganizationAccessToken()
 	if err != nil {
 		common.Log.Warningf("failed to cache verifiable credential for baseline organization: %s; %s", address, err.Error())
@@ -62,7 +66,7 @@ func CacheBaselineOrganizationIssuedVC(address, vc string) error {
 	}
 
 	secretName := fmt.Sprintf("verifiable credential for %s", address)
-	resp, err := vault.CreateSecret(*token, common.Vault.ID.String(), vc, secretName, secretName, "verifiable_credential")
+	resp, err := vault.CreateSecret(*token, subjectAccount.Metadata.Vault.ID.String(), vc, secretName, secretName, "verifiable_credential")
 	if err != nil {
 		common.Log.Warningf("failed to cache verifiable credential for baseline organization: %s; %s", address, err.Error())
 		return err
@@ -80,6 +84,8 @@ func CacheBaselineOrganizationIssuedVC(address, vc string) error {
 
 // request a signed VC from the named counterparty
 func requestBaselineOrganizationIssuedVC(address string) (*string, error) {
+	var subjectAccount *SubjectAccount
+
 	token, err := vendOrganizationAccessToken()
 	if err != nil {
 		common.Log.Warningf("failed to request verifiable credential from baseline organization: %s; %s", address, err.Error())
@@ -98,7 +104,7 @@ func requestBaselineOrganizationIssuedVC(address string) (*string, error) {
 		return nil, err
 	}
 
-	keys, err := vault.ListKeys(*token, common.Vault.ID.String(), map[string]interface{}{
+	keys, err := vault.ListKeys(*token, subjectAccount.Metadata.Vault.ID.String(), map[string]interface{}{
 		"spec": "secp256k1", // FIXME-- make general
 	})
 	if err != nil {
@@ -113,7 +119,7 @@ func requestBaselineOrganizationIssuedVC(address string) (*string, error) {
 	}
 
 	for _, k := range keys {
-		if k.Address != nil && strings.ToLower(*k.Address) == strings.ToLower(*common.BaselineOrganizationAddress) {
+		if k.Address != nil && strings.ToLower(*k.Address) == strings.ToLower(*subjectAccount.Metadata.OrganizationAddress) {
 			key = k
 			break
 		}
@@ -126,9 +132,9 @@ func requestBaselineOrganizationIssuedVC(address string) (*string, error) {
 
 	signresp, err := vault.SignMessage(
 		*token,
-		common.Vault.ID.String(),
+		subjectAccount.Metadata.Vault.ID.String(),
 		key.ID.String(),
-		crypto.Keccak256Hash([]byte(*common.BaselineOrganizationAddress)).Hex()[2:],
+		crypto.Keccak256Hash([]byte(*subjectAccount.Metadata.OrganizationAddress)).Hex()[2:],
 		map[string]interface{}{},
 	)
 	if err != nil {
@@ -143,7 +149,7 @@ func requestBaselineOrganizationIssuedVC(address string) (*string, error) {
 	}
 
 	status, resp, err := client.Post("credentials", map[string]interface{}{
-		"address":    *common.BaselineOrganizationAddress,
+		"address":    *subjectAccount.Metadata.OrganizationAddress,
 		"public_key": key.PublicKey,
 		"signature":  signresp.Signature,
 	})
@@ -185,6 +191,8 @@ func lookupBaselineOrganizationAPIEndpoint(recipient string) *string {
 }
 
 func lookupBaselineOrganizationMessagingEndpoint(recipient string) *string {
+	var subjectAccount *SubjectAccount
+
 	org := lookupBaselineOrganization(recipient)
 	if org == nil {
 		common.Log.Warningf("failed to retrieve cached messaging endpoint for baseline organization: %s", recipient)
@@ -200,10 +208,10 @@ func lookupBaselineOrganizationMessagingEndpoint(recipient string) *string {
 
 		// HACK! this account creation will go away with new nchain...
 		account, _ := nchain.CreateAccount(*token, map[string]interface{}{
-			"network_id": *common.NChainBaselineNetworkID,
+			"network_id": *subjectAccount.Metadata.NetworkID,
 		})
 
-		resp, err := nchain.ExecuteContract(*token, *common.BaselineRegistryContractAddress, map[string]interface{}{
+		resp, err := nchain.ExecuteContract(*token, *subjectAccount.Metadata.RegistryContractAddress, map[string]interface{}{
 			"account_id": account.ID.String(),
 			"method":     "getOrg",
 			"params":     []string{recipient},
@@ -244,9 +252,11 @@ func lookupBaselineOrganizationMessagingEndpoint(recipient string) *string {
 }
 
 func vendOrganizationAccessToken() (*string, error) {
-	token, err := ident.CreateToken(*common.OrganizationRefreshToken, map[string]interface{}{
+	var subjectAccount *SubjectAccount
+
+	token, err := ident.CreateToken(*subjectAccount.Metadata.OrganizationRefreshToken, map[string]interface{}{
 		"grant_type":      "refresh_token",
-		"organization_id": *common.OrganizationID,
+		"organization_id": *subjectAccount.Metadata.OrganizationID,
 	})
 
 	if err != nil {

@@ -37,14 +37,8 @@ func InstallBPIAPI(r *gin.Engine) {
 
 	r.GET("/api/v1/subjects/:id/accounts", listSubjectAccountsHandler)
 	r.GET("/api/v1/subjects/:id/accounts/:accountId", subjectAccountDetailsHandler)
-	r.POST("/api/v1/subjects/:id/accounts", createSubjectAccountsHandler)
+	r.POST("/api/v1/subjects/:id/accounts", createSubjectAccountHandler)
 	r.PUT("/api/v1/subjects/:id/accounts/:accountId", updateSubjectAccountsHandler)
-}
-
-// InstallConfigAPI installs public API for interacting with the local baseline stack config
-func InstallConfigAPI(r *gin.Engine) {
-	r.GET("/api/v1/config", configDetailsHandler)
-	r.PUT("/api/v1/config", updateConfigHandler)
 }
 
 // InstallCredentialsAPI installs public API for interacting with verifiable credentials
@@ -108,105 +102,10 @@ func InstallWorkstepsAPI(r *gin.Engine) {
 	r.DELETE("/api/v1/workflows/:id/worksteps/:workstepId/participants/:participantId", deleteWorkstepParticipantHandler)
 }
 
-func configDetailsHandler(c *gin.Context) {
-	if common.OrganizationID == nil {
-		provide.RenderError("config not initialized", 404, c)
-		return
-	}
-
-	organizationID := util.AuthorizedSubjectID(c, "organization")
-	if organizationID != nil && organizationID.String() != *common.OrganizationID {
-		provide.RenderError("forbidden", 403, c)
-		return
-	}
-
-	// TODO-- implement this pattern and refactor common vars into common.Config
-	// raw := json.Marshal(common.Config)
-	// var cfg *Config
-	// err := json.Unmarshal(raw, &cfg)
-
-	var workgroupUUID, organizationUUID, networkUUID *uuid.UUID
-	if common.WorkgroupID != nil {
-		id := uuid.FromStringOrNil(*common.WorkgroupID)
-		workgroupUUID = &id
-	}
-	if common.OrganizationID != nil {
-		id := uuid.FromStringOrNil(*common.OrganizationID)
-		organizationUUID = &id
-	}
-	if common.NChainBaselineNetworkID != nil {
-		id := uuid.FromStringOrNil(*common.NChainBaselineNetworkID)
-		networkUUID = &id
-	}
-
-	cfg := &baseline.Config{
-		WorkgroupID:              workgroupUUID,
-		NetworkID:                networkUUID,
-		OrganizationAddress:      common.BaselineOrganizationAddress,
-		OrganizationID:           organizationUUID,
-		OrganizationRefreshToken: common.OrganizationRefreshToken,
-		RegistryContractAddress:  common.BaselineRegistryContractAddress,
-	}
-
-	// FIXME
-	// if organizationID == nil {
-	// 	cfg.OrganizationRefreshToken = nil
-	// }
-
-	provide.Render(cfg, 200, c)
-}
-
-func updateConfigHandler(c *gin.Context) {
-	organizationID := util.AuthorizedSubjectID(c, "organization")
-
-	// TODO: KT
-	if common.OrganizationID == nil && organizationID != nil {
-		common.OrganizationID = common.StringOrNil(organizationID.String())
-		common.Log.Debugf("previously unset organization id initialized by bearer: %s", organizationID)
-	}
-
-	if organizationID == nil {
-		provide.RenderError("unauthorized", 401, c)
-		return
-	} else if common.OrganizationID != nil && organizationID.String() != *common.OrganizationID {
-		provide.RenderError("forbidden", 403, c)
-		return
-	}
-
-	buf, err := c.GetRawData()
-	if err != nil {
-		provide.RenderError(err.Error(), 400, c)
-		return
-	}
-
-	cfg := &Config{}
-	err = json.Unmarshal(buf, cfg)
-	if err != nil {
-		provide.RenderError(err.Error(), 422, c)
-		return
-	}
-
-	if cfg.OrganizationID != nil && cfg.OrganizationID.String() != organizationID.String() {
-		provide.RenderError("forbidden", 403, c)
-		return
-	}
-
-	if cfg.apply() {
-		provide.Render(nil, 204, c)
-	} else {
-		obj := map[string]interface{}{}
-		obj["errors"] = cfg.Errors
-		provide.Render(obj, 422, c)
-	}
-}
-
 func createObjectHandler(c *gin.Context) {
 	organizationID := util.AuthorizedSubjectID(c, "organization")
 	if organizationID == nil {
 		provide.RenderError("unauthorized", 401, c)
-		return
-	} else if common.OrganizationID != nil && organizationID.String() != *common.OrganizationID {
-		provide.RenderError("forbidden", 403, c)
 		return
 	}
 
@@ -237,9 +136,6 @@ func updateObjectHandler(c *gin.Context) {
 	organizationID := util.AuthorizedSubjectID(c, "organization")
 	if organizationID == nil {
 		provide.RenderError("unauthorized", 401, c)
-		return
-	} else if common.OrganizationID != nil && organizationID.String() != *common.OrganizationID {
-		provide.RenderError("forbidden", 403, c)
 		return
 	}
 
@@ -280,9 +176,6 @@ func createWorkgroupHandler(c *gin.Context) {
 	organizationID := util.AuthorizedSubjectID(c, "organization")
 	if organizationID == nil {
 		provide.RenderError("unauthorized", 401, c)
-		return
-	} else if common.OrganizationID != nil && organizationID.String() != *common.OrganizationID {
-		provide.RenderError("forbidden", 403, c)
 		return
 	}
 
@@ -354,6 +247,13 @@ func createWorkgroupHandler(c *gin.Context) {
 		return
 	}
 
+	subjectAccountID := subjectAccountIDFactory(organizationID.String(), identifierUUID.String())
+	subjectAccount, err := resolveSubjectAccount(subjectAccountID)
+	if err != nil {
+		provide.RenderError(err.Error(), 403, c)
+		return
+	}
+
 	var invitorAddress *string
 	if addr, invitorAddressOk := baselineClaim["invitor_organization_address"].(string); invitorAddressOk {
 		invitorAddress = common.StringOrNil(addr)
@@ -364,22 +264,23 @@ func createWorkgroupHandler(c *gin.Context) {
 		return
 	}
 
-	var registryContractAddress *string
-	if addr, registryContractAddressOk := baselineClaim["registry_contract_address"].(string); registryContractAddressOk {
-		registryContractAddress = common.StringOrNil(addr)
-	} else {
-		msg := fmt.Sprintf("no registry contract address provided by invitor: %s", *invitorAddress)
-		common.Log.Warningf(msg)
-		provide.RenderError(msg, 422, c)
-		return
-	}
+	// FIXME!!
+	// var registryContractAddress *string
+	// if addr, registryContractAddressOk := baselineClaim["registry_contract_address"].(string); registryContractAddressOk {
+	// 	registryContractAddress = common.StringOrNil(addr)
+	// } else {
+	// 	msg := fmt.Sprintf("no registry contract address provided by invitor: %s", *invitorAddress)
+	// 	common.Log.Warningf(msg)
+	// 	provide.RenderError(msg, 422, c)
+	// 	return
+	// }
 
-	if registryContractAddress == nil || *registryContractAddress != *common.BaselineRegistryContractAddress {
-		msg := fmt.Sprintf("given registry contract address (%s) did not match configured address (%s)", *invitorAddress, *common.BaselineRegistryContractAddress)
-		common.Log.Warningf(msg)
-		provide.RenderError(msg, 422, c)
-		return
-	}
+	// if registryContractAddress == nil || *registryContractAddress != *subjectAccount.Metadata.RegistryContractAddress {
+	// 	msg := fmt.Sprintf("given registry contract address (%s) did not match configured address (%s)", *invitorAddress, *subjectAccount.Metadata.RegistryContractAddress)
+	// 	common.Log.Warningf(msg)
+	// 	provide.RenderError(msg, 422, c)
+	// 	return
+	// }
 
 	var vc *string
 	if bearerToken, bearerTokenOk := params["authorized_bearer_token"].(string); bearerTokenOk {
@@ -470,7 +371,7 @@ func createWorkgroupHandler(c *gin.Context) {
 			Identifier: &identifierUUID,
 			Payload: &baseline.ProtocolMessagePayload{
 				Object: map[string]interface{}{
-					"address":                 *common.BaselineOrganizationAddress,
+					"address":                 *subjectAccount.Metadata.OrganizationAddress,
 					"authorized_bearer_token": authorizedVC,
 				},
 			},
@@ -495,9 +396,6 @@ func listWorkgroupsHandler(c *gin.Context) {
 	if organizationID == nil {
 		provide.RenderError("unauthorized", 401, c)
 		return
-	} else if common.OrganizationID != nil && organizationID.String() != *common.OrganizationID {
-		provide.RenderError("forbidden", 403, c)
-		return
 	}
 
 	// token, _ := util.ParseBearerAuthorizationHeader(c, nil)
@@ -512,13 +410,7 @@ func listWorkgroupsHandler(c *gin.Context) {
 	var workgroups []*Workgroup
 
 	db := dbconf.DatabaseConnection()
-	var query *gorm.DB
-
-	if query == nil {
-		query = db.Order("workgroups.created_at DESC")
-	} else {
-		query = query.Order("workgroups.created_at DESC")
-	}
+	query := db.Where("organization_id = ?", organizationID).Order("workgroups.created_at DESC")
 
 	provide.Paginate(c, query, &Workflow{}).Find(&workgroups)
 	provide.Render(workgroups, 200, c)
@@ -528,9 +420,6 @@ func workgroupDetailsHandler(c *gin.Context) {
 	organizationID := util.AuthorizedSubjectID(c, "organization")
 	if organizationID == nil {
 		provide.RenderError("unauthorized", 401, c)
-		return
-	} else if common.OrganizationID != nil && organizationID.String() != *common.OrganizationID {
-		provide.RenderError("forbidden", 403, c)
 		return
 	}
 
@@ -586,9 +475,6 @@ func listMappingsHandler(c *gin.Context) {
 	if organizationID == nil {
 		provide.RenderError("unauthorized", 401, c)
 		return
-	} else if common.OrganizationID != nil && organizationID.String() != *common.OrganizationID {
-		provide.RenderError("forbidden", 403, c)
-		return
 	}
 
 	var mappings []*Mapping
@@ -620,9 +506,6 @@ func createMappingHandler(c *gin.Context) {
 	organizationID := util.AuthorizedSubjectID(c, "organization")
 	if organizationID == nil {
 		provide.RenderError("unauthorized", 401, c)
-		return
-	} else if common.OrganizationID != nil && organizationID.String() != *common.OrganizationID {
-		provide.RenderError("forbidden", 403, c)
 		return
 	}
 
@@ -656,9 +539,6 @@ func updateMappingHandler(c *gin.Context) {
 	organizationID := util.AuthorizedSubjectID(c, "organization")
 	if organizationID == nil {
 		provide.RenderError("unauthorized", 401, c)
-		return
-	} else if common.OrganizationID != nil && organizationID.String() != *common.OrganizationID {
-		provide.RenderError("forbidden", 403, c)
 		return
 	}
 
@@ -709,9 +589,6 @@ func deleteMappingHandler(c *gin.Context) {
 	if organizationID == nil {
 		provide.RenderError("unauthorized", 401, c)
 		return
-	} else if common.OrganizationID != nil && organizationID.String() != *common.OrganizationID {
-		provide.RenderError("forbidden", 403, c)
-		return
 	}
 
 	mappingIDStr := c.Param("id")
@@ -740,9 +617,6 @@ func createWorkflowHandler(c *gin.Context) {
 	organizationID := util.AuthorizedSubjectID(c, "organization")
 	if organizationID == nil {
 		provide.RenderError("unauthorized", 401, c)
-		return
-	} else if common.OrganizationID != nil && organizationID.String() != *common.OrganizationID {
-		provide.RenderError("forbidden", 403, c)
 		return
 	}
 
@@ -775,9 +649,6 @@ func deployWorkflowHandler(c *gin.Context) {
 	if organizationID == nil {
 		provide.RenderError("unauthorized", 401, c)
 		return
-	} else if common.OrganizationID != nil && organizationID.String() != *common.OrganizationID {
-		provide.RenderError("forbidden", 403, c)
-		return
 	}
 
 	buf, err := c.GetRawData()
@@ -809,7 +680,7 @@ func deployWorkflowHandler(c *gin.Context) {
 	_workflow.Status = common.StringOrNil(workflowStatusDeployed) // HACK!!!
 	_workflow.Version = workflow.Version
 
-	if workflow.Update(_workflow) {
+	if workflow.Update(_workflow, *organizationID) {
 		provide.Render(workflow, 202, c)
 	} else if len(workflow.Errors) > 0 {
 		obj := map[string]interface{}{}
@@ -824,9 +695,6 @@ func versionWorkflowHandler(c *gin.Context) {
 	organizationID := util.AuthorizedSubjectID(c, "organization")
 	if organizationID == nil {
 		provide.RenderError("unauthorized", 401, c)
-		return
-	} else if common.OrganizationID != nil && organizationID.String() != *common.OrganizationID {
-		provide.RenderError("forbidden", 403, c)
 		return
 	}
 
@@ -914,9 +782,6 @@ func listWorkflowVersionsHandler(c *gin.Context) {
 	if organizationID == nil {
 		provide.RenderError("unauthorized", 401, c)
 		return
-	} else if common.OrganizationID != nil && organizationID.String() != *common.OrganizationID {
-		provide.RenderError("forbidden", 403, c)
-		return
 	}
 
 	workflowID, err := uuid.FromString(c.Param("id"))
@@ -943,9 +808,6 @@ func updateWorkflowHandler(c *gin.Context) {
 	organizationID := util.AuthorizedSubjectID(c, "organization")
 	if organizationID == nil {
 		provide.RenderError("unauthorized", 401, c)
-		return
-	} else if common.OrganizationID != nil && organizationID.String() != *common.OrganizationID {
-		provide.RenderError("forbidden", 403, c)
 		return
 	}
 
@@ -974,7 +836,7 @@ func updateWorkflowHandler(c *gin.Context) {
 		return
 	}
 
-	if workflow.Update(_workflow) {
+	if workflow.Update(_workflow, *organizationID) {
 		provide.Render(nil, 204, c)
 	} else if len(workflow.Errors) > 0 {
 		obj := map[string]interface{}{}
@@ -989,9 +851,6 @@ func deleteWorkflowHandler(c *gin.Context) {
 	organizationID := util.AuthorizedSubjectID(c, "organization")
 	if organizationID == nil {
 		provide.RenderError("unauthorized", 401, c)
-		return
-	} else if common.OrganizationID != nil && organizationID.String() != *common.OrganizationID {
-		provide.RenderError("forbidden", 403, c)
 		return
 	}
 
@@ -1022,9 +881,6 @@ func listWorkflowsHandler(c *gin.Context) {
 	organizationID := util.AuthorizedSubjectID(c, "organization")
 	if organizationID == nil {
 		provide.RenderError("unauthorized", 401, c)
-		return
-	} else if common.OrganizationID != nil && organizationID.String() != *common.OrganizationID {
-		provide.RenderError("forbidden", 403, c)
 		return
 	}
 
@@ -1058,9 +914,6 @@ func workflowDetailsHandler(c *gin.Context) {
 	if organizationID == nil {
 		provide.RenderError("unauthorized", 401, c)
 		return
-	} else if common.OrganizationID != nil && organizationID.String() != *common.OrganizationID {
-		provide.RenderError("forbidden", 403, c)
-		return
 	}
 
 	workflowID, err := uuid.FromString(c.Param("id"))
@@ -1083,9 +936,6 @@ func createWorkstepHandler(c *gin.Context) {
 	organizationID := util.AuthorizedSubjectID(c, "organization")
 	if organizationID == nil {
 		provide.RenderError("unauthorized", 401, c)
-		return
-	} else if common.OrganizationID != nil && organizationID.String() != *common.OrganizationID {
-		provide.RenderError("forbidden", 403, c)
 		return
 	}
 
@@ -1137,9 +987,6 @@ func updateWorkstepHandler(c *gin.Context) {
 	organizationID := util.AuthorizedSubjectID(c, "organization")
 	if organizationID == nil {
 		provide.RenderError("unauthorized", 401, c)
-		return
-	} else if common.OrganizationID != nil && organizationID.String() != *common.OrganizationID {
-		provide.RenderError("forbidden", 403, c)
 		return
 	}
 
@@ -1208,9 +1055,6 @@ func deleteWorkstepHandler(c *gin.Context) {
 	if organizationID == nil {
 		provide.RenderError("unauthorized", 401, c)
 		return
-	} else if common.OrganizationID != nil && organizationID.String() != *common.OrganizationID {
-		provide.RenderError("forbidden", 403, c)
-		return
 	}
 
 	workflowID, err := uuid.FromString(c.Param("id"))
@@ -1250,9 +1094,6 @@ func executeWorkstepHandler(c *gin.Context) {
 	if organizationID == nil {
 		provide.RenderError("unauthorized", 401, c)
 		return
-	} else if common.OrganizationID != nil && organizationID.String() != *common.OrganizationID {
-		provide.RenderError("forbidden", 403, c)
-		return
 	}
 
 	buf, err := c.GetRawData()
@@ -1264,6 +1105,12 @@ func executeWorkstepHandler(c *gin.Context) {
 	workflowID, err := uuid.FromString(c.Param("id"))
 	if err != nil {
 		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	workflow := FindWorkflowByID(workflowID)
+	if workflow == nil {
+		provide.RenderError("not found", 404, c)
 		return
 	}
 
@@ -1287,6 +1134,13 @@ func executeWorkstepHandler(c *gin.Context) {
 		return
 	}
 
+	subjectAccountID := subjectAccountIDFactory(organizationID.String(), workflow.WorkgroupID.String())
+	subjectAccount, err := resolveSubjectAccount(subjectAccountID)
+	if err != nil {
+		provide.RenderError(err.Error(), 403, c)
+		return
+	}
+
 	var payload *baseline.ProtocolMessagePayload
 	err = json.Unmarshal(buf, &payload)
 	if err != nil {
@@ -1295,7 +1149,7 @@ func executeWorkstepHandler(c *gin.Context) {
 	}
 
 	token, _ := util.ParseBearerAuthorizationHeader(c, nil)
-	proof, err := workstep.execute(token.Raw, payload)
+	proof, err := workstep.execute(subjectAccount, token.Raw, payload)
 	if err != nil {
 		provide.RenderError(fmt.Sprintf("cannot execute workstep; %s", err.Error()), 400, c)
 		return
@@ -1316,9 +1170,6 @@ func listWorkstepsHandler(c *gin.Context) {
 	organizationID := util.AuthorizedSubjectID(c, "organization")
 	if organizationID == nil {
 		provide.RenderError("unauthorized", 401, c)
-		return
-	} else if common.OrganizationID != nil && organizationID.String() != *common.OrganizationID {
-		provide.RenderError("forbidden", 403, c)
 		return
 	}
 
@@ -1354,9 +1205,6 @@ func workstepDetailsHandler(c *gin.Context) {
 	organizationID := util.AuthorizedSubjectID(c, "organization")
 	if organizationID == nil {
 		provide.RenderError("unauthorized", 401, c)
-		return
-	} else if common.OrganizationID != nil && organizationID.String() != *common.OrganizationID {
-		provide.RenderError("forbidden", 403, c)
 		return
 	}
 
@@ -1457,9 +1305,6 @@ func listWorkstepParticipantsHandler(c *gin.Context) {
 	if organizationID == nil {
 		provide.RenderError("unauthorized", 401, c)
 		return
-	} else if common.OrganizationID != nil && organizationID.String() != *common.OrganizationID {
-		provide.RenderError("forbidden", 403, c)
-		return
 	}
 
 	workflowID, err := uuid.FromString(c.Param("id"))
@@ -1495,9 +1340,6 @@ func createWorkstepParticipantHandler(c *gin.Context) {
 	organizationID := util.AuthorizedSubjectID(c, "organization")
 	if organizationID == nil {
 		provide.RenderError("unauthorized", 401, c)
-		return
-	} else if common.OrganizationID != nil && organizationID.String() != *common.OrganizationID {
-		provide.RenderError("forbidden", 403, c)
 		return
 	}
 
@@ -1564,9 +1406,6 @@ func deleteWorkstepParticipantHandler(c *gin.Context) {
 	organizationID := util.AuthorizedSubjectID(c, "organization")
 	if organizationID == nil {
 		provide.RenderError("unauthorized", 401, c)
-		return
-	} else if common.OrganizationID != nil && organizationID.String() != *common.OrganizationID {
-		provide.RenderError("forbidden", 403, c)
 		return
 	}
 
@@ -1639,15 +1478,170 @@ func updateSubjectHandler(c *gin.Context) {
 }
 
 func listSubjectAccountsHandler(c *gin.Context) {
-	provide.RenderError("not implemented", 501, c)
+	organizationID := util.AuthorizedSubjectID(c, "organization")
+	if organizationID == nil {
+		provide.RenderError("unauthorized", 401, c)
+		return
+	}
+
+	var subjectAccounts []*SubjectAccount
+
+	db := dbconf.DatabaseConnection()
+	query := db.Where("subject_id = ?", organizationID).Order("created_at DESC")
+
+	provide.Paginate(c, query, &SubjectAccount{}).Find(&subjectAccounts)
+	provide.Render(subjectAccounts, 200, c)
 }
 
 func subjectAccountDetailsHandler(c *gin.Context) {
-	provide.RenderError("not implemented", 501, c)
+	organizationID := util.AuthorizedSubjectID(c, "organization")
+	if organizationID == nil {
+		provide.RenderError("unauthorized", 401, c)
+		return
+	}
+
+	workgroupID, err := uuid.FromString(c.Param("accountId"))
+	if err != nil {
+		provide.RenderError(err.Error(), 404, c)
+		return
+	}
+
+	subjectID := subjectAccountIDFactory(organizationID.String(), workgroupID.String())
+	subjectAccount, err := resolveSubjectAccount(subjectID)
+	if err != nil {
+		provide.RenderError(err.Error(), 403, c)
+		return
+	}
+
+	if subjectAccount == nil || subjectAccount.ID == nil {
+		provide.RenderError("BPI subject account not found", 404, c)
+		return
+	}
+
+	provide.Render(subjectAccount, 200, c)
 }
 
-func createSubjectAccountsHandler(c *gin.Context) {
-	provide.RenderError("not implemented", 501, c)
+func createSubjectAccountHandler(c *gin.Context) {
+	organizationID := util.AuthorizedSubjectID(c, "organization")
+	if organizationID == nil {
+		provide.RenderError("unauthorized", 401, c)
+		return
+	}
+
+	buf, err := c.GetRawData()
+	if err != nil {
+		provide.RenderError(err.Error(), 400, c)
+		return
+	}
+
+	id, err := uuid.FromString(c.Param("id"))
+	if err != nil {
+		provide.RenderError("malformed subject id", 422, c)
+		return
+	}
+
+	if id.String() != organizationID.String() {
+		provide.RenderError("subject id mismatch", 403, c)
+		return
+	}
+
+	var subjectAccount *SubjectAccount
+	err = json.Unmarshal(buf, &subjectAccount)
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	if subjectAccount.ID != nil {
+		provide.RenderError("id is derived and should not be provided", 422, c)
+		return
+	}
+
+	if subjectAccount.SubjectID != nil && *subjectAccount.SubjectID != organizationID.String() {
+		provide.RenderError("subject_id mismatch", 403, c)
+		return
+	}
+
+	if subjectAccount.Metadata == nil {
+		provide.RenderError("metadata is required", 422, c)
+		return
+	}
+
+	if subjectAccount.Metadata.OrganizationID == nil {
+		provide.RenderError("organization_id is required", 422, c)
+		return
+	} else {
+		if uuid.FromStringOrNil(*subjectAccount.Metadata.OrganizationID) == uuid.Nil {
+			provide.RenderError("organization_id is required", 422, c)
+			return
+		}
+	}
+
+	if subjectAccount.Metadata.OrganizationAddress == nil {
+		provide.RenderError("organization_address is required", 422, c)
+		return
+	}
+
+	if subjectAccount.Metadata.OrganizationRefreshToken == nil {
+		provide.RenderError("organization_refresh_token is required", 422, c)
+		return
+	}
+
+	if subjectAccount.Metadata.WorkgroupID == nil {
+		provide.RenderError("workgroup_id is required", 422, c)
+		return
+	} else {
+		if uuid.FromStringOrNil(*subjectAccount.Metadata.WorkgroupID) == uuid.Nil {
+			provide.RenderError("workgroup_id is required", 422, c)
+			return
+		}
+	}
+
+	if subjectAccount.Metadata.NetworkID == nil {
+		provide.RenderError("network_id is required", 422, c)
+		return
+	} else {
+		if uuid.FromStringOrNil(*subjectAccount.Metadata.NetworkID) == uuid.Nil {
+			provide.RenderError("network_id is required", 422, c)
+			return
+		}
+	}
+
+	if subjectAccount.Metadata.RegistryContractAddress == nil {
+		provide.RenderError("registry_contract_address is required", 422, c)
+		return
+	}
+
+	subjectAccountID := subjectAccountIDFactory(*subjectAccount.Metadata.OrganizationID, *subjectAccount.Metadata.WorkgroupID)
+	if FindSubjectAccountByID(subjectAccountID) != nil {
+		provide.RenderError("BPI subject account exists", 409, c)
+		return
+	}
+
+	subjectAccount.ID = &subjectAccountID
+	subjectAccount.SubjectID = common.StringOrNil(organizationID.String())
+
+	db := dbconf.DatabaseConnection()
+	tx := db.Begin()
+	defer tx.RollbackUnlessCommitted()
+
+	if subjectAccount.create(tx) {
+		SubjectAccounts = append(SubjectAccounts, subjectAccount)
+		SubjectAccountsByID[subjectAccountID] = append(SubjectAccountsByID[subjectAccountID], subjectAccount)
+
+		err = subjectAccount.startDaemon(subjectAccount.Metadata.OrganizationRefreshToken)
+		if err != nil {
+			provide.RenderError(fmt.Sprintf("BPI subject account initialization failed; %s", err.Error()), 500, c)
+			return
+		}
+
+		tx.Commit()
+
+		common.Log.Debugf("BPI subject account intiailized: %s", *subjectAccount.ID)
+		provide.Render(subjectAccount, 201, c)
+	} else {
+		provide.RenderError(fmt.Sprintf("BPI subject account initialization failed; %s", *subjectAccount.Errors[0].Message), 500, c)
+	}
 }
 
 func updateSubjectAccountsHandler(c *gin.Context) {

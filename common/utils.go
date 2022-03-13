@@ -3,7 +3,6 @@ package common
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"math/rand"
 	"regexp"
@@ -13,8 +12,6 @@ import (
 
 	"github.com/provideplatform/ident/common"
 	"github.com/provideplatform/provide-go/api/ident"
-	"github.com/provideplatform/provide-go/api/nchain"
-	"github.com/provideplatform/provide-go/common/util"
 )
 
 const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
@@ -46,81 +43,6 @@ func RefreshPublicWorkgroupAccessToken() (*string, error) {
 	}
 
 	return token.AccessToken, nil
-}
-
-// FIXME -- return error
-func ResolveBaselineContract() {
-	if NChainBaselineNetworkID == nil || OrganizationRefreshToken == nil {
-		Log.Warning("unable to resolve baseline contract without configured network id and organization refresh token")
-		return
-	}
-
-	capabilities, err := util.ResolveCapabilitiesManifest()
-	if baseline, baselineOk := capabilities["baseline"].(map[string]interface{}); baselineOk {
-		if contracts, contractsOk := baseline["contracts"].([]interface{}); contractsOk {
-			for _, contract := range contracts {
-				if name, nameOk := contract.(map[string]interface{})["name"].(string); nameOk && strings.ToLower(name) == "orgregistry" {
-					raw, _ := json.Marshal(contract)
-					err := json.Unmarshal(raw, &BaselineRegistryContract)
-					if err != nil {
-						Log.Warningf("failed to parse registry contract from capabilities; %s", err.Error())
-					} else {
-						Log.Debug("resolved baseline registry contract artifact")
-					}
-				}
-			}
-		}
-	}
-
-	if BaselineRegistryContract == nil {
-		Log.Warning("failed to parse registry contract from capabilities")
-		return
-	}
-
-	if OrganizationID == nil {
-		Log.Warning("organization id not set to resolve baseline contract")
-		return
-	}
-
-	token, err := ident.CreateToken(*OrganizationRefreshToken, map[string]interface{}{
-		"grant_type":      "refresh_token",
-		"organization_id": *OrganizationID,
-	})
-	if err != nil {
-		Log.Warningf("failed to vend organization access token; %s", err.Error())
-		return
-	}
-
-	contract, err := nchain.GetContractDetails(*token.AccessToken, *BaselineRegistryContractAddress, map[string]interface{}{})
-	if err != nil || contract == nil {
-		wallet, err := nchain.CreateWallet(*token.AccessToken, map[string]interface{}{
-			"purpose": 44,
-		})
-		if err != nil {
-			Log.Warningf("failed to initialize wallet for organization; %s", err.Error())
-		} else {
-			Log.Debugf("created HD wallet for organization: %s", wallet.ID)
-		}
-
-		cntrct, err := nchain.CreateContract(*token.AccessToken, map[string]interface{}{
-			"address":    *BaselineRegistryContractAddress,
-			"name":       BaselineRegistryContract.Name,
-			"network_id": NChainBaselineNetworkID,
-			"params": map[string]interface{}{
-				"argv":              []interface{}{},
-				"compiled_artifact": BaselineRegistryContract,
-				"wallet_id":         wallet.ID,
-			},
-			"type": "organization-registry",
-		})
-		if err != nil {
-			Log.Warningf("failed to initialize registry contract; %s", err.Error())
-		} else {
-			Log.Debugf("resolved baseline organization registry contract: %s", *cntrct.Address)
-		}
-	} else {
-		Log.Debugf("resolved baseline organization registry contract: %s", *contract.Address)
-	}
 }
 
 // StringFromInterface returns the string representation of val, if val

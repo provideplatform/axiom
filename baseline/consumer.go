@@ -68,7 +68,7 @@ type ProtocolMessage struct {
 
 func init() {
 	if !common.ConsumeNATSStreamingSubscriptions {
-		common.Log.Debug("proxy package consumer configured to skip NATS streaming subscription setup")
+		common.Log.Debug("baseline package consumer configured to skip NATS streaming subscription setup")
 		return
 	}
 
@@ -78,53 +78,6 @@ func init() {
 	natsutil.NatsCreateStream(defaultNatsStream, []string{
 		fmt.Sprintf("%s.>", defaultNatsStream),
 	})
-
-	if common.OrganizationID == nil {
-		organizationRefreshToken := ""
-		if common.OrganizationID != nil {
-			organizationRefreshToken = *common.OrganizationID
-		}
-
-		client := baseline.InitBaselineService(organizationRefreshToken)
-		status, res, err := client.Get("config", map[string]interface{}{})
-		if err != nil {
-			common.Log.Panicf("failed to get config details; %s", err.Error())
-		}
-
-		if status >= 400 {
-			common.Log.Panicf("failed to get config details with code %d", status)
-		}
-
-		buf, err := json.Marshal(res)
-		if err != nil {
-			common.Log.Panicf("failed to marshal response; %s", err.Error())
-		}
-
-		var cfg *Config
-		err = json.Unmarshal(buf, &cfg)
-		if err != nil {
-			common.Log.Panicf("failed to unmarshal response into struct; %s", err.Error())
-		}
-
-		if cfg.WorkgroupID != nil {
-			common.WorkgroupID = common.StringOrNil(cfg.WorkgroupID.String())
-		}
-		if cfg.NetworkID != nil {
-			common.NChainBaselineNetworkID = common.StringOrNil(cfg.NetworkID.String())
-		}
-		if cfg.OrganizationAddress != nil {
-			common.BaselineOrganizationAddress = cfg.OrganizationAddress
-		}
-		if cfg.OrganizationID != nil {
-			common.OrganizationID = common.StringOrNil(cfg.OrganizationID.String())
-		}
-		if cfg.OrganizationRefreshToken != nil {
-			common.OrganizationRefreshToken = cfg.OrganizationRefreshToken
-		}
-		if cfg.RegistryContractAddress != nil {
-			common.BaselineRegistryContractAddress = cfg.RegistryContractAddress
-		}
-	}
 
 	createNatsBaselineProxySubscriptions(&waitGroup)
 	createNatsBaselineWorkflowDeploySubscriptions(&waitGroup)
@@ -417,6 +370,13 @@ func consumeBaselineWorkstepDeploySubscriptionsMsg(msg *nats.Msg) {
 		return
 	}
 
+	organizationID, err := uuid.FromString(params["organization_id"].(string))
+	if err != nil {
+		common.Log.Warningf("failed to parse organization id; %s", err.Error())
+		msg.Nak()
+		return
+	}
+
 	workstepID, err := uuid.FromString(params["workstep_id"].(string))
 	if err != nil {
 		common.Log.Warningf("failed to parse baseline workstep id; %s", err.Error())
@@ -425,22 +385,49 @@ func consumeBaselineWorkstepDeploySubscriptionsMsg(msg *nats.Msg) {
 	}
 
 	workstep := FindWorkstepByID(workstepID)
-
-	if common.OrganizationID == nil {
-		common.Log.Panicf("organization id not set")
+	if workstep == nil {
+		common.Log.Warningf("failed to resolve baseline workstep: %s", workstepID)
+		msg.Nak()
 		return
 	}
 
-	token, err := ident.CreateToken(*common.OrganizationRefreshToken, map[string]interface{}{
+	workflow := FindWorkflowByID(*workstep.WorkflowID)
+	if workflow == nil {
+		common.Log.Errorf("failed to resolve baseline workflow: %s", workstep.WorkflowID)
+		msg.Nak()
+		return
+	}
+
+	subjectAccountID := subjectAccountIDFactory(organizationID.String(), workflow.WorkgroupID.String())
+	subjectAccount, err := resolveSubjectAccount(subjectAccountID)
+	if err != nil {
+		common.Log.Errorf("failed to resolve BPI subject account for workflow: %s; %s", workstep.WorkflowID, err.Error())
+		msg.Nak()
+		return
+	}
+
+	if subjectAccount.Metadata.OrganizationID == nil {
+		common.Log.Errorf("failed to resolve BPI subject account; organization id required")
+		msg.Nak()
+		return
+	}
+
+	if *subjectAccount.Metadata.OrganizationID != organizationID.String() {
+		common.Log.Error("failed to resolve BPI subject account; organization id mismatch")
+		msg.Nak()
+		return
+	}
+
+	token, err := ident.CreateToken(*subjectAccount.Metadata.OrganizationRefreshToken, map[string]interface{}{
 		"grant_type":      "refresh_token",
-		"organization_id": *common.OrganizationID,
+		"organization_id": *subjectAccount.Metadata.OrganizationID,
 	})
 	if err != nil {
 		common.Log.Warningf("failed to vend organization access token; %s", err.Error())
 		return
 	}
 
-	if workstep.deploy(*token.AccessToken) {
+	if workstep.deploy(*token.AccessToken, organizationID) {
 		common.Log.Debugf("workstep pending deployment: %s", workstep.ID)
 		msg.Ack()
 	} else {
@@ -460,6 +447,13 @@ func consumeBaselineWorkstepFinalizeDeploySubscriptionsMsg(msg *nats.Msg) {
 		return
 	}
 
+	organizationID, err := uuid.FromString(params["organization_id"].(string))
+	if err != nil {
+		common.Log.Warningf("failed to parse organization id; %s", err.Error())
+		msg.Nak()
+		return
+	}
+
 	workstepID, err := uuid.FromString(params["workstep_id"].(string))
 	if err != nil {
 		common.Log.Warningf("failed to parse baseline workstep id; %s", err.Error())
@@ -468,10 +462,36 @@ func consumeBaselineWorkstepFinalizeDeploySubscriptionsMsg(msg *nats.Msg) {
 	}
 
 	workstep := FindWorkstepByID(workstepID)
+	if workstep == nil {
+		common.Log.Warningf("failed to resolve baseline workstep: %s", workstepID)
+		msg.Nak()
+		return
+	}
 
-	token, err := ident.CreateToken(*common.OrganizationRefreshToken, map[string]interface{}{
+	workflow := FindWorkflowByID(*workstep.WorkflowID)
+	if workflow == nil {
+		common.Log.Warningf("failed to resolve baseline workflow: %s", workstep.WorkflowID)
+		msg.Nak()
+		return
+	}
+
+	subjectAccountID := subjectAccountIDFactory(organizationID.String(), workflow.WorkgroupID.String())
+	subjectAccount, err := resolveSubjectAccount(subjectAccountID)
+	if err != nil {
+		common.Log.Errorf("failed to resolve BPI subject account for workflow: %s; %s", workstep.WorkflowID, err.Error())
+		msg.Nak()
+		return
+	}
+
+	if subjectAccount.Metadata.OrganizationID == nil {
+		common.Log.Error("failed to resolve BPI subject account; organization id required")
+		msg.Nak()
+		return
+	}
+
+	token, err := ident.CreateToken(*subjectAccount.Metadata.OrganizationRefreshToken, map[string]interface{}{
 		"grant_type":      "refresh_token",
-		"organization_id": *common.OrganizationID,
+		"organization_id": *subjectAccount.Metadata.OrganizationID,
 	})
 	if err != nil {
 		common.Log.Warningf("failed to vend organization access token; %s", err.Error())
@@ -506,8 +526,16 @@ func consumeDispatchInvitationSubscriptionsMsg(msg *nats.Msg) {
 func consumeDispatchProtocolMessageSubscriptionsMsg(msg *nats.Msg) {
 	common.Log.Debugf("consuming %d-byte NATS dispatch protocol message on subject: %s", len(msg.Data), msg.Subject)
 
+	var params map[string]interface{}
+	err := json.Unmarshal(msg.Data, &params)
+	if err != nil {
+		common.Log.Warningf("failed to umarshal baseline workstep finalize deploy message; %s", err.Error())
+		msg.Nak()
+		return
+	}
+
 	protomsg := &ProtocolMessage{}
-	err := json.Unmarshal(msg.Data, &protomsg)
+	err = json.Unmarshal(msg.Data, &protomsg)
 	if err != nil {
 		common.Log.Warningf("failed to umarshal dispatch protocol message; %s", err.Error())
 		msg.Nak()
@@ -520,9 +548,43 @@ func consumeDispatchProtocolMessageSubscriptionsMsg(msg *nats.Msg) {
 		return
 	}
 
+	if protomsg.Identifier == nil {
+		common.Log.Warningf("no workflow identifier specified in protocol message; %s", err.Error())
+		msg.Term()
+		return
+	}
+
+	organizationID, err := uuid.FromString(params["organization_id"].(string))
+	if err != nil {
+		common.Log.Warningf("failed to parse organization id; %s", err.Error())
+		msg.Nak()
+		return
+	}
+
+	workflow := FindWorkflowByID(*protomsg.Identifier)
+	if workflow == nil {
+		common.Log.Warningf("failed to resolve baseline workflow: %s", protomsg.Identifier)
+		msg.Nak()
+		return
+	}
+
 	url := lookupBaselineOrganizationMessagingEndpoint(*protomsg.Recipient)
 	if url == nil {
 		common.Log.Warningf("failed to lookup recipient messaging endpoint: %s", *protomsg.Recipient)
+		msg.Nak()
+		return
+	}
+
+	subjectAccountID := subjectAccountIDFactory(organizationID.String(), workflow.WorkgroupID.String())
+	subjectAccount, err := resolveSubjectAccount(subjectAccountID)
+	if err != nil {
+		common.Log.Errorf("failed to resolve BPI subject account for workflow: %s; %s", *protomsg.Identifier, err.Error())
+		msg.Nak()
+		return
+	}
+
+	if subjectAccount.Metadata.OrganizationID == nil {
+		common.Log.Error("failed to resolve BPI subject account; organization id required")
 		msg.Nak()
 		return
 	}
@@ -532,7 +594,7 @@ func consumeDispatchProtocolMessageSubscriptionsMsg(msg *nats.Msg) {
 		// request a VC from the counterparty
 		jwt, err = requestBaselineOrganizationIssuedVC(*protomsg.Recipient)
 		if err != nil {
-			resolveWorkgroupParticipants() // HACK-- this should not re-resolve all counterparties...
+			subjectAccount.resolveWorkgroupParticipants() // HACK-- this should not re-resolve all counterparties...
 
 			common.Log.Warningf("failed to request verifiable credential from recipient counterparty: %s; %s", *protomsg.Recipient, err.Error())
 			msg.Nak()
@@ -547,7 +609,7 @@ func consumeDispatchProtocolMessageSubscriptionsMsg(msg *nats.Msg) {
 	}
 
 	uuid, _ := uuid.NewV4()
-	name := fmt.Sprintf("%s-%s", *common.BaselineOrganizationAddress, uuid.String())
+	name := fmt.Sprintf("%s-%s", *subjectAccount.Metadata.OrganizationAddress, uuid.String())
 	conn, err := natsutil.GetNatsConnection(name, *url, time.Second*10, jwt)
 	if err != nil {
 		common.Log.Warningf("failed to establish NATS connection to recipient: %s; %s", *protomsg.Recipient, err.Error())
@@ -564,7 +626,7 @@ func consumeDispatchProtocolMessageSubscriptionsMsg(msg *nats.Msg) {
 		// counterparty.MessagingEndpoint = nil
 		// counterparty.Cache()
 
-		resolveWorkgroupParticipants() // HACK-- this should not re-resolve all counterparties...
+		subjectAccount.resolveWorkgroupParticipants() // HACK-- this should not re-resolve all counterparties...
 
 		common.Log.Warningf("failed to publish protocol message to recipient: %s; %s", *protomsg.Recipient, err.Error())
 		msg.Nak()

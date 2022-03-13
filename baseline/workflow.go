@@ -124,6 +124,8 @@ func (w *WorkflowInstance) CacheByBaselineID(baselineID string) error {
 }
 
 func baselineWorkflowFactory(objectType string, identifier *string) (*WorkflowInstance, error) {
+	var subjectAccount *SubjectAccount
+
 	var identifierUUID uuid.UUID
 	if identifier != nil {
 		identifierUUID, _ = uuid.FromString(*identifier)
@@ -139,10 +141,11 @@ func baselineWorkflowFactory(objectType string, identifier *string) (*WorkflowIn
 	}
 	workflow.ID = identifierUUID
 
-	for _, party := range common.DefaultCounterparties {
+	for _, party := range subjectAccount.Metadata.Counterparties {
 		workflow.Participants = append(workflow.Participants, &baseline.Participant{
-			Address:           common.StringOrNil(party["address"]),
-			MessagingEndpoint: common.StringOrNil(party["messaging_endpoint"]),
+			Address:           party.Address,
+			MessagingEndpoint: party.MessagingEndpoint,
+			WebsocketEndpoint: party.WebsocketEndpoint,
 		})
 	}
 
@@ -152,7 +155,7 @@ func baselineWorkflowFactory(objectType string, identifier *string) (*WorkflowIn
 	}
 
 	// FIXME -- read all workgroup participants from cache
-	orgs, err := ident.ListApplicationOrganizations(*token, *common.WorkgroupID, map[string]interface{}{})
+	orgs, err := ident.ListApplicationOrganizations(*token, *subjectAccount.Metadata.WorkgroupID, map[string]interface{}{})
 	if err != nil {
 		return nil, err
 	}
@@ -331,7 +334,7 @@ func proverParamsFactory(name, identifier string, noteStoreID, nullifierStoreID 
 }
 
 // deploy the workflow
-func (w *Workflow) deploy() bool {
+func (w *Workflow) deploy(organizationID uuid.UUID) bool {
 	if w.Status != nil && *w.Status != workflowStatusDraft {
 		w.Errors = append(w.Errors, &provide.Error{
 			Message: common.StringOrNil(fmt.Sprintf("cannot deploy workflow with status: %s", *w.Status)),
@@ -381,7 +384,8 @@ func (w *Workflow) deploy() bool {
 
 	for _, workstep := range worksteps {
 		params := map[string]interface{}{
-			"workstep_id": workstep.ID.String(),
+			"organization_id": organizationID.String(),
+			"workstep_id":     workstep.ID.String(),
 		}
 		payload, _ := json.Marshal(params)
 
@@ -393,7 +397,8 @@ func (w *Workflow) deploy() bool {
 	}
 
 	params := map[string]interface{}{
-		"workflow_id": w.ID.String(),
+		"organization_id": organizationID.String(),
+		"workflow_id":     w.ID.String(),
 	}
 	payload, _ := json.Marshal(params)
 
@@ -582,7 +587,7 @@ func (w *Workflow) Create(tx *gorm.DB) bool {
 }
 
 // Update the workflow
-func (w *Workflow) Update(other *Workflow) bool {
+func (w *Workflow) Update(other *Workflow, organizationID uuid.UUID) bool {
 	if !w.Validate() {
 		return false
 	}
@@ -610,7 +615,7 @@ func (w *Workflow) Update(other *Workflow) bool {
 			w.Version = other.Version
 
 			if *w.Status == workflowStatusDraft && other.Status != nil && *other.Status == workflowStatusDeployed {
-				if !w.deploy() { // deploy the workflow...
+				if !w.deploy(organizationID) { // deploy the workflow...
 					return false
 				}
 			}

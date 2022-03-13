@@ -9,74 +9,34 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	logger "github.com/kthomas/go-logger"
 	"github.com/provideplatform/ident/common"
-	"github.com/provideplatform/provide-go/api/nchain"
 	"github.com/provideplatform/provide-go/api/vault"
 	"github.com/provideplatform/provide-go/common/util"
 )
 
-const configGracePeriodTickInterval = 1000 * time.Millisecond
-const configGracePeriodSleepInterval = 25 * time.Millisecond
-const configGracePeriodTimeout = 10 * time.Minute
-
 var (
-	// BaselineOrganizationAddress is the baseline organization address
-	BaselineOrganizationAddress *string
-
 	// BaselinePublicWorkgroupID is the configured public workgroup id, if any
 	BaselinePublicWorkgroupID *string
 
 	// BaselinePublicWorkgroupRefreshToken is an optional refresh token credential for a public workgroup
 	BaselinePublicWorkgroupRefreshToken *string
 
-	// BaselineRegistryContractAddress is a contract address
-	BaselineRegistryContractAddress *string
-
-	// BaselineRegistryContract is a compiled contract artifact
-	BaselineRegistryContract *nchain.CompiledArtifact
-
 	// ConsumeNATSStreamingSubscriptions is a flag the indicates if the ident instance is running in API or consumer mode
 	ConsumeNATSStreamingSubscriptions bool
-
-	// DefaultCounterparties are the default counterparties
-	DefaultCounterparties []map[string]string
 
 	// Log is the configured logger
 	Log *logger.Logger
 
-	// InternalSOR is the internal system of record
-	InternalSOR map[string]interface{}
-
-	// NChainBaselineNetworkID baseline network id
-	NChainBaselineNetworkID *string
-
-	// OrganizationID is the id of the org
-	OrganizationID *string
-
-	// OrganizationMessagingEndpoint is the public organziation messaging endpoint
-	OrganizationMessagingEndpoint *string
-
-	// OrganizationProxyEndpoint is the configured endpoint for the baseline proxy REST API
-	OrganizationProxyEndpoint *string
-
-	// OrganizationRefreshToken is the refresh token for the org
-	OrganizationRefreshToken *string
-
-	// WorkgroupID is the id of the workgroup
-	WorkgroupID *string
-
-	// Vault is the vault instance
+	// Vault is the vault instance which is used by the BPI to protect sensitive materials across all tenants
 	Vault *vault.Vault
+
+	// VaultEncryptionKey is the encryption key instance which is used by the BPI to protect sensitive materials across all tenants
+	VaultEncryptionKey *vault.Key
 )
 
 func init() {
 	requireLogger()
-
-	go requireOrganization()
-	requireVault()
-
-	requireInternalSOR()
-	requireBaseline()
 	requireBaselinePublicWorkgroup()
+	requireVault()
 
 	ConsumeNATSStreamingSubscriptions = strings.ToLower(os.Getenv("CONSUME_NATS_STREAMING_SUBSCRIPTIONS")) == "true"
 }
@@ -94,30 +54,6 @@ func requireLogger() {
 	}
 
 	Log = logger.NewLogger("baseline", lvl, endpoint)
-}
-
-func requireBaseline() {
-	if os.Getenv("BASELINE_ORGANIZATION_ADDRESS") == "" {
-		Log.Warningf("BASELINE_ORGANIZATION_ADDRESS not provided")
-	}
-	BaselineOrganizationAddress = common.StringOrNil(os.Getenv("BASELINE_ORGANIZATION_ADDRESS"))
-
-	if os.Getenv("BASELINE_REGISTRY_CONTRACT_ADDRESS") == "" {
-		Log.Warningf("BASELINE_REGISTRY_CONTRACT_ADDRESS not provided")
-	}
-	BaselineRegistryContractAddress = common.StringOrNil(os.Getenv("BASELINE_REGISTRY_CONTRACT_ADDRESS"))
-
-	if os.Getenv("NCHAIN_BASELINE_NETWORK_ID") == "" {
-		Log.Warningf("NCHAIN_BASELINE_NETWORK_ID not provided")
-	}
-	NChainBaselineNetworkID = common.StringOrNil(os.Getenv("NCHAIN_BASELINE_NETWORK_ID"))
-
-	if os.Getenv("BASELINE_WORKGROUP_ID") == "" {
-		Log.Warningf("BASELINE_WORKGROUP_ID not provided")
-	}
-	WorkgroupID = common.StringOrNil(os.Getenv("BASELINE_WORKGROUP_ID"))
-
-	ResolveBaselineContract()
 }
 
 func requireBaselinePublicWorkgroup() {
@@ -152,82 +88,6 @@ func requireBaselinePublicWorkgroup() {
 	common.Log.Debugf("configured public workgroup: %s", *BaselinePublicWorkgroupID)
 }
 
-func requireInternalSOR() {
-	if os.Getenv("PROVIDE_SOR_IDENTIFIER") == "" {
-		Log.Warningf("PROVIDE_SOR_IDENTIFIER not provided")
-	}
-
-	if os.Getenv("PROVIDE_SOR_URL") == "" {
-		Log.Warningf("PROVIDE_SOR_URL not provided")
-	}
-
-	InternalSOR = map[string]interface{}{
-		"identifier": os.Getenv("PROVIDE_SOR_IDENTIFIER"),
-	}
-
-	if os.Getenv("PROVIDE_SOR_URL") != "" && os.Getenv("PROVIDE_SOR_URL") != "https://" {
-		InternalSOR["url"] = os.Getenv("PROVIDE_SOR_URL")
-	}
-
-	if os.Getenv("PROVIDE_SOR_ORGANIZATION_CODE") != "" {
-		InternalSOR["organization_code"] = os.Getenv("PROVIDE_SOR_ORGANIZATION_CODE")
-	}
-}
-
-func requireOrganization() {
-	timer := time.NewTicker(configGracePeriodTickInterval)
-	defer timer.Stop()
-
-	startedAt := time.Now()
-	resolvedOrganization := false
-
-	for !resolvedOrganization {
-		select {
-		case <-timer.C:
-			if OrganizationID == nil {
-				OrganizationID = StringOrNil(os.Getenv("PROVIDE_ORGANIZATION_ID"))
-			}
-
-			if OrganizationRefreshToken == nil {
-				OrganizationRefreshToken = StringOrNil(os.Getenv("PROVIDE_ORGANIZATION_REFRESH_TOKEN"))
-			}
-
-			if OrganizationMessagingEndpoint == nil {
-				OrganizationMessagingEndpoint = StringOrNil(os.Getenv("BASELINE_ORGANIZATION_MESSAGING_ENDPOINT"))
-			}
-
-			if OrganizationProxyEndpoint == nil {
-				OrganizationProxyEndpoint = StringOrNil(os.Getenv("BASELINE_ORGANIZATION_PROXY_ENDPOINT"))
-			}
-
-			resolvedOrganization = OrganizationID != nil && OrganizationRefreshToken != nil && OrganizationMessagingEndpoint != nil && OrganizationProxyEndpoint != nil
-		default:
-			if time.Now().After(startedAt.Add(configGracePeriodTimeout)) {
-				if OrganizationID == nil {
-					Log.Warning("PROVIDE_ORGANIZATION_ID not configured")
-				}
-
-				if OrganizationRefreshToken == nil {
-					Log.Warning("PROVIDE_ORGANIZATION_REFRESH_TOKEN not configured")
-				}
-
-				if OrganizationMessagingEndpoint == nil {
-					Log.Warning("BASELINE_ORGANIZATION_MESSAGING_ENDPOINT not configured")
-				}
-
-				if OrganizationProxyEndpoint == nil {
-					Log.Warning("BASELINE_ORGANIZATION_PROXY_ENDPOINT not configured")
-				}
-
-				Log.Panicf("failed to require organization")
-			}
-
-			time.Sleep(configGracePeriodSleepInterval)
-		}
-	}
-
-}
-
 func requireVault() {
 	util.RequireVault()
 
@@ -237,17 +97,44 @@ func requireVault() {
 	}
 
 	if len(vaults) > 0 {
-		// HACK
-		Vault = vaults[0]
-		Log.Debugf("resolved default vault instance for proxy: %s", Vault.ID.String())
+		Vault = vaults[0] // HACK
+		Log.Debugf("resolved vault for BPI: %s", Vault.ID.String())
 	} else {
 		Vault, err = vault.CreateVault(util.DefaultVaultAccessJWT, map[string]interface{}{
-			"name":        fmt.Sprintf("nchain vault %d", time.Now().Unix()),
-			"description": "default organizational keystore",
+			"name":        fmt.Sprintf("BPI vault %d", time.Now().Unix()),
+			"description": "BPI multitenant keystore",
 		})
 		if err != nil {
-			Log.Panicf("failed to create default vaults for proxy instance; %s", err.Error())
+			Log.Panicf("failed to create vault for BPI; %s", err.Error())
 		}
-		Log.Debugf("created default vault instance for proxy: %s", Vault.ID.String())
+		Log.Debugf("created vault for BPI: %s", Vault.ID.String())
+	}
+
+	keys, err := vault.ListKeys(util.DefaultVaultAccessJWT, Vault.ID.String(), map[string]interface{}{
+		"spec": "AES-256-GCM",
+	})
+	if err != nil {
+		Log.Panicf("failed to fetch vault encryption keys for given token; %s", err.Error())
+	}
+
+	if len(keys) > 0 {
+		VaultEncryptionKey = keys[0] // HACK
+		Log.Debugf("resolved vault encryption key for BPI: %s", VaultEncryptionKey.ID.String())
+	} else {
+		VaultEncryptionKey, err = vault.CreateKey(
+			util.DefaultVaultAccessJWT,
+			Vault.ID.String(),
+			map[string]interface{}{
+				"name":        "BPI multitenant encryption key",
+				"description": "BPI encryption key across all tenants",
+				"spec":        "AES-256-GCM",
+				"type":        "symmetric",
+				"usage":       "encrypt/decrypt",
+			},
+		)
+		if err != nil {
+			Log.Panicf("failed to create vault encryption key for BPI; %s", err.Error())
+		}
+		Log.Debugf("created vault encryption key for BPI: %s", VaultEncryptionKey.ID.String())
 	}
 }

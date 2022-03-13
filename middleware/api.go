@@ -1,7 +1,5 @@
 package middleware
 
-import "github.com/provideplatform/baseline/common"
-
 const sorIdentifierDynamics365 = "dynamics365"
 const sorIdentifierEphemeralMemory = "ephemeral"
 const sorIdentifierExcel = "excel"
@@ -50,7 +48,7 @@ func SORFactory(params map[string]interface{}, token *string) SOR {
 }
 
 // SORFactoryByType initializes and returns a system of record interface impl for the given type
-func SORFactoryByType(recordType string, token *string) SOR {
+func SORFactoryByType(params map[string]interface{}, recordType string, token *string) SOR {
 	switch recordType {
 	case sorTypeGeneralConsistency:
 		return InitEphemeralMemoryService(token)
@@ -60,5 +58,5 @@ func SORFactoryByType(recordType string, token *string) SOR {
 		break
 	}
 
-	return SORFactory(common.InternalSOR, token)
+	return SORFactory(params, token)
 }
