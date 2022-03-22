@@ -187,6 +187,9 @@ func (s *SubjectAccount) enrich() error {
 func (s *SubjectAccount) enrichMetadata() error {
 	if s.Metadata == nil && s.MetadataSecretID != nil {
 		token, err := s.authorizeAccessToken()
+		if err != nil {
+			return err
+		}
 
 		secret, err := vault.FetchSecret(
 			*token.AccessToken,
