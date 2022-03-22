@@ -406,7 +406,7 @@ func consumeBaselineWorkstepDeploySubscriptionsMsg(msg *nats.Msg) {
 		return
 	}
 
-	if subjectAccount.Metadata.OrganizationID == nil {
+	if subjectAccount.Metadata == nil || subjectAccount.Metadata.OrganizationID == nil {
 		common.Log.Errorf("failed to resolve BPI subject account; organization id required")
 		msg.Nak()
 		return
