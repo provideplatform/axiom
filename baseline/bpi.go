@@ -592,8 +592,6 @@ func (s *SubjectAccount) requireVault() error {
 		return err
 	}
 
-	util.RequireVault()
-
 	vaults, err := vault.ListVaults(*token.AccessToken, map[string]interface{}{})
 	if err != nil {
 		common.Log.Warningf("failed to fetch vaults for given token; %s", err.Error())
