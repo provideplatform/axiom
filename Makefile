@@ -1,4 +1,4 @@
-.PHONY: build clean ecs_deploy install integration lint migrate mod run_api run_api_accountant run_consumer run_local run_local_dependencies stop_local_dependencies stop_local test
+.PHONY: build build_didkit clean ecs_deploy install integration lint migrate mod run_api run_consumer run_local run_local_dependencies stop_local_dependencies stop_local test
 
 clean:
 	rm -rf ./.bin 2>/dev/null || true
@@ -7,9 +7,12 @@ clean:
 
 build: clean mod
 	go fmt ./...
-	CGO_ENABLED=1 CGO_LDFLAGS="-L/Users/kt/code/provide.network/didkit/target/release -ldidkit" go build -v -o ./.bin/baseline_api ./cmd/api
-	CGO_ENABLED=1 CGO_LDFLAGS="-L/Users/kt/code/provide.network/didkit/target/release -ldidkit" go build -v -o ./.bin/baseline_consumer ./cmd/consumer
-	CGO_ENABLED=1 CGO_LDFLAGS="-L/Users/kt/code/provide.network/didkit/target/release -ldidkit" go build -v -o ./.bin/baseline_migrate ./cmd/migrate
+	CGO_ENABLED=1 CGO_LDFLAGS="-L./.didkit/target/debug -ldidkit" go build -v -o ./.bin/baseline_api ./cmd/api
+	CGO_ENABLED=1 CGO_LDFLAGS="-L./.didkit/target/debug -ldidkit" go build -v -o ./.bin/baseline_consumer ./cmd/consumer
+	CGO_ENABLED=1 CGO_LDFLAGS="-L./.didkit/target/debug -ldidkit" go build -v -o ./.bin/baseline_migrate ./cmd/migrate
+
+build_didkit:
+	./ops/build_didkit.sh
 
 ecs_deploy:
 	./ops/ecs_deploy.sh

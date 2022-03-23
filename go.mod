@@ -33,4 +33,4 @@ require (
 	nhooyr.io/websocket v1.8.7 // indirect
 )
 
-replace github.com/spruceid/didkit-go => ../../../../../code/provide.network/didkit/lib/didkit-go
+replace github.com/spruceid/didkit-go => ./.didkit/didkit/lib/didkit-go
