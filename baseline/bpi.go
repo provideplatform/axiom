@@ -388,7 +388,7 @@ func (s *SubjectAccount) resolveWorkgroupParticipants() error {
 
 	workgroup := FindWorkgroupByID(workgroupID)
 	if workgroup == nil {
-		common.Log.Warningf("failed to resolve workgroup for BPI subject account; %s", err.Error())
+		common.Log.Warningf("failed to resolve workgroup for BPI subject account; workgroup: %s", workgroupID)
 		return err
 	}
 
