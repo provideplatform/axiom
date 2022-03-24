@@ -337,7 +337,7 @@ func (s *SubjectAccount) requireWorkgroup() error {
 
 	workgroupID, err := uuid.FromString(*s.Metadata.WorkgroupID)
 	if err != nil {
-		common.Log.Warningf("failed to require workgroupID; %s", err.Error())
+		common.Log.Warningf("failed to parse workgroup id; %s", err.Error())
 		return err
 	}
 
@@ -388,8 +388,9 @@ func (s *SubjectAccount) resolveWorkgroupParticipants() error {
 
 	workgroup := FindWorkgroupByID(workgroupID)
 	if workgroup == nil {
-		common.Log.Warningf("failed to resolve workgroup for BPI subject account; workgroup: %s", workgroupID)
-		return err
+		msg := fmt.Sprintf("failed to resolve workgroup for BPI subject account; workgroup: %s", workgroupID)
+		common.Log.Warning(msg)
+		return errors.New(msg)
 	}
 
 	db := dbconf.DatabaseConnection()
