@@ -104,7 +104,7 @@ func (s *SubjectAccount) create(tx *gorm.DB) bool {
 	}
 
 	if !s.encryptRefreshToken() {
-		msg := fmt.Sprintf("failed to require workgroup for BPI subject account: %s; failed to encrypt refresh token", *s.ID)
+		msg := fmt.Sprintf("failed to encrypt refresh token BPI subject account: %s; ", *s.ID)
 		s.Errors = append(s.Errors, &provide.Error{
 			Message: common.StringOrNil(msg),
 		})
