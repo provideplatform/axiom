@@ -5,7 +5,7 @@ ALTER TABLE ONLY workgroups DROP CONSTRAINT workgroups_pkey;
 
 ALTER TABLE ONLY workgroups ADD COLUMN organization_id uuid NOT NULL;
 CREATE UNIQUE INDEX idx_workgroups_id ON workgroups USING btree (id);
-CREATE UNIQUE INDEX idx_workgroups_organization_id ON workgroups USING btree (organization_id);
+CREATE INDEX idx_workgroups_organization_id ON workgroups USING btree (organization_id);
 ALTER TABLE ONLY workgroups ADD CONSTRAINT workgroups_pkey PRIMARY KEY (id, organization_id);
 
 ALTER TABLE ONLY mappings
