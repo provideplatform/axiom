@@ -699,13 +699,6 @@ func consumeSubjectAccountRegistrationMsg(msg *nats.Msg) {
 		return
 	}
 
-	subjectAccountUUID, err := uuid.FromString(subjectAccountID)
-	if err != nil {
-		common.Log.Warning("failed to parse BPI subject account uuid during BPI subject account registration message handler")
-		msg.Nak()
-		return
-	}
-
 	// FIXME-- resolve whether or not this subject account has been registered...
 	updateRegistry := false
 	if update, updateOk := params["update_registry"].(bool); updateOk {
@@ -714,7 +707,7 @@ func consumeSubjectAccountRegistrationMsg(msg *nats.Msg) {
 
 	db := dbconf.DatabaseConnection()
 
-	subjectAccount := FindSubjectAccountByID(subjectAccountUUID.String())
+	subjectAccount := FindSubjectAccountByID(subjectAccountID)
 	if subjectAccount == nil || subjectAccount.ID == nil {
 		common.Log.Warningf("failed to resolve BPI subject account during BPI subject account registration message handler; BPI subject account id: %s", subjectAccountID)
 		msg.Nak()
