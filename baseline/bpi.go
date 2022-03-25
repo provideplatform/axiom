@@ -409,10 +409,7 @@ func (s *SubjectAccount) resolveWorkgroupParticipants() error {
 	go func() {
 		common.Log.Trace("attempting to resolve baseline counterparties")
 
-		token, err := ident.CreateToken(*s.Metadata.OrganizationRefreshToken, map[string]interface{}{
-			"grant_type":      "refresh_token",
-			"organization_id": s.Metadata.OrganizationID,
-		})
+		token, err := s.authorizeAccessToken()
 		if err != nil {
 			common.Log.Warningf("failed to vend organization access token; %s", err.Error())
 			return
