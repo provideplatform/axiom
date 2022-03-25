@@ -1500,14 +1500,13 @@ func subjectAccountDetailsHandler(c *gin.Context) {
 		return
 	}
 
-	workgroupID, err := uuid.FromString(c.Param("accountId"))
-	if err != nil {
-		provide.RenderError(err.Error(), 404, c)
+	subjectAccountID := c.Param("accountId")
+	if subjectAccountID == "" {
+		provide.RenderError("invalid subject account id", 400, c)
 		return
 	}
 
-	subjectID := subjectAccountIDFactory(organizationID.String(), workgroupID.String())
-	subjectAccount, err := resolveSubjectAccount(subjectID)
+	subjectAccount, err := resolveSubjectAccount(subjectAccountID)
 	if err != nil {
 		provide.RenderError(err.Error(), 403, c)
 		return
