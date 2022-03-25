@@ -457,7 +457,7 @@ func (w *Workstep) execute(
 	success := rowsAffected > 0 && len(errors) == 0
 	if success {
 		common.Log.Debugf("executed workstep %s; proof: %s", w.ID, *proof.Proof)
-		w.setParticipantExecutionPayload(token, *subjectAccount.Metadata.OrganizationAddress, proof, payload, db)
+		w.setParticipantExecutionPayload(token, subjectAccount, proof, payload, db)
 		// FIXME-- this is just inserting executions for the participant running this baseline stack instance...
 		// we need to also make sure the other witnesses are inserted upon processing by way of baseline inbound...
 
@@ -574,13 +574,13 @@ func (w *Workstep) listParticipants(tx *gorm.DB) []*WorkstepParticipant {
 }
 
 func (w *Workstep) setParticipantExecutionPayload(
-	token,
-	address string,
+	token string,
+	subjectAccount *SubjectAccount,
 	proof *privacy.ProveResponse,
 	payload *baseline.ProtocolMessagePayload,
 	tx *gorm.DB,
 ) error {
-	var subjectAccount *SubjectAccount
+	address := *subjectAccount.Metadata.OrganizationAddress
 
 	participating := false
 	for _, p := range w.listParticipants(tx) {
