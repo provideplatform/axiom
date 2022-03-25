@@ -598,7 +598,7 @@ func (w *Workstep) setParticipantExecutionPayload(
 	rawWitness, _ := json.Marshal(payload.Witness)
 	secret, err := vault.CreateSecret(
 		token,
-		subjectAccount.Metadata.Vault.ID.String(),
+		subjectAccount.VaultID.String(),
 		string(rawWitness),
 		fmt.Sprintf("baseline.workstep.%s.participant.%s.execution", w.ID, address),
 		fmt.Sprintf("baseline workstep execution by participant %s", address),
