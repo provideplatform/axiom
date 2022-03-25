@@ -1151,7 +1151,7 @@ func executeWorkstepHandler(c *gin.Context) {
 	token, _ := util.ParseBearerAuthorizationHeader(c, nil)
 	proof, err := workstep.execute(subjectAccount, token.Raw, payload)
 	if err != nil {
-		provide.RenderError(fmt.Sprintf("cannot execute workstep; %s", err.Error()), 400, c)
+		provide.RenderError(fmt.Sprintf("cannot execute workstep; %s", err.Error()), 422, c)
 		return
 	}
 
