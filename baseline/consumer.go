@@ -714,15 +714,6 @@ func consumeSubjectAccountRegistrationMsg(msg *nats.Msg) {
 		return
 	}
 
-	organization := &ident.Organization{}
-	db.Where("id = ?", *subjectAccount.SubjectID).Find(&organization)
-
-	if organization == nil || organization.ID == nil {
-		common.Log.Warningf("failed to resolve organization during BPI subject account registration message handler; BPI subject account id: %s", subjectAccountID)
-		msg.Nak()
-		return
-	}
-
 	workgroup := &Workgroup{}
 	db.Where("id = ?", *subjectAccount.Metadata.WorkgroupID).Find(&workgroup)
 
@@ -732,15 +723,22 @@ func consumeSubjectAccountRegistrationMsg(msg *nats.Msg) {
 		return
 	}
 
-	var orgDomain *string
-	var orgZeroKnowledgePublicKey *string
-
 	orgToken, err := subjectAccount.authorizeAccessToken()
 	if err != nil {
 		common.Log.Warningf("failed to authorize access token for BPI subject account registration message handler; BPI subject account id: %s", subjectAccountID)
 		msg.Nak()
 		return
 	}
+
+	organization, err := ident.GetOrganizationDetails(*orgToken.AccessToken, *subjectAccount.SubjectID, map[string]interface{}{})
+	if err != nil {
+		common.Log.Warningf("failed to fetch organization details during BPI subject account registration message handler; BPI subject account id: %s", subjectAccountID)
+		msg.Nak()
+		return
+	}
+
+	var orgDomain *string
+	var orgZeroKnowledgePublicKey *string
 
 	vaults, err := vault.ListVaults(*orgToken.Token, map[string]interface{}{})
 	if err != nil {
@@ -837,7 +835,7 @@ func consumeSubjectAccountRegistrationMsg(msg *nats.Msg) {
 	}
 
 	orgWalletID = common.StringOrNil(orgWalletResp.ID.String())
-	common.Log.Debugf("created HD wallet %s for organization %s", *orgWalletID, organization.ID)
+	common.Log.Debugf("created HD wallet %s for organization %s", *orgWalletID, *subjectAccount.SubjectID)
 
 	for _, c := range contracts {
 		resp, err := nchain.GetContractDetails(*orgToken.AccessToken, c.ID.String(), map[string]interface{}{})
@@ -884,7 +882,7 @@ func consumeSubjectAccountRegistrationMsg(msg *nats.Msg) {
 		method = organizationUpdateRegistrationMethod
 	}
 
-	common.Log.Debugf("attempting to register organization %s, with on-chain registry contract: %s", organization.ID, *orgRegistryContractAddress)
+	common.Log.Debugf("attempting to register organization %s, with on-chain registry contract: %s", *subjectAccount.SubjectID, *orgRegistryContractAddress)
 	_, err = nchain.ExecuteContract(*orgToken.AccessToken, *orgRegistryContractID, map[string]interface{}{
 		"wallet_id": orgWalletID,
 		"method":    method,
@@ -899,7 +897,7 @@ func consumeSubjectAccountRegistrationMsg(msg *nats.Msg) {
 		"value": 0,
 	})
 	if err != nil {
-		common.Log.Warningf("organization registry transaction broadcast failed on behalf of organization: %s; org registry contract id: %s; %s", organization.ID, *orgRegistryContractID, err.Error())
+		common.Log.Warningf("organization registry transaction broadcast failed on behalf of organization: %s; org registry contract id: %s; %s", *subjectAccount.SubjectID, *orgRegistryContractID, err.Error())
 		return
 	}
 
@@ -907,6 +905,6 @@ func consumeSubjectAccountRegistrationMsg(msg *nats.Msg) {
 		common.Log.Debugf("ident organization record not updated for BPI subject account: ")
 	}
 
-	common.Log.Debugf("broadcast organization registry and interface impl transactions on behalf of organization: %s", organization.ID)
+	common.Log.Debugf("broadcast organization registry and interface impl transactions on behalf of organization: %s", *subjectAccount.SubjectID)
 	msg.Ack()
 }
