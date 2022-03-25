@@ -747,7 +747,7 @@ func consumeSubjectAccountRegistrationMsg(msg *nats.Msg) {
 	var orgDomain *string
 	var orgZeroKnowledgePublicKey *string
 
-	vaults, err := vault.ListVaults(*orgToken.Token, map[string]interface{}{})
+	vaults, err := vault.ListVaults(*orgToken.AccessToken, map[string]interface{}{})
 	if err != nil {
 		common.Log.Warningf("failed to fetch vaults during implicit key exchange message handler; BPI subject account id: %s", subjectAccountID)
 		msg.Nak()
@@ -761,7 +761,7 @@ func consumeSubjectAccountRegistrationMsg(msg *nats.Msg) {
 		orgVault := vaults[0]
 
 		// babyJubJub
-		keys, err = vault.ListKeys(*orgToken.Token, orgVault.ID.String(), map[string]interface{}{
+		keys, err = vault.ListKeys(*orgToken.AccessToken, orgVault.ID.String(), map[string]interface{}{
 			"spec": "babyJubJub",
 		})
 		if err != nil {
@@ -832,7 +832,7 @@ func consumeSubjectAccountRegistrationMsg(msg *nats.Msg) {
 
 	// org api token & hd wallet
 
-	orgWalletResp, err := nchain.CreateWallet(*orgToken.Token, map[string]interface{}{
+	orgWalletResp, err := nchain.CreateWallet(*orgToken.AccessToken, map[string]interface{}{
 		"purpose": 44,
 	})
 	if err != nil {
