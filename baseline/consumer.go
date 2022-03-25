@@ -13,7 +13,9 @@ import (
 	"github.com/provideplatform/baseline/common"
 	"github.com/provideplatform/provide-go/api/baseline"
 	"github.com/provideplatform/provide-go/api/ident"
+	"github.com/provideplatform/provide-go/api/nchain"
 	"github.com/provideplatform/provide-go/api/privacy"
+	"github.com/provideplatform/provide-go/api/vault"
 )
 
 const defaultNatsStream = "baseline"
@@ -51,8 +53,22 @@ const natsBaselineProxyInboundMaxInFlight = 2048
 const baselineProxyInboundAckWait = time.Second * 30
 const natsBaselineProxyInboundMaxDeliveries = 10
 
+const natsSubjectAccountRegistrationSubject = "baseline.subject-account.registration"
+const natsSubjectAccountRegistrationMaxInFlight = 256
+const natsSubjectAccountRegistrationAckWait = time.Minute * 1
+const natsSubjectAccountRegistrationMaxDeliveries = 10
+
 const natsBaselineSubject = "baseline"
 const baselineProxyAckWait = time.Second * 30
+
+// const organizationRegistrationTimeout = int64(natsOrganizationRegistrationAckWait * 10)
+const organizationRegistrationMethod = "registerOrg"
+const organizationUpdateRegistrationMethod = "updateOrg"
+
+// const organizationSetInterfaceImplementerMethod = "setInterfaceImplementer"
+// const contractTypeRegistry = "registry"
+const contractTypeOrgRegistry = "organization-registry"
+const contractTypeERC1820Registry = "erc1820-registry"
 
 // Message is a proxy-internal wrapper for protocol message handling
 type Message struct {
@@ -85,6 +101,7 @@ func init() {
 	createNatsBaselineWorkstepFinalizeDeploySubscriptions(&waitGroup)
 	createNatsDispatchInvitationSubscriptions(&waitGroup)
 	createNatsDispatchProtocolMessageSubscriptions(&waitGroup)
+	createNatsSubjectAccountRegistrationSubscriptions(&waitGroup)
 }
 
 func createNatsBaselineProxySubscriptions(wg *sync.WaitGroup) {
@@ -193,6 +210,26 @@ func createNatsDispatchProtocolMessageSubscriptions(wg *sync.WaitGroup) {
 			natsDispatchProtocolMessageMaxDeliveries,
 			nil,
 		)
+	}
+}
+
+func createNatsSubjectAccountRegistrationSubscriptions(wg *sync.WaitGroup) {
+	for i := uint64(0); i < natsutil.GetNatsConsumerConcurrency(); i++ {
+		_, err := natsutil.RequireNatsJetstreamSubscription(wg,
+			natsSubjectAccountRegistrationAckWait,
+			natsSubjectAccountRegistrationSubject,
+			natsSubjectAccountRegistrationSubject,
+			natsSubjectAccountRegistrationSubject,
+			consumeSubjectAccountRegistrationMsg,
+			natsSubjectAccountRegistrationAckWait,
+			natsSubjectAccountRegistrationMaxInFlight,
+			natsSubjectAccountRegistrationMaxDeliveries,
+			nil,
+		)
+
+		if err != nil {
+			common.Log.Panicf("failed to subscribe to NATS stream via subject: %s; %s", natsSubjectAccountRegistrationSubject, err.Error())
+		}
 	}
 }
 
@@ -634,5 +671,249 @@ func consumeDispatchProtocolMessageSubscriptionsMsg(msg *nats.Msg) {
 	}
 
 	common.Log.Debugf("broadcast %d-byte protocol message to recipient: %s", len(msg.Data), *protomsg.Recipient)
+	msg.Ack()
+}
+
+func consumeSubjectAccountRegistrationMsg(msg *nats.Msg) {
+	defer func() {
+		if r := recover(); r != nil {
+			common.Log.Warningf("recovered in BPI subject account registration message handler; %s", r)
+			msg.Nak()
+		}
+	}()
+
+	common.Log.Debugf("consuming %d-byte NATS BPI subject account registration message on subject: %s", len(msg.Data), msg.Subject)
+
+	params := map[string]interface{}{}
+	err := json.Unmarshal(msg.Data, &params)
+	if err != nil {
+		common.Log.Warningf("failed to unmarshal BPI subject account registration message; %s", err.Error())
+		msg.Nak()
+		return
+	}
+
+	subjectAccountID, subjectAccountIDOk := params["subject_account_id"].(string)
+	if !subjectAccountIDOk {
+		common.Log.Warning("failed to parse BPI subject_account_id during BPI subject account registration message handler")
+		msg.Nak()
+		return
+	}
+
+	subjectAccountUUID, err := uuid.FromString(subjectAccountID)
+	if err != nil {
+		common.Log.Warning("failed to parse BPI subject account uuid during BPI subject account registration message handler")
+		msg.Nak()
+		return
+	}
+
+	// FIXME-- resolve whether or not this subject account has been registered...
+	updateRegistry := false
+	if update, updateOk := params["update_registry"].(bool); updateOk {
+		updateRegistry = update
+	}
+
+	db := dbconf.DatabaseConnection()
+
+	subjectAccount := FindSubjectAccountByID(subjectAccountUUID.String())
+	if subjectAccount == nil || subjectAccount.ID == nil {
+		common.Log.Warningf("failed to resolve BPI subject account during BPI subject account registration message handler; BPI subject account id: %s", subjectAccountID)
+		msg.Nak()
+		return
+	}
+
+	organization := &ident.Organization{}
+	db.Where("id = ?", *subjectAccount.SubjectID).Find(&organization)
+
+	if organization == nil || organization.ID == nil {
+		common.Log.Warningf("failed to resolve organization during BPI subject account registration message handler; BPI subject account id: %s", subjectAccountID)
+		msg.Nak()
+		return
+	}
+
+	workgroup := &Workgroup{}
+	db.Where("id = ?", *subjectAccount.Metadata.WorkgroupID).Find(&workgroup)
+
+	if workgroup == nil || workgroup.ID == uuid.Nil {
+		common.Log.Warningf("failed to resolve organization during BPI subject account registration message handler; BPI subject account id: %s", subjectAccountID)
+		msg.Nak()
+		return
+	}
+
+	var orgDomain *string
+	var orgZeroKnowledgePublicKey *string
+
+	orgToken, err := subjectAccount.authorizeAccessToken()
+	if err != nil {
+		common.Log.Warningf("failed to authorize access token for BPI subject account registration message handler; BPI subject account id: %s", subjectAccountID)
+		msg.Nak()
+		return
+	}
+
+	vaults, err := vault.ListVaults(*orgToken.Token, map[string]interface{}{})
+	if err != nil {
+		common.Log.Warningf("failed to fetch vaults during implicit key exchange message handler; BPI subject account id: %s", subjectAccountID)
+		msg.Nak()
+		return
+	}
+
+	var keys []*vault.Key
+
+	// HACK!!! the following should not be needed...
+	if len(vaults) > 0 {
+		orgVault := vaults[0]
+
+		// babyJubJub
+		keys, err = vault.ListKeys(*orgToken.Token, orgVault.ID.String(), map[string]interface{}{
+			"spec": "babyJubJub",
+		})
+		if err != nil {
+			common.Log.Warningf("failed to fetch babyJubJub keys from vault during implicit key exchange message handler; BPI subject account id: %s", subjectAccountID)
+			msg.Nak()
+			return
+		}
+		if len(keys) > 0 {
+			key := keys[0]
+			if key.PublicKey != nil {
+				orgZeroKnowledgePublicKey = common.StringOrNil(*key.PublicKey)
+			}
+		}
+	}
+
+	// metadata := organization.ParseMetadata()
+	updateOrgMetadata := false
+
+	// if _, addrOk := metadata["address"].(string); !addrOk {
+	// 	metadata["address"] = orgAddress
+	// 	updateOrgMetadata = true
+	// }
+
+	// FIXME!! add domain to subjectAccount.Metadata
+	// if domain, domainOk := metadata["domain"].(string); domainOk {
+	// 	orgDomain = common.StringOrNil(domain)
+	// }
+
+	if subjectAccount.Metadata.OrganizationAddress == nil {
+		common.Log.Warningf("failed to resolve organization public address for storage in the public org registry; BPI subject account id: %s", subjectAccountID)
+		msg.Nak()
+		return
+	}
+
+	// FIXME!!
+	// if subjectAccount.Metadata.Domain == nil {
+	// 	common.Log.Warningf("failed to resolve organization domain for storage in the public org registry; BPI subject account id: %s", subjectAccountID)
+	// 	msg.Nak()
+	// 	return
+	// }
+
+	if subjectAccount.Metadata.OrganizationMessagingEndpoint == nil {
+		common.Log.Warningf("failed to resolve organization messaging endpoint for storage in the public org registry; BPI subject account id: %s", subjectAccountID)
+		msg.Nak()
+		return
+	}
+
+	if orgZeroKnowledgePublicKey == nil {
+		common.Log.Warningf("failed to resolve organization zero-knowledge public key for storage in the public org registry; BPI subject account id: %s", subjectAccountID)
+		msg.Nak()
+		return
+	}
+
+	contracts, err := nchain.ListContracts(*orgToken.AccessToken, map[string]interface{}{})
+	if err != nil {
+		common.Log.Warningf("failed to resolve organization registry contract to which the organization registration tx should be sent; BPI subject account id: %s", subjectAccountID)
+		msg.Nak()
+		return
+	}
+
+	var erc1820RegistryContractID *string
+	var orgRegistryContractID *string
+
+	var erc1820RegistryContractAddress *string
+	var orgRegistryContractAddress *string
+
+	var orgWalletID *string
+
+	// org api token & hd wallet
+
+	orgWalletResp, err := nchain.CreateWallet(*orgToken.Token, map[string]interface{}{
+		"purpose": 44,
+	})
+	if err != nil {
+		common.Log.Warningf("failed to create organization HD wallet for organization registration tx should be sent; BPI subject account id: %s", subjectAccountID)
+		msg.Nak()
+		return
+	}
+
+	orgWalletID = common.StringOrNil(orgWalletResp.ID.String())
+	common.Log.Debugf("created HD wallet %s for organization %s", *orgWalletID, organization.ID)
+
+	for _, c := range contracts {
+		resp, err := nchain.GetContractDetails(*orgToken.AccessToken, c.ID.String(), map[string]interface{}{})
+		if err != nil {
+			common.Log.Warningf("failed to resolve organization registry contract to which the organization registration tx should be sent; BPI subject account id: %s", subjectAccountID)
+			msg.Nak()
+			return
+		}
+
+		if resp.Type != nil {
+			switch *resp.Type {
+			case contractTypeERC1820Registry:
+				erc1820RegistryContractID = common.StringOrNil(resp.ID.String())
+				erc1820RegistryContractAddress = resp.Address
+			case contractTypeOrgRegistry:
+				orgRegistryContractID = common.StringOrNil(resp.ID.String())
+				orgRegistryContractAddress = resp.Address
+			}
+		}
+	}
+
+	if erc1820RegistryContractID == nil || erc1820RegistryContractAddress == nil {
+		common.Log.Warningf("failed to resolve ERC1820 registry contract; BPI subject account id: %s", subjectAccountID)
+		msg.Nak()
+		return
+	}
+
+	if orgRegistryContractID == nil || orgRegistryContractAddress == nil {
+		common.Log.Warningf("failed to resolve organization registry contract; BPI subject account id: %s", subjectAccountID)
+		msg.Nak()
+		return
+	}
+
+	if orgWalletID == nil {
+		common.Log.Warningf("failed to resolve organization HD wallet for signing organization impl transaction transaction; BPI subject account id: %s", subjectAccountID)
+		msg.Nak()
+		return
+	}
+
+	// registerOrg/updateOrg
+
+	method := organizationRegistrationMethod
+	if updateRegistry {
+		method = organizationUpdateRegistrationMethod
+	}
+
+	common.Log.Debugf("attempting to register organization %s, with on-chain registry contract: %s", organization.ID, *orgRegistryContractAddress)
+	_, err = nchain.ExecuteContract(*orgToken.AccessToken, *orgRegistryContractID, map[string]interface{}{
+		"wallet_id": orgWalletID,
+		"method":    method,
+		"params": []interface{}{
+			*subjectAccount.Metadata.OrganizationAddress,
+			*organization.Name,
+			*orgDomain,
+			*subjectAccount.Metadata.OrganizationMessagingEndpoint,
+			*orgZeroKnowledgePublicKey,
+			"{}",
+		},
+		"value": 0,
+	})
+	if err != nil {
+		common.Log.Warningf("organization registry transaction broadcast failed on behalf of organization: %s; org registry contract id: %s; %s", organization.ID, *orgRegistryContractID, err.Error())
+		return
+	}
+
+	if updateOrgMetadata {
+		common.Log.Debugf("ident organization record not updated for BPI subject account: ")
+	}
+
+	common.Log.Debugf("broadcast organization registry and interface impl transactions on behalf of organization: %s", organization.ID)
 	msg.Ack()
 }

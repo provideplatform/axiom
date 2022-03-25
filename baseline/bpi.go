@@ -11,6 +11,7 @@ import (
 
 	"github.com/jinzhu/gorm"
 	dbconf "github.com/kthomas/go-db-config"
+	natsutil "github.com/kthomas/go-natsutil"
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideplatform/baseline/common"
 	"github.com/provideplatform/baseline/middleware"
@@ -21,10 +22,6 @@ import (
 	"github.com/provideplatform/provide-go/api/vault"
 	"github.com/provideplatform/provide-go/common/util"
 )
-
-const configGracePeriodTickInterval = 1000 * time.Millisecond
-const configGracePeriodSleepInterval = 25 * time.Millisecond
-const configGracePeriodTimeout = 10 * time.Minute
 
 const prvdSubjectAccountType = "PRVD"
 const vaultSecretTypeBPISubjectAccount = "bpi_subject_account"
@@ -153,7 +150,8 @@ func (s *SubjectAccount) create(tx *gorm.DB) bool {
 
 	result := tx.Create(&s)
 	errors := result.GetErrors()
-	if len(errors) > 0 {
+	success := len(errors) == 0
+	if !success {
 		for _, err := range errors {
 			s.Errors = append(s.Errors, &provide.Error{
 				Message: common.StringOrNil(err.Error()),
@@ -163,7 +161,20 @@ func (s *SubjectAccount) create(tx *gorm.DB) bool {
 		return false
 	}
 
-	return len(errors) == 0
+	payload, _ := json.Marshal(map[string]interface{}{
+		"subject_account_id": *s.ID,
+	})
+	common.Log.Debugf("attempting to broadcast %d-byte protocol message", len(payload))
+	_, err = natsutil.NatsJetstreamPublish(natsSubjectAccountRegistrationSubject, payload)
+	if err != nil {
+		msg := fmt.Sprintf("failed to broadcast %d-byte protocol message; %s", len(payload), err.Error())
+		s.Errors = append(s.Errors, &provide.Error{
+			Message: common.StringOrNil(msg),
+		})
+		return false
+	}
+
+	return success
 }
 
 func (s *SubjectAccount) enrich() error {
@@ -474,6 +485,10 @@ func (s *SubjectAccount) resolveBaselineContract() error {
 	}
 
 	capabilities, err := util.ResolveCapabilitiesManifest()
+	if err != nil {
+		return fmt.Errorf("failed to resolve capabilities manifest; %s", err.Error())
+	}
+
 	if baseline, baselineOk := capabilities["baseline"].(map[string]interface{}); baselineOk {
 		if contracts, contractsOk := baseline["contracts"].([]interface{}); contractsOk {
 			for _, contract := range contracts {
