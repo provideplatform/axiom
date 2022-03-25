@@ -675,12 +675,12 @@ func consumeDispatchProtocolMessageSubscriptionsMsg(msg *nats.Msg) {
 }
 
 func consumeSubjectAccountRegistrationMsg(msg *nats.Msg) {
-	defer func() {
-		if r := recover(); r != nil {
-			common.Log.Warningf("recovered in BPI subject account registration message handler; %s", r)
-			msg.Nak()
-		}
-	}()
+	// defer func() {
+	// 	if r := recover(); r != nil {
+	// 		common.Log.Warningf("recovered in BPI subject account registration message handler; %s", r)
+	// 		msg.Nak()
+	// 	}
+	// }()
 
 	common.Log.Debugf("consuming %d-byte NATS BPI subject account registration message on subject: %s", len(msg.Data), msg.Subject)
 
