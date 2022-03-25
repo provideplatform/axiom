@@ -714,6 +714,13 @@ func consumeSubjectAccountRegistrationMsg(msg *nats.Msg) {
 		return
 	}
 
+	err = subjectAccount.enrich()
+	if err != nil {
+		common.Log.Warningf("failed to enrich BPI subject account during BPI subject account registration message handler; BPI subject account id: %s", subjectAccountID)
+		msg.Nak()
+		return
+	}
+
 	workgroup := &Workgroup{}
 	db.Where("id = ?", *subjectAccount.Metadata.WorkgroupID).Find(&workgroup)
 
