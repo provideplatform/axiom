@@ -894,6 +894,13 @@ func (w *Workflow) Validate() bool {
 
 	if !w.isPrototype() {
 		proto = FindWorkflowByID(*w.WorkflowID)
+
+		if proto == nil {
+			w.Errors = append(w.Errors, &provide.Error{
+				Message: common.StringOrNil("workflow prototype not resolved"),
+			})
+			return false
+		}
 	}
 
 	if w.ID == uuid.Nil && w.Status == nil {
