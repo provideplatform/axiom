@@ -28,7 +28,7 @@ func InstallBPIAPI(r *gin.Engine) {
 	r.GET("/api/v1/bpi_accounts/:id", bpiAccountDetailsHandler)
 	r.POST("/api/v1/bpi_accounts", createBPIAccountHandler)
 
-	r.POST("/api/v1/protocol_messages", createProtocolMessageHandler)
+	r.POST("/api/v1/protocol_messages", sendProtocolMessageHandler)
 
 	r.GET("/api/v1/subjects", listSubjectsHandler)
 	r.GET("/api/v1/subjects/:id", subjectDetailsHandler)
@@ -52,16 +52,6 @@ func InstallMappingsAPI(r *gin.Engine) {
 	r.POST("/api/v1/mappings", createMappingHandler)
 	r.PUT("/api/v1/mappings/:id", updateMappingHandler)
 	r.DELETE("/api/v1/mappings/:id", deleteMappingHandler)
-}
-
-// InstallObjectsAPI installs system of record proxy objects API
-func InstallObjectsAPI(r *gin.Engine) {
-	r.POST("/api/v1/objects", createObjectHandler)
-	r.PUT("/api/v1/objects/:id", updateObjectHandler)
-
-	// remain backward compatible for now...
-	r.POST("/api/v1/business_objects", createObjectHandler)
-	r.PUT("/api/v1/business_objects/:id", updateObjectHandler)
 }
 
 // InstallPublicWorkgroupAPI installs an API servicing a configured public workgroup
@@ -102,7 +92,7 @@ func InstallWorkstepsAPI(r *gin.Engine) {
 	r.DELETE("/api/v1/workflows/:id/worksteps/:workstepId/participants/:participantId", deleteWorkstepParticipantHandler)
 }
 
-func createObjectHandler(c *gin.Context) {
+func sendProtocolMessageHandler(c *gin.Context) {
 	organizationID := util.AuthorizedSubjectID(c, "organization")
 	if organizationID == nil {
 		provide.RenderError("unauthorized", 401, c)
@@ -122,40 +112,12 @@ func createObjectHandler(c *gin.Context) {
 		return
 	}
 
-	if message.baselineOutbound() {
-		message.ProtocolMessage.Payload.Object = nil
-		provide.Render(message.ProtocolMessage, 202, c)
-	} else {
-		obj := map[string]interface{}{}
-		obj["errors"] = message.Errors
-		provide.Render(obj, 422, c)
-	}
-}
-
-func updateObjectHandler(c *gin.Context) {
-	organizationID := util.AuthorizedSubjectID(c, "organization")
-	if organizationID == nil {
-		provide.RenderError("unauthorized", 401, c)
-		return
-	}
-
-	buf, err := c.GetRawData()
-	if err != nil {
-		provide.RenderError(err.Error(), 400, c)
-		return
-	}
-
-	record := lookupBaselineRecordByInternalID(c.Param("id"))
-	if record == nil {
-		provide.RenderError("baseline record not found", 404, c)
-		return
-	}
-
-	message := &Message{}
-	err = json.Unmarshal(buf, message)
-	if err != nil {
-		provide.RenderError(err.Error(), 422, c)
-		return
+	if message.ID != nil {
+		record := lookupBaselineRecordByInternalID(*message.ID)
+		if record == nil {
+			provide.RenderError("baseline record not found", 404, c)
+			return
+		}
 	}
 
 	if message.baselineOutbound() {
@@ -166,10 +128,6 @@ func updateObjectHandler(c *gin.Context) {
 		obj["errors"] = message.Errors
 		provide.Render(obj, 422, c)
 	}
-}
-
-func createProtocolMessageHandler(c *gin.Context) {
-	provide.RenderError("not implemented", 501, c)
 }
 
 func createWorkgroupHandler(c *gin.Context) {
