@@ -30,8 +30,8 @@ const natsDispatchInvitationMaxDeliveries = 10
 
 const natsBaselineWorkflowDeployMessageSubject = "baseline.workflow.deploy"
 const natsBaselineWorkflowDeployMessageMaxInFlight = 2048
-const baselineWorkflowDeployMessageAckWait = time.Second * 30
-const natsBaselineWorkflowDeployMessageMaxDeliveries = 10
+const baselineWorkflowDeployMessageAckWait = time.Second * 5
+const natsBaselineWorkflowDeployMessageMaxDeliveries = 500
 
 const natsBaselineWorkstepDeployMessageSubject = "baseline.workstep.deploy"
 const natsBaselineWorkstepDeployMessageMaxInFlight = 2048
@@ -40,8 +40,8 @@ const natsBaselineWorkstepDeployMessageMaxDeliveries = 10
 
 const natsBaselineWorkstepFinalizeDeployMessageSubject = "baseline.workstep.deploy.finalize"
 const natsBaselineWorkstepFinalizeDeployMessageMaxInFlight = 2048
-const baselineWorkstepFinalizeDeployMessageAckWait = time.Second * 30
-const natsBaselineWorkstepFinalizeDeployMessageMaxDeliveries = 10
+const baselineWorkstepFinalizeDeployMessageAckWait = time.Second * 5
+const natsBaselineWorkstepFinalizeDeployMessageMaxDeliveries = 1000
 
 const natsDispatchProtocolMessageSubject = "baseline.protocolmessage.outbound"
 const natsDispatchProtocolMessageMaxInFlight = 2048
