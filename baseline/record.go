@@ -68,6 +68,20 @@ func (r *BaselineRecord) cache() error {
 	})
 }
 
+func (r *BaselineRecord) resolveExecutableWorkstepContext() (*baseline.WorkstepInstance, error) {
+	if r.Context == nil && r.Context.Workflow == nil {
+		return nil, fmt.Errorf("failed to resolve workflow context for baseline record: %s", *r.ID)
+	}
+
+	for _, workstep := range r.Context.Workflow.Worksteps {
+		if workstep.Status != nil && *workstep.Status == workstepStatusInit {
+			return workstep, nil
+		}
+	}
+
+	return nil, fmt.Errorf("failed to resolve executable workstep context from resolved workflow context for baseline record: %s", *r.ID)
+}
+
 func lookupBaselineRecord(baselineID string) *BaselineRecord {
 	var baselineRecord *BaselineRecord
 

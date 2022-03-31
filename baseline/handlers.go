@@ -118,6 +118,38 @@ func sendProtocolMessageHandler(c *gin.Context) {
 			provide.RenderError("baseline record not found", 404, c)
 			return
 		}
+
+		workstep, err := record.resolveExecutableWorkstepContext()
+		if err != nil {
+			provide.RenderError(err.Error(), 422, c)
+			return
+		}
+
+		workgroup := FindWorkflowByID(*workstep.WorkflowID)
+		if workgroup != nil {
+			provide.RenderError("workgroup not resolved", 500, c)
+			return
+		}
+
+		subjectAccountID := subjectAccountIDFactory(organizationID.String(), workgroup.ID.String())
+		subjectAccount, err := resolveSubjectAccount(subjectAccountID)
+		if err != nil {
+			provide.RenderError("failed to resolve BPI subject account", 403, c)
+			return
+		}
+
+		authorizedSender := false
+		for _, participant := range workstep.Participants {
+			if participant.Address != nil && *participant.Address == *subjectAccount.Metadata.OrganizationAddress {
+				authorizedSender = true
+				break
+			}
+		}
+
+		if !authorizedSender {
+			provide.RenderError("forbidden", 403, c)
+			return
+		}
 	}
 
 	if message.baselineOutbound() {

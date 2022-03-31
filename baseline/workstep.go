@@ -645,6 +645,16 @@ func (w *Workstep) addParticipant(participant string, tx *gorm.DB) bool {
 	return len(w.Errors) == 0
 }
 
+func (w *Workstep) hasParticipant(address string, tx *gorm.DB) bool {
+	for _, p := range w.listParticipants(tx) {
+		if p.Participant != nil && *p.Participant == address {
+			return true
+		}
+	}
+
+	return false
+}
+
 func (w *Workstep) removeParticipant(participant string, tx *gorm.DB) bool {
 	common.Log.Debugf("removing participant %s to workstep: %s", participant, w.ID)
 	result := tx.Exec("DELETE FROM worksteps_participants WHERE workstep_id=? AND participant=?", w.ID, participant)
