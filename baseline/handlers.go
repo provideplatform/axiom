@@ -402,7 +402,7 @@ func listWorkgroupsHandler(c *gin.Context) {
 	db := dbconf.DatabaseConnection()
 	query := db.Where("organization_id = ?", organizationID).Order("workgroups.created_at DESC")
 
-	provide.Paginate(c, query, &Workflow{}).Find(&workgroups)
+	provide.Paginate(c, query, &Workgroup{}).Find(&workgroups)
 	provide.Render(workgroups, 200, c)
 }
 
