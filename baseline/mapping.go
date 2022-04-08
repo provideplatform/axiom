@@ -15,6 +15,7 @@ type Mapping struct {
 	baseline.Mapping
 	Models         []*MappingModel `sql:"-" json:"models"`
 	OrganizationID *uuid.UUID      `json:"organization_id"`
+	RefMappingID   *uuid.UUID      `json:"ref_mapping_id"`
 	WorkgroupID    *uuid.UUID      `json:"workgroup_id"`
 }
 
@@ -22,15 +23,17 @@ type Mapping struct {
 type MappingModel struct {
 	provide.Model
 	baseline.MappingModel
-	MappingID uuid.UUID       `json:"mapping_id"`
-	Fields    []*MappingField `sql:"-" json:"fields"`
+	MappingID  uuid.UUID       `json:"mapping_id"`
+	RefModelID *uuid.UUID      `json:"ref_model_id"`
+	Fields     []*MappingField `sql:"-" json:"fields"`
 }
 
 // MappingField is a baseline mapping field prototype
 type MappingField struct {
 	provide.Model
 	baseline.MappingField
-	MappingModelID uuid.UUID `gorm:"column:mappingmodel_id" json:"mapping_model_id"`
+	MappingModelID uuid.UUID  `gorm:"column:mappingmodel_id" json:"mapping_model_id"`
+	RefFieldID     *uuid.UUID `json:"ref_field_id"`
 }
 
 // FindMappingByID finds a mapping for the given id
