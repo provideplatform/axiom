@@ -486,6 +486,8 @@ func (w *Workstep) execute(
 			workflow.Status = common.StringOrNil(workflowStatusCompleted)
 			tx.Save(&workflow)
 		}
+
+		tx.Commit()
 	}
 
 	return proof, nil
