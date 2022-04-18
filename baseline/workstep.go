@@ -440,11 +440,16 @@ func (w *Workstep) execute(
 		return nil, fmt.Errorf(*w.Errors[0].Message)
 	}
 
+	workflow := FindWorkflowByID(*w.WorkflowID)
+
 	w.Status = common.StringOrNil(workstepStatusRunning)
 	// metadata := w.ParseMetadata()
 
 	db := dbconf.DatabaseConnection()
-	result := db.Save(&w)
+	tx := db.Begin()
+	defer tx.RollbackUnlessCommitted()
+
+	result := tx.Save(&w)
 	rowsAffected := result.RowsAffected
 	errors := result.GetErrors()
 	if len(errors) > 0 {
@@ -471,7 +476,15 @@ func (w *Workstep) execute(
 		if pc == len(participants) {
 			common.Log.Debugf("completed workstep: %s", w.ID)
 			w.Status = common.StringOrNil(workstepStatusCompleted)
-			db.Save(&w)
+			tx.Save(&w)
+		}
+
+		if workflow.Status != nil && *workflow.Status == workflowStatusInit {
+			workflow.Status = common.StringOrNil(workflowStatusRunning)
+			tx.Save(&workflow)
+		} else if workflow.Status != nil && *workflow.Status == workflowStatusRunning && w.Cardinality == workflow.WorkstepsCount {
+			workflow.Status = common.StringOrNil(workflowStatusCompleted)
+			tx.Save(&workflow)
 		}
 	}
 
