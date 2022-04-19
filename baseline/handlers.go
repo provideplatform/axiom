@@ -190,7 +190,7 @@ func createWorkgroupHandler(c *gin.Context) {
 		return
 	}
 
-	bearerToken := c.Param("token")
+	bearerToken := params["token"].(string)
 
 	token, err := jwt.Parse(bearerToken, func(_jwtToken *jwt.Token) (interface{}, error) {
 		var kid *string
