@@ -222,7 +222,13 @@ func createWorkgroupHandler(c *gin.Context) {
 	claims := token.Claims.(jwt.MapClaims)
 	// prvd := claims["prvd"].(map[string]interface{})
 	// data := prvd["data"].(map[string]interface{})
-	baselineClaim := claims["baseline"].(map[string]interface{})
+	baselineClaim, ok := claims["baseline"].(map[string]interface{})
+	if !ok {
+		msg := fmt.Sprintf("failed to accept workgroup invitation; no baseline claim provided; %s", err.Error())
+		common.Log.Warningf(msg)
+		provide.RenderError(msg, 422, c)
+		return
+	}
 
 	var identifier *string
 	if id, identifierOk := baselineClaim["workgroup_id"].(string); identifierOk {
