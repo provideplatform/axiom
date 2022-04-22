@@ -30,7 +30,7 @@ if [[ -z "${DATABASE_NAME}" ]]; then
 fi
 
 if [[ -z "${DATABASE_USER}" ]]; then
-  DATABASE_USER=baseline-proxy
+  DATABASE_USER=baseline-api
 fi
 
 if [[ -z "${DATABASE_PASSWORD}" ]]; then

@@ -47,7 +47,7 @@ func init() {
 }
 
 func main() {
-	common.Log.Debugf("starting baseline-proxy API...")
+	common.Log.Debugf("starting baseline API...")
 	installSignalHandlers()
 
 	runAPI()
@@ -70,12 +70,12 @@ func main() {
 		}
 	}
 
-	common.Log.Debug("exiting baseline-proxy API")
+	common.Log.Debug("exiting baseline API")
 	cancelF()
 }
 
 func installSignalHandlers() {
-	common.Log.Debug("installing signal handlers for baseline-proxy API")
+	common.Log.Debug("installing signal handlers for baseline API")
 	sigs = make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL)
 	shutdownCtx, cancelF = context.WithCancel(context.Background())
@@ -83,7 +83,7 @@ func installSignalHandlers() {
 
 func shutdown() {
 	if atomic.AddUint32(&closing, 1) == 1 {
-		common.Log.Debug("shutting down baseline-proxy API")
+		common.Log.Debug("shutting down baseline API")
 		cancelF()
 	}
 }
