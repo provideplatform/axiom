@@ -1,6 +1,6 @@
-# baseline-proxy
+# Baseline Protocol Instance (BPI) API & Systems Middleware
 
-Proxy middleware for baselining systems of record.
+Production-grade, standards-compliant API and middleware implementation of the Baseline Protocol with support for various systems.
 
 ## Documentation
 
