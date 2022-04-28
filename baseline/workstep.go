@@ -441,9 +441,11 @@ func (w *Workstep) execute(
 	}
 
 	workflow := FindWorkflowByID(*w.WorkflowID)
+	workflowStatusChanged := false
 
 	if workflow.Status == nil || *workflow.Status == workflowStatusInit {
 		workflow.Status = common.StringOrNil(workflowStatusRunning)
+		workflowStatusChanged = true
 	}
 
 	w.Status = common.StringOrNil(workstepStatusRunning)
@@ -483,8 +485,12 @@ func (w *Workstep) execute(
 			tx.Save(&w)
 		}
 
-	 	if workflow.Status != nil && *workflow.Status == workflowStatusRunning && w.Cardinality == workflow.WorkstepsCount {
+		if *workflow.Status == workflowStatusRunning && w.Cardinality == workflow.WorkstepsCount {
 			workflow.Status = common.StringOrNil(workflowStatusCompleted)
+			workflowStatusChanged = true
+		}
+
+		if workflowStatusChanged {
 			tx.Save(&workflow)
 		}
 
