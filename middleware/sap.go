@@ -11,12 +11,6 @@ import (
 	provide "github.com/provideplatform/provide-go/common"
 )
 
-const defaultSAPHost = "s4h.rp.concircle.com"
-const defaultSAPPath = "ubc"
-const defaultSAPScheme = "https"
-const defaultSAPUsername = "unibright"
-const defaultSAPPassword = "unibright"
-
 // SAPService for the SAP API
 type SAPService struct {
 	api.Client
@@ -25,46 +19,30 @@ type SAPService struct {
 	clientSecret *string
 }
 
-// InitDefaultSAPService convenience method to initialize a default `sap.SAPService` (i.e., production) instance
-func InitDefaultSAPService(token *string) *SAPService {
-	return &SAPService{
-		api.Client{
-			Host:     defaultSAPHost,
-			Path:     defaultSAPPath,
-			Scheme:   defaultSAPScheme,
-			Token:    token,
-			Username: provide.StringOrNil(defaultSAPUsername),
-			Password: provide.StringOrNil(defaultSAPPassword),
-		},
-		sync.Mutex{},
-		nil,
-		nil,
-	}
-}
-
 // InitSAPService convenience method to initialize an `ident.SAPService` instance
 func InitSAPService(token *string) *SAPService {
-	host := defaultSAPHost
+	var host string
+	var path string
+	var scheme string
+	var username string
+	var password string
+
 	if os.Getenv("SAP_API_HOST") != "" {
 		host = os.Getenv("SAP_API_HOST")
 	}
 
-	path := defaultSAPPath
 	if os.Getenv("SAP_API_PATH") != "" {
 		path = os.Getenv("SAP_API_PATH")
 	}
 
-	scheme := defaultSAPScheme
 	if os.Getenv("SAP_API_SCHEME") != "" {
 		scheme = os.Getenv("SAP_API_SCHEME")
 	}
 
-	username := defaultSAPUsername
 	if os.Getenv("SAP_API_USERNAME") != "" {
 		username = os.Getenv("SAP_API_USERNAME")
 	}
 
-	password := defaultSAPPassword
 	if os.Getenv("SAP_API_PASSWORD") != "" {
 		password = os.Getenv("SAP_API_PASSWORD")
 	}
@@ -184,6 +162,29 @@ func (s *SAPService) ConfigureProxy(params map[string]interface{}) error {
 	return nil
 }
 
+// ListSchemas retrieves a list of available schemas
+func (s *SAPService) ListSchemas(params map[string]interface{}) (interface{}, error) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	err := s.Authenticate()
+	if err != nil {
+		return nil, err
+	}
+
+	uri := s.requestURI("ubc/schemas")
+	status, resp, err := s.Get(uri, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch business object model; status: %v; %s", status, err.Error())
+	}
+
+	if status != 200 {
+		return nil, fmt.Errorf("failed to fetch business object model; status: %v", status)
+	}
+
+	return resp, nil
+}
+
 // GetSchema retrieves a business object data model by type
 func (s *SAPService) GetSchema(recordType string, params map[string]interface{}) (interface{}, error) {
 	s.mutex.Lock()
@@ -194,7 +195,7 @@ func (s *SAPService) GetSchema(recordType string, params map[string]interface{})
 		return nil, err
 	}
 
-	uri := s.requestURI(fmt.Sprintf("ubc/business_object_models/%s", recordType))
+	uri := s.requestURI(fmt.Sprintf("ubc/schemas/%s", recordType))
 	status, resp, err := s.Get(uri, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch business object model; status: %v; %s", status, err.Error())

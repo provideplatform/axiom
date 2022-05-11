@@ -33,6 +33,14 @@ func (s *EphemeralMemoryService) ConfigureProxy(params map[string]interface{}) e
 	return nil
 }
 
+// ListSchemas retrieves a list of available schemas
+func (s *EphemeralMemoryService) ListSchemas(params map[string]interface{}) (interface{}, error) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	return nil, fmt.Errorf("not implemented")
+}
+
 // GetSchema retrieves a business object model by type
 func (s *EphemeralMemoryService) GetSchema(recordType string, params map[string]interface{}) (interface{}, error) {
 	s.mutex.Lock()

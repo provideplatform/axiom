@@ -18,6 +18,7 @@ type SOR interface {
 	ConfigureProxy(params map[string]interface{}) error
 	CreateObject(params map[string]interface{}) (interface{}, error)
 	DeleteProxyConfiguration(organizationID string) error
+	ListSchemas(params map[string]interface{}) (interface{}, error)
 	GetSchema(recordType string, params map[string]interface{}) (interface{}, error)
 	HealthCheck() error
 	ProxyHealthCheck(organizationID string) error

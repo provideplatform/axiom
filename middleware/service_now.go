@@ -74,6 +74,14 @@ func (s *ServiceNowService) ConfigureProxy(params map[string]interface{}) error 
 	return nil
 }
 
+// ListSchemas retrieves a list of available schemas
+func (s *ServiceNowService) ListSchemas(params map[string]interface{}) (interface{}, error) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	return nil, fmt.Errorf("not implemented")
+}
+
 // GetSchema retrieves a business object model by type
 func (s *ServiceNowService) GetSchema(recordType string, params map[string]interface{}) (interface{}, error) {
 	s.mutex.Lock()
