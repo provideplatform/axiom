@@ -185,11 +185,17 @@ func createWorkgroupHandler(c *gin.Context) {
 		return
 	}
 
-	if params["token"] == nil {
-		provide.RenderError("workgroup invitation token is required", 400, c)
-		return
-	}
+	isAcceptInvite := params["token"] != nil
 
+	if !isAcceptInvite {
+		provide.RenderError("not implemented", 501, c)
+		return
+	} else {
+		acceptWorkgroupInvite(c, *organizationID, params)
+	}
+}
+
+func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[string]interface{}) {
 	bearerToken := params["token"].(string)
 
 	token, err := jwt.Parse(bearerToken, func(_jwtToken *jwt.Token) (interface{}, error) {
@@ -305,60 +311,6 @@ func createWorkgroupHandler(c *gin.Context) {
 		return
 	}
 
-	// workgroup := &proxy.Workgroup{
-	// 	Identifier:   &identifierUUID,
-	// 	Participants: participants,
-	// }
-
-	// err = workgroup.Cache()
-	// if err != nil {
-	// 	msg := fmt.Sprintf("failed to accept workgroup invitation; failed to cache workflow; %s", err.Error())
-	// 	common.Log.Warningf(msg)
-	// 	provide.RenderError(msg, 422, c)
-	// 	return
-	// }
-
-	// FIXME-- ensure org registry and shield is available via nchain...
-
-	// 	'organization-registry': {
-	// 	  address: invite.prvd.data.params.organization_registry_contract_address,
-	// 	  name: 'OrgRegistry',
-	// 	  network_id: this.baselineConfig?.networkId,
-	// 	  params: {
-	// 		compiled_artifact: contracts['organization-registry'].params?.compiled_artifact
-	// 	  },
-	// 	  type: 'organization-registry',
-	// 	},
-	// 	'shield': {
-	// 	  address: invite.prvd.data.params.shield_contract_address,
-	// 	  name: 'Shield',
-	// 	  network_id: this.baselineConfig?.networkId,
-	// 	  params: {
-	// 		compiled_artifact: contracts['shield'].params?.compiled_artifact
-	// 	  },
-	// 	  type: 'shield',
-	// 	},
-
-	//   await this.registerOrganization(this.baselineConfig.orgName, this.natsConfig.natsServers[0]);
-	// async registerOrganization(name: string, messagingEndpoint: string): Promise<any> {
-	// 	this.org = await this.baseline?.createOrganization({
-	// 	  name: name,
-	// 	  metadata: {
-	// 		messaging_endpoint: messagingEndpoint,
-	// 	  },
-	// 	});
-
-	// 	if (this.org) {
-	// 	  const vault = await this.requireVault();
-	// 	  this.babyJubJub = await this.createVaultKey(vault.id!, 'babyJubJub');
-	// 	  await this.createVaultKey(vault.id!, 'secp256k1');
-	// 	  this.hdwallet = await this.createVaultKey(vault.id!, 'BIP39');
-	// 	  await this.registerWorkgroupOrganization();
-	// 	}
-
-	// 	return this.org;
-	//   }
-
 	var authorizedVC *string // TODO: vend NATS bearer token
 
 	msg := &ProtocolMessage{
@@ -377,6 +329,10 @@ func createWorkgroupHandler(c *gin.Context) {
 
 	common.Log.Debugf("attempting to broadcast %d-byte protocol message", len(payload))
 	_, err = natsutil.NatsJetstreamPublish(natsDispatchProtocolMessageSubject, payload)
+	if err != nil {
+		common.Log.Warningf("failed to dispatch protocol message; %s", err.Error())
+		// FIXME?? should we rollback a transaction here?
+	}
 
 	if err == nil {
 		provide.Render(nil, 204, c)
