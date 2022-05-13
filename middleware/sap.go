@@ -99,7 +99,7 @@ func (s *SAPService) Authenticate() error {
 	s.Headers = map[string][]string{
 		"X-CSRF-Token": {"Fetch"},
 	}
-	status, resp, err := s.Head(s.requestURI("ubc/auth"), map[string]interface{}{})
+	status, resp, err := s.Head(s.requestURI("proubc/auth"), map[string]interface{}{})
 	if err != nil {
 		return fmt.Errorf("failed to authenticate user; status: %v; %s", status, err.Error())
 	}
@@ -146,7 +146,7 @@ func (s *SAPService) ConfigureProxy(params map[string]interface{}) error {
 	// 	params["company_code"] = companyCode
 	// }
 
-	status, _, err := s.Post(s.requestURI("ubc/proxies"), params)
+	status, _, err := s.Post(s.requestURI("proubc/proxies"), params)
 	if err != nil {
 		return err
 	}
@@ -172,7 +172,7 @@ func (s *SAPService) ListSchemas(params map[string]interface{}) (interface{}, er
 		return nil, err
 	}
 
-	uri := s.requestURI("ubc/schemas")
+	uri := s.requestURI("proubc/schemas")
 	status, resp, err := s.Get(uri, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch business object model; status: %v; %s", status, err.Error())
@@ -195,7 +195,7 @@ func (s *SAPService) GetSchema(recordType string, params map[string]interface{})
 		return nil, err
 	}
 
-	uri := s.requestURI(fmt.Sprintf("ubc/schemas/%s", recordType))
+	uri := s.requestURI(fmt.Sprintf("proubc/schemas/%s", recordType))
 	status, resp, err := s.Get(uri, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch business object model; status: %v; %s", status, err.Error())
@@ -222,7 +222,7 @@ func (s *SAPService) CreateObject(params map[string]interface{}) (interface{}, e
 		params["object_connection_id"] = baselineID
 	}
 
-	status, resp, err := s.Post(s.requestURI("ubc/business_objects"), params)
+	status, resp, err := s.Post(s.requestURI("proubc/business_objects"), params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create business object; status: %v; %s", status, err.Error())
 	}
@@ -248,7 +248,7 @@ func (s *SAPService) UpdateObject(id string, params map[string]interface{}) erro
 		params["object_connection_id"] = baselineID
 	}
 
-	uri := s.requestURI(fmt.Sprintf("ubc/business_objects/%s", id))
+	uri := s.requestURI(fmt.Sprintf("proubc/business_objects/%s", id))
 	status, _, err := s.Put(uri, params)
 	if err != nil {
 		return fmt.Errorf("failed to update business object; status: %v; %s", status, err.Error())
@@ -275,7 +275,7 @@ func (s *SAPService) UpdateObjectStatus(id string, params map[string]interface{}
 		params["object_connection_id"] = baselineID
 	}
 
-	uri := s.requestURI(fmt.Sprintf("ubc/business_objects/%s/status", id))
+	uri := s.requestURI(fmt.Sprintf("proubc/business_objects/%s/status", id))
 	status, _, err := s.Put(uri, params)
 	if err != nil {
 		provide.Log.Warningf("failed to update business object status; status: %v; %s", status, err.Error())
@@ -301,7 +301,7 @@ func (s *SAPService) DeleteProxyConfiguration(organizationID string) error {
 		return err
 	}
 
-	uri := s.requestURI(fmt.Sprintf("ubc/organizations/%s/proxy", organizationID))
+	uri := s.requestURI(fmt.Sprintf("proubc/organizations/%s/proxy", organizationID))
 	status, _, err := s.Delete(uri)
 	if err != nil {
 		return fmt.Errorf("failed to delete proxy config for organization %s; status: %v; %s", organizationID, status, err.Error())
@@ -324,7 +324,7 @@ func (s *SAPService) HealthCheck() error {
 		return err
 	}
 
-	status, _, err := s.Get(s.requestURI("ubc/status"), map[string]interface{}{})
+	status, _, err := s.Get(s.requestURI("proubc/status"), map[string]interface{}{})
 	if err != nil {
 		return fmt.Errorf("failed to complete health check; status: %v; %s", status, err.Error())
 	}
@@ -346,7 +346,7 @@ func (s *SAPService) ProxyHealthCheck(organizationID string) error {
 		return err
 	}
 
-	uri := s.requestURI(fmt.Sprintf("ubc/organizations/%s/proxy", organizationID))
+	uri := s.requestURI(fmt.Sprintf("proubc/organizations/%s/proxy", organizationID))
 	status, _, err := s.Get(uri, map[string]interface{}{})
 	if err != nil {
 		return fmt.Errorf("failed to complete proxy health check for organization %s; status: %v; %s", organizationID, status, err.Error())
