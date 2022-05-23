@@ -15,6 +15,7 @@ import (
 	natsutil "github.com/kthomas/go-natsutil"
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideplatform/baseline/common"
+	"github.com/provideplatform/baseline/middleware"
 	"github.com/provideplatform/provide-go/api/baseline"
 	"github.com/provideplatform/provide-go/api/ident"
 	provide "github.com/provideplatform/provide-go/common"
@@ -61,8 +62,8 @@ func InstallPublicWorkgroupAPI(r *gin.Engine) {
 
 // InstallSchemasAPI installs middleware schemas API
 func InstallSchemasAPI(r *gin.Engine) {
-	r.GET("/api/v1/schemas", listSchemasHandler)
-	r.GET("/api/v1/schemas/:id", schemaDetailsHandler)
+	r.GET("/api/v1/workgroups/:id/schemas", listSchemasHandler)
+	r.GET("/api/v1/workgroups/:id/schemas/:schemaId", schemaDetailsHandler)
 }
 
 // InstallWorkgroupsAPI installs workgroup management APIs
@@ -578,7 +579,29 @@ func listSchemasHandler(c *gin.Context) {
 		return
 	}
 
-	provide.RenderError("not implemented", 501, c)
+	subjectAccountID := subjectAccountIDFactory(organizationID.String(), c.Param("id"))
+	subjectAccount, err := resolveSubjectAccount(subjectAccountID)
+	if err != nil {
+		provide.RenderError(err.Error(), 403, c)
+		return
+	}
+
+	token, _ := util.ParseBearerAuthorizationHeader(c, nil)
+	sor := middleware.SORFactory(subjectAccount.Metadata.SOR, &token.Raw)
+	if sor == nil {
+		provide.RenderError("invalid or unsupported system", 400, c)
+		return
+	}
+
+	schemas, err := sor.ListSchemas(map[string]interface{}{
+		"q": c.Param("q"),
+	})
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	provide.Render(schemas, 200, c)
 }
 
 func schemaDetailsHandler(c *gin.Context) {
@@ -588,7 +611,27 @@ func schemaDetailsHandler(c *gin.Context) {
 		return
 	}
 
-	provide.RenderError("not implemented", 501, c)
+	subjectAccountID := subjectAccountIDFactory(organizationID.String(), c.Param("id"))
+	subjectAccount, err := resolveSubjectAccount(subjectAccountID)
+	if err != nil {
+		provide.RenderError(err.Error(), 403, c)
+		return
+	}
+
+	token, _ := util.ParseBearerAuthorizationHeader(c, nil)
+	sor := middleware.SORFactory(subjectAccount.Metadata.SOR, &token.Raw)
+	if sor == nil {
+		provide.RenderError("invalid or unsupported system", 400, c)
+		return
+	}
+
+	schema, err := sor.GetSchema(c.Param("schemaId"), map[string]interface{}{})
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	provide.Render(schema, 200, c)
 }
 
 func createWorkflowHandler(c *gin.Context) {
