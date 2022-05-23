@@ -59,6 +59,12 @@ func InstallPublicWorkgroupAPI(r *gin.Engine) {
 	r.POST("/api/v1/pub/invite", createPublicWorkgroupInviteHandler)
 }
 
+// InstallSchemasAPI installs middleware schemas API
+func InstallSchemasAPI(r *gin.Engine) {
+	r.GET("/api/v1/schemas", listSchemasHandler)
+	r.GET("/api/v1/schemas/:id", schemaDetailsHandler)
+}
+
 // InstallWorkgroupsAPI installs workgroup management APIs
 func InstallWorkgroupsAPI(r *gin.Engine) {
 	r.GET("/api/v1/workgroups", listWorkgroupsHandler)
@@ -563,6 +569,26 @@ func deleteMappingHandler(c *gin.Context) {
 		obj["errors"] = mapping.Errors
 		provide.Render(obj, 422, c)
 	}
+}
+
+func listSchemasHandler(c *gin.Context) {
+	organizationID := util.AuthorizedSubjectID(c, "organization")
+	if organizationID == nil {
+		provide.RenderError("unauthorized", 401, c)
+		return
+	}
+
+	provide.RenderError("not implemented", 501, c)
+}
+
+func schemaDetailsHandler(c *gin.Context) {
+	organizationID := util.AuthorizedSubjectID(c, "organization")
+	if organizationID == nil {
+		provide.RenderError("unauthorized", 401, c)
+		return
+	}
+
+	provide.RenderError("not implemented", 501, c)
 }
 
 func createWorkflowHandler(c *gin.Context) {
