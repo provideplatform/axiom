@@ -132,8 +132,8 @@ func (s *SAPService) Authenticate() error {
 	return nil
 }
 
-// ConfigureProxy configures a new proxy instance in SAP for a given organization
-func (s *SAPService) ConfigureProxy(params map[string]interface{}) error {
+// ConfigureTenant configures a new tenant instance in SAP for a given organization
+func (s *SAPService) ConfigureTenant(params map[string]interface{}) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -146,17 +146,17 @@ func (s *SAPService) ConfigureProxy(params map[string]interface{}) error {
 	// 	params["company_code"] = companyCode
 	// }
 
-	status, _, err := s.Post(s.requestURI("proubc/proxies"), params)
+	status, _, err := s.Post(s.requestURI("proubc/tenants"), params)
 	if err != nil {
 		return err
 	}
 
 	if err != nil {
-		return fmt.Errorf("failed to configure proxy; status: %v; %s", status, err.Error())
+		return fmt.Errorf("failed to configure tenant; status: %v; %s", status, err.Error())
 	}
 
 	if status != 200 {
-		return fmt.Errorf("failed to configure proxy; status: %v", status)
+		return fmt.Errorf("failed to configure tenant; status: %v", status)
 	}
 
 	return nil
@@ -218,11 +218,7 @@ func (s *SAPService) CreateObject(params map[string]interface{}) (interface{}, e
 		return nil, err
 	}
 
-	if baselineID, baselineIDOk := params["baseline_id"].(string); baselineIDOk {
-		params["object_connection_id"] = baselineID
-	}
-
-	status, resp, err := s.Post(s.requestURI("proubc/business_objects"), params)
+	status, resp, err := s.Post(s.requestURI("proubc/objects"), params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create business object; status: %v; %s", status, err.Error())
 	}
@@ -244,11 +240,7 @@ func (s *SAPService) UpdateObject(id string, params map[string]interface{}) erro
 		return err
 	}
 
-	if baselineID, baselineIDOk := params["baseline_id"].(string); baselineIDOk {
-		params["object_connection_id"] = baselineID
-	}
-
-	uri := s.requestURI(fmt.Sprintf("proubc/business_objects/%s", id))
+	uri := s.requestURI(fmt.Sprintf("proubc/objects/%s", id))
 	status, _, err := s.Put(uri, params)
 	if err != nil {
 		return fmt.Errorf("failed to update business object; status: %v; %s", status, err.Error())
@@ -271,11 +263,7 @@ func (s *SAPService) UpdateObjectStatus(id string, params map[string]interface{}
 		return err
 	}
 
-	if baselineID, baselineIDOk := params["baseline_id"].(string); baselineIDOk {
-		params["object_connection_id"] = baselineID
-	}
-
-	uri := s.requestURI(fmt.Sprintf("proubc/business_objects/%s/status", id))
+	uri := s.requestURI(fmt.Sprintf("proubc/objects/%s/status", id))
 	status, _, err := s.Put(uri, params)
 	if err != nil {
 		provide.Log.Warningf("failed to update business object status; status: %v; %s", status, err.Error())
@@ -291,8 +279,8 @@ func (s *SAPService) UpdateObjectStatus(id string, params map[string]interface{}
 	return nil
 }
 
-// DeleteProxyConfiguration drops a proxy configuration for the given organization
-func (s *SAPService) DeleteProxyConfiguration(organizationID string) error {
+// DeleteTenant drops a BPI tenant configuration for the given organization
+func (s *SAPService) DeleteTenant(organizationID string) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -301,14 +289,14 @@ func (s *SAPService) DeleteProxyConfiguration(organizationID string) error {
 		return err
 	}
 
-	uri := s.requestURI(fmt.Sprintf("proubc/organizations/%s/proxy", organizationID))
+	uri := s.requestURI(fmt.Sprintf("proubc/tenants/%s", organizationID))
 	status, _, err := s.Delete(uri)
 	if err != nil {
-		return fmt.Errorf("failed to delete proxy config for organization %s; status: %v; %s", organizationID, status, err.Error())
+		return fmt.Errorf("failed to delete tenant config for organization %s; status: %v; %s", organizationID, status, err.Error())
 	}
 
 	if status != 204 {
-		return fmt.Errorf("failed to delete proxy config for organization %s; status: %v", organizationID, status)
+		return fmt.Errorf("failed to delete tenant config for organization %s; status: %v", organizationID, status)
 	}
 
 	return nil
@@ -336,8 +324,8 @@ func (s *SAPService) HealthCheck() error {
 	return nil
 }
 
-// ProxyHealthCheck checks the health of the proxy configuration for the given organization
-func (s *SAPService) ProxyHealthCheck(organizationID string) error {
+// TenantHealthCheck checks the health of the tenant configuration for the given organization
+func (s *SAPService) TenantHealthCheck(organizationID string) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -346,37 +334,15 @@ func (s *SAPService) ProxyHealthCheck(organizationID string) error {
 		return err
 	}
 
-	uri := s.requestURI(fmt.Sprintf("proubc/organizations/%s/proxy", organizationID))
+	uri := s.requestURI(fmt.Sprintf("proubc/tenants/%s", organizationID))
 	status, _, err := s.Get(uri, map[string]interface{}{})
 	if err != nil {
-		return fmt.Errorf("failed to complete proxy health check for organization %s; status: %v; %s", organizationID, status, err.Error())
+		return fmt.Errorf("failed to complete tenant health check for organization %s; status: %v; %s", organizationID, status, err.Error())
 	}
 
 	if status != 200 {
-		return fmt.Errorf("failed to complete proxy health check for organization %s; status: %v", organizationID, status)
+		return fmt.Errorf("failed to complete tenant health check for organization %s; status: %v", organizationID, status)
 	}
 
 	return nil
-}
-
-// InitiateBusinessObject is a method for integration testing to initiate a business object from the SAP environment
-func (s *SAPService) InitiateBusinessObject(params map[string]interface{}) (interface{}, error) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	err := s.Authenticate()
-	if err != nil {
-		return nil, err
-	}
-
-	status, resp, err := s.Post(s.requestURI("zcona/test"), params)
-	if err != nil {
-		return nil, fmt.Errorf("failed to initiate business object; status: %v; %s", status, err.Error())
-	}
-
-	if status != 200 {
-		return nil, fmt.Errorf("failed to initiate business object; status: %v", status)
-	}
-
-	return resp, nil
 }

@@ -319,7 +319,7 @@ func (s *SubjectAccount) configureSOR() {
 		"refresh_token":   s.Metadata.OrganizationRefreshToken,
 	}
 
-	err = sor.ConfigureProxy(sorConfiguration)
+	err = sor.ConfigureTenant(sorConfiguration)
 	if err != nil {
 		panic(err.Error())
 	}

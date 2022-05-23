@@ -51,8 +51,8 @@ func (s *SalesforceService) Authenticate() error {
 	return nil
 }
 
-// ConfigureProxy configures a new proxy instance in Salesforce for a given organization
-func (s *SalesforceService) ConfigureProxy(params map[string]interface{}) error {
+// ConfigureTenant configures a new proxy instance in Salesforce for a given organization
+func (s *SalesforceService) ConfigureTenant(params map[string]interface{}) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -123,8 +123,8 @@ func (s *SalesforceService) UpdateObjectStatus(id string, params map[string]inte
 	return nil
 }
 
-// DeleteProxyConfiguration drops a proxy configuration for the given organization
-func (s *SalesforceService) DeleteProxyConfiguration(organizationID string) error {
+// DeleteTenant drops a proxy configuration for the given organization
+func (s *SalesforceService) DeleteTenant(organizationID string) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -139,8 +139,8 @@ func (s *SalesforceService) HealthCheck() error {
 	return fmt.Errorf("not implemented")
 }
 
-// ProxyHealthCheck
-func (s *SalesforceService) ProxyHealthCheck(organizationID string) error {
+// TenantHealthCheck
+func (s *SalesforceService) TenantHealthCheck(organizationID string) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 

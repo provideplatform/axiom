@@ -28,8 +28,8 @@ func (s *EphemeralMemoryService) Authenticate() error {
 	return nil
 }
 
-// ConfigureProxy configures a new proxy instance in EphemeralMemory for a given organization
-func (s *EphemeralMemoryService) ConfigureProxy(params map[string]interface{}) error {
+// ConfigureTenant configures a new proxy instance in EphemeralMemory for a given organization
+func (s *EphemeralMemoryService) ConfigureTenant(params map[string]interface{}) error {
 	return nil
 }
 
@@ -86,8 +86,8 @@ func (s *EphemeralMemoryService) UpdateObjectStatus(id string, params map[string
 	return nil
 }
 
-// DeleteProxyConfiguration drops a proxy configuration for the given organization
-func (s *EphemeralMemoryService) DeleteProxyConfiguration(organizationID string) error {
+// DeleteTenant drops a proxy configuration for the given organization
+func (s *EphemeralMemoryService) DeleteTenant(organizationID string) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -99,7 +99,7 @@ func (s *EphemeralMemoryService) HealthCheck() error {
 	return nil
 }
 
-// ProxyHealthCheck
-func (s *EphemeralMemoryService) ProxyHealthCheck(organizationID string) error {
+// TenantHealthCheck
+func (s *EphemeralMemoryService) TenantHealthCheck(organizationID string) error {
 	return nil
 }

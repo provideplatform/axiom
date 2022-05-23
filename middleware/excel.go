@@ -28,8 +28,8 @@ func (s *ExcelService) Authenticate() error {
 	return nil
 }
 
-// ConfigureProxy configures a new proxy instance - not implemented for Excel at this time
-func (s *ExcelService) ConfigureProxy(params map[string]interface{}) error {
+// ConfigureTenant configures a new proxy instance - not implemented for Excel at this time
+func (s *ExcelService) ConfigureTenant(params map[string]interface{}) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -76,8 +76,8 @@ func (s *ExcelService) UpdateObjectStatus(id string, params map[string]interface
 	return fmt.Errorf("not implemented")
 }
 
-// DeleteProxyConfiguration drops a proxy configuration for the given organization
-func (s *ExcelService) DeleteProxyConfiguration(organizationID string) error {
+// DeleteTenant drops a proxy configuration for the given organization
+func (s *ExcelService) DeleteTenant(organizationID string) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -93,7 +93,7 @@ func (s *ExcelService) HealthCheck() error {
 }
 
 // ProxyHealthCheck
-func (s *ExcelService) ProxyHealthCheck(organizationID string) error {
+func (s *ExcelService) TenantHealthCheck(organizationID string) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 

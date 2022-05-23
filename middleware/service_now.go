@@ -69,8 +69,8 @@ func (s *ServiceNowService) Authenticate() error {
 	return nil
 }
 
-// ConfigureProxy configures a new proxy instance in ServiceNow for a given organization
-func (s *ServiceNowService) ConfigureProxy(params map[string]interface{}) error {
+// ConfigureTenant configures a new proxy instance in ServiceNow for a given organization
+func (s *ServiceNowService) ConfigureTenant(params map[string]interface{}) error {
 	return nil
 }
 
@@ -158,8 +158,8 @@ func (s *ServiceNowService) UpdateObjectStatus(id string, params map[string]inte
 	return nil
 }
 
-// DeleteProxyConfiguration drops a proxy configuration for the given organization
-func (s *ServiceNowService) DeleteProxyConfiguration(organizationID string) error {
+// DeleteTenant drops a proxy configuration for the given organization
+func (s *ServiceNowService) DeleteTenant(organizationID string) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -180,7 +180,7 @@ func (s *ServiceNowService) HealthCheck() error {
 	return err
 }
 
-// ProxyHealthCheck
-func (s *ServiceNowService) ProxyHealthCheck(organizationID string) error {
+// TenantHealthCheck
+func (s *ServiceNowService) TenantHealthCheck(organizationID string) error {
 	return nil
 }

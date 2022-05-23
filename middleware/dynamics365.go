@@ -74,8 +74,8 @@ func (s *Dynamics365Service) Authenticate() error {
 	return nil
 }
 
-// ConfigureProxy configures a new proxy instance in D365 for a given organization
-func (s *Dynamics365Service) ConfigureProxy(params map[string]interface{}) error {
+// ConfigureTenant configures a new proxy instance in D365 for a given organization
+func (s *Dynamics365Service) ConfigureTenant(params map[string]interface{}) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -150,8 +150,8 @@ func (s *Dynamics365Service) UpdateObjectStatus(id string, params map[string]int
 	return nil
 }
 
-// DeleteProxyConfiguration drops a proxy configuration for the given organization
-func (s *Dynamics365Service) DeleteProxyConfiguration(organizationID string) error {
+// DeleteTenant drops a proxy configuration for the given organization
+func (s *Dynamics365Service) DeleteTenant(organizationID string) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -166,8 +166,8 @@ func (s *Dynamics365Service) HealthCheck() error {
 	return fmt.Errorf("not implemented")
 }
 
-// ProxyHealthCheck
-func (s *Dynamics365Service) ProxyHealthCheck(organizationID string) error {
+// TenantHealthCheck
+func (s *Dynamics365Service) TenantHealthCheck(organizationID string) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
