@@ -106,6 +106,7 @@ func runAPI() {
 
 	baseline.InstallBPIAPI(r)
 	baseline.InstallMappingsAPI(r)
+	baseline.InstallSchemasAPI(r)
 	baseline.InstallWorkflowsAPI(r)
 	baseline.InstallWorkgroupsAPI(r)
 	baseline.InstallWorkstepsAPI(r)
