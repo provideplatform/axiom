@@ -155,7 +155,7 @@ func (s *SAPService) ConfigureTenant(params map[string]interface{}) error {
 		return fmt.Errorf("failed to configure tenant; status: %v; %s", status, err.Error())
 	}
 
-	if status != 200 {
+	if status != 201 {
 		return fmt.Errorf("failed to configure tenant; status: %v", status)
 	}
 
@@ -223,7 +223,7 @@ func (s *SAPService) CreateObject(params map[string]interface{}) (interface{}, e
 		return nil, fmt.Errorf("failed to create business object; status: %v; %s", status, err.Error())
 	}
 
-	if status != 200 {
+	if status != 201 {
 		return nil, fmt.Errorf("failed to create business object; status: %v", status)
 	}
 

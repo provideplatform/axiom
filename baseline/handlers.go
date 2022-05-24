@@ -132,13 +132,13 @@ func sendProtocolMessageHandler(c *gin.Context) {
 			return
 		}
 
-		workgroup := FindWorkflowByID(*workstep.WorkflowID)
-		if workgroup != nil {
-			provide.RenderError("workgroup not resolved", 500, c)
+		workflow := FindWorkflowByID(*workstep.WorkflowID)
+		if workflow == nil {
+			provide.RenderError("workflow not resolved", 500, c)
 			return
 		}
 
-		subjectAccountID := subjectAccountIDFactory(organizationID.String(), workgroup.ID.String())
+		subjectAccountID := subjectAccountIDFactory(organizationID.String(), workflow.WorkgroupID.String())
 		subjectAccount, err := resolveSubjectAccount(subjectAccountID)
 		if err != nil {
 			provide.RenderError("failed to resolve BPI subject account", 403, c)
