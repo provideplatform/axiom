@@ -15,7 +15,6 @@ import (
 	provide "github.com/provideplatform/provide-go/api"
 	"github.com/provideplatform/provide-go/api/baseline"
 	"github.com/provideplatform/provide-go/api/ident"
-	privacy "github.com/provideplatform/provide-go/api/privacy"
 )
 
 const requireContractSleepInterval = time.Second * 1
@@ -123,9 +122,7 @@ func (w *WorkflowInstance) CacheByBaselineID(baselineID string) error {
 	})
 }
 
-func baselineWorkflowFactory(objectType string, identifier *string) (*WorkflowInstance, error) {
-	var subjectAccount *SubjectAccount
-
+func baselineWorkflowFactory(subjectAccount *SubjectAccount, objectType string, identifier *string) (*WorkflowInstance, error) {
 	var identifierUUID uuid.UUID
 	if identifier != nil {
 		identifierUUID, _ = uuid.FromString(*identifier)
@@ -165,124 +162,6 @@ func baselineWorkflowFactory(objectType string, identifier *string) (*WorkflowIn
 			APIEndpoint:       common.StringFromInterface(org.Metadata["api_endpoint"]),
 			MessagingEndpoint: common.StringFromInterface(org.Metadata["messaging_endpoint"]),
 		})
-	}
-
-	if identifier == nil {
-		common.Log.Debugf("deploying workstep prover(s) for workflow: %s", identifierUUID.String())
-
-		var prover *privacy.Prover
-		var err error
-
-		switch objectType {
-		case baselineWorkflowTypeGeneralConsistency:
-			prover, err = privacy.CreateProver(
-				*token,
-				proverParamsFactory(
-					"General Consistency",
-					"purchase_order",
-					nil,
-					nil,
-				),
-			)
-			if err != nil {
-				common.Log.Errorf("failed to deploy prover; %s", err.Error())
-				return nil, err
-			}
-			workflow.Worksteps = append(workflow.Worksteps, baselineWorkstepFactory(nil, common.StringOrNil(workflow.ID.String()), prover))
-
-		case baselineWorkflowTypeProcureToPay:
-			prover, err := privacy.CreateProver(
-				*token,
-				proverParamsFactory(
-					"PO",
-					baselineWorkflowTypeProcureToPay,
-					nil,
-					nil,
-				),
-			)
-			if err != nil {
-				common.Log.Errorf("failed to deploy prover; %s", err.Error())
-				return nil, err
-			}
-			workflow.Worksteps = append(workflow.Worksteps, baselineWorkstepFactory(nil, common.StringOrNil(workflow.ID.String()), prover))
-
-			prover, err = privacy.CreateProver(
-				*token,
-				proverParamsFactory(
-					"SO",
-					baselineWorkflowTypeProcureToPay,
-					common.StringOrNil(prover.NoteStoreID.String()),
-					common.StringOrNil(prover.NullifierStoreID.String()),
-				),
-			)
-			if err != nil {
-				common.Log.Errorf("failed to deploy prover; %s", err.Error())
-				return nil, err
-			}
-			workflow.Worksteps = append(workflow.Worksteps, baselineWorkstepFactory(nil, common.StringOrNil(workflow.ID.String()), prover))
-
-			// prover, err = privacy.CreateProver(
-			// 	*token,
-			// 	proverParamsFactory(
-			// 		"SN",
-			// 		baselineWorkflowTypeGeneralConsistency,
-			// 		common.StringOrNil(prover.NoteStoreID.String()),
-			// 		common.StringOrNil(prover.NullifierStoreID.String()),
-			// 	),
-			// )
-			// if err != nil {
-			// 	common.Log.Errorf("failed to deploy prover; %s", err.Error())
-			// 	return nil, err
-			// }
-			// workflow.Worksteps = append(workflow.Worksteps, baselineWorkstepFactory(nil, common.StringOrNil(workflow.ID.String()), prover))
-
-			// prover, err = privacy.CreateProver(
-			// 	*token,
-			// 	proverParamsFactory(
-			// 		"GR",
-			// 		baselineWorkflowTypeGeneralConsistency,
-			// 		common.StringOrNil(prover.NoteStoreID.String()),
-			// 		common.StringOrNil(prover.NullifierStoreID.String()),
-			// 	),
-			// )
-			// if err != nil {
-			// 	common.Log.Errorf("failed to deploy prover; %s", err.Error())
-			// 	return nil, err
-			// }
-			// workflow.Worksteps = append(workflow.Worksteps, baselineWorkstepFactory(nil, common.StringOrNil(workflow.ID.String()), prover))
-
-			// prover, err = privacy.CreateProver(
-			// 	*token,
-			// 	proverParamsFactory(
-			// 		"Invoice",
-			// 		baselineWorkflowTypeGeneralConsistency,
-			// 		common.StringOrNil(prover.NoteStoreID.String()),
-			// 		common.StringOrNil(prover.NullifierStoreID.String()),
-			// 	),
-			// )
-			// if err != nil {
-			// 	common.Log.Errorf("failed to deploy prover; %s", err.Error())
-			// 	return nil, err
-			// }
-			// workflow.Worksteps = append(workflow.Worksteps, baselineWorkstepFactory(nil, common.StringOrNil(workflow.ID.String()), prover))
-
-		case baselineWorkflowTypeServiceNowIncident:
-			prover, err = privacy.CreateProver(*token, proverParamsFactory("Incident", baselineWorkflowTypeGeneralConsistency, nil, nil))
-			if err != nil {
-				common.Log.Errorf("failed to deploy prover; %s", err.Error())
-				return nil, err
-			}
-			workflow.Worksteps = append(workflow.Worksteps, baselineWorkstepFactory(nil, common.StringOrNil(workflow.ID.String()), prover))
-
-		default:
-			return nil, fmt.Errorf("failed to create workflow for type: %s", objectType)
-		}
-
-		err = requireCircuits(token, workflow)
-		if err != nil {
-			common.Log.Errorf("failed to provision prover(s); %s", err.Error())
-			return nil, err
-		}
 	}
 
 	return workflow, nil

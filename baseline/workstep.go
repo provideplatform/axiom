@@ -126,64 +126,6 @@ func baselineWorkstepFactory(identifier *string, workflowID *string, prover *pri
 	return workstep
 }
 
-// FIXME -- refactor to func (w *Workstep) requireCircuit(token *string, workflow *Workflow) error
-func requireCircuits(token *string, workflow *WorkflowInstance) error {
-	startTime := time.Now()
-	timer := time.NewTicker(requireCircuitTickerInterval)
-	defer timer.Stop()
-
-	provers := make([]bool, len(workflow.Worksteps))
-
-	for {
-		select {
-		case <-timer.C:
-			for i, workstep := range workflow.Worksteps {
-				if !provers[i] {
-					prover, err := privacy.GetProverDetails(*token, workstep.Prover.ID.String())
-					if err != nil {
-						common.Log.Warningf("failed to fetch prover details; %s", err.Error())
-						break
-					}
-					if prover.Status != nil && *prover.Status == workstepCircuitStatusProvisioned {
-						common.Log.Debugf("provisioned workflow prover: %s", prover.ID)
-						if prover.VerifierContract != nil {
-							if source, sourceOk := prover.VerifierContract["source"].(string); sourceOk {
-								// contractRaw, _ := json.MarshalIndent(source, "", "  ")
-								src := strings.TrimSpace(strings.ReplaceAll(source, "\\n", "\n"))
-								common.Log.Debugf("verifier contract: %s", src)
-								contractName := fmt.Sprintf("%s Verifier", *prover.Name)
-								DeployContract([]byte(contractName), []byte(src))
-							}
-						}
-
-						workflow.Worksteps[i].Prover = prover
-						workflow.Worksteps[i].ProverID = &prover.ID
-						provers[i] = true
-					}
-				}
-			}
-
-			x := 0
-			for i := range workflow.Worksteps {
-				if provers[i] {
-					x++
-				}
-			}
-			if x == len(provers) {
-				return nil
-			}
-		default:
-			if startTime.Add(requireCircuitTimeout).Before(time.Now()) {
-				msg := fmt.Sprintf("failed to provision %d workstep prover(s)", len(workflow.Worksteps))
-				common.Log.Errorf(msg)
-				return errors.New(msg)
-			} else {
-				time.Sleep(requireCircuitSleepInterval)
-			}
-		}
-	}
-}
-
 // LookupBaselineWorkstep by id
 func LookupBaselineWorkstep(identifier string) *baseline.WorkstepInstance {
 	var workstep *baseline.WorkstepInstance

@@ -16,13 +16,14 @@ import (
 	"github.com/provideplatform/provide-go/api/privacy"
 )
 
-const baselineWorkflowTypeGeneralConsistency = "general_consistency"
-const baselineWorkflowTypeProcureToPay = "purchase_order"
-const baselineWorkflowTypeServiceNowIncident = "servicenow_incident"
-
 func (m *ProtocolMessage) baselineInbound() bool {
+	// FIXME-- this check should never be needed here
+	if m.subjectAccount == nil {
+		common.Log.Warning("subject account not resolved for inbound protocol message")
+		return false
+	}
+
 	var baselineContext *BaselineContext
-	var subjectAccount *SubjectAccount
 
 	baselineRecord := lookupBaselineRecord(m.BaselineID.String())
 	if baselineRecord == nil {
@@ -47,7 +48,7 @@ func (m *ProtocolMessage) baselineInbound() bool {
 		if workflow == nil {
 			common.Log.Debugf("initializing baseline workflow: %s", *m.Identifier)
 
-			workflow, err = baselineWorkflowFactory(*m.Type, common.StringOrNil(m.Identifier.String()))
+			workflow, err = baselineWorkflowFactory(m.subjectAccount, *m.Type, common.StringOrNil(m.Identifier.String()))
 			if err != nil {
 				common.Log.Warningf("failed to initialize baseline workflow: %s", *m.Identifier)
 				return false
@@ -99,7 +100,7 @@ func (m *ProtocolMessage) baselineInbound() bool {
 		return false
 	}
 
-	sor := middleware.SORFactoryByType(subjectAccount.Metadata.SOR, *m.Type, nil)
+	sor := middleware.SORFactoryByType(m.subjectAccount.Metadata.SOR, *m.Type, nil)
 
 	if baselineRecord.ID == nil {
 		// TODO -- map baseline record id -> internal record id (i.e, this is currently done but lazily on outbound message)
@@ -135,8 +136,6 @@ func (m *ProtocolMessage) baselineInbound() bool {
 }
 
 func (m *Message) baselineOutbound() bool {
-	var subjectAccount *SubjectAccount
-
 	if m.ID == nil {
 		m.Errors = append(m.Errors, &provide.Error{
 			Message: common.StringOrNil("id is required"),
@@ -156,7 +155,23 @@ func (m *Message) baselineOutbound() bool {
 		return false
 	}
 
-	sor := middleware.SORFactoryByType(subjectAccount.Metadata.SOR, *m.Type, nil)
+	// FIXME-- this check should never be needed here
+	if m.subjectAccount == nil {
+		m.Errors = append(m.Errors, &provide.Error{
+			Message: common.StringOrNil("subject account not resolved"),
+		})
+		return false
+	}
+
+	if m.subjectAccount.Metadata == nil || m.subjectAccount.Metadata.SOR == nil {
+		m.Errors = append(m.Errors, &provide.Error{
+			Message: common.StringOrNil("invalid system configuration"),
+		})
+		return false
+	}
+
+	// FIXME -- org.metadata.workgroups.<id>.system_secret_ids
+	sor := middleware.SORFactoryByType(m.subjectAccount.Metadata.SOR, *m.Type, nil)
 
 	var baselineContext *BaselineContext
 	baselineRecord := lookupBaselineRecordByInternalID(*m.ID)
@@ -180,7 +195,7 @@ func (m *Message) baselineOutbound() bool {
 				err = fmt.Errorf("failed to lookup baseline context for given baseline id: %s", m.BaselineID.String())
 			}
 		} else {
-			workflow, err = baselineWorkflowFactory(*m.Type, nil)
+			workflow, err = baselineWorkflowFactory(m.subjectAccount, *m.Type, nil)
 
 			if baselineContext == nil {
 				common.Log.Debugf("initializing new baseline context with baseline id: %s", m.BaselineID)
@@ -273,6 +288,7 @@ func (m *Message) baselineOutbound() bool {
 					Sender:    nil, // FIXME
 					Type:      m.Type,
 				},
+				nil,
 			}
 
 			if recipient.Address != nil {
@@ -324,6 +340,7 @@ func (m *Message) baselineOutbound() bool {
 			Shield: shieldAddress,
 			Type:   m.Type,
 		},
+		nil,
 	}
 
 	err := m.prove()
@@ -382,9 +399,7 @@ func (m *Message) baselineOutbound() bool {
 }
 
 func (m *ProtocolMessage) broadcast(recipient string) error {
-	var subjectAccount *SubjectAccount
-
-	if strings.ToLower(recipient) == strings.ToLower(*subjectAccount.Metadata.OrganizationAddress) {
+	if strings.ToLower(recipient) == strings.ToLower(*m.subjectAccount.Metadata.OrganizationAddress) {
 		common.Log.Debugf("skipping no-op protocol message broadcast to self: %s", recipient)
 		return nil
 	}
@@ -401,6 +416,7 @@ func (m *ProtocolMessage) broadcast(recipient string) error {
 			Type:       m.Type,
 			Payload:    m.Payload,
 		},
+		nil,
 	})
 
 	if err != nil {

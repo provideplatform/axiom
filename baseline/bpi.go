@@ -297,35 +297,41 @@ func FindSubjectAccountByID(id string) *SubjectAccount {
 	return subjectAccount
 }
 
-func (s *SubjectAccount) configureSOR() {
+func (s *SubjectAccount) configureSOR() error {
 	sor := middleware.SORFactory(s.Metadata.SOR, nil)
 	if sor == nil {
-		panic("SOR provider not resolved")
+		common.Log.Warning("middleware system configuration not resolved")
+		return errors.New("middleware  system configuration not resolved")
 	}
 
 	err := sor.HealthCheck()
 	if err != nil {
-		panic(err.Error())
+		common.Log.Warningf("failed to configure system; health check failed; %s", err.Error())
+		return err
 	}
+
 	common.Log.Debugf("health check completed; SOR API available")
 	if sorURL, sorURLOk := s.Metadata.SOR["url"].(string); sorURLOk {
 		common.Log.Debugf("SOR API endpoint: %s", sorURL)
 	}
 
 	sorConfiguration := map[string]interface{}{
-		"organization_id": s.Metadata.OrganizationID,
+		"bpi_endpoint":    s.Metadata.OrganizationProxyEndpoint,
 		"ident_endpoint":  fmt.Sprintf("%s://%s", os.Getenv("IDENT_API_SCHEME"), os.Getenv("IDENT_API_HOST")),
-		"proxy_endpoint":  s.Metadata.OrganizationProxyEndpoint,
+		"organization_id": s.Metadata.OrganizationID,
 		"refresh_token":   s.Metadata.OrganizationRefreshToken,
 	}
 
 	err = sor.ConfigureTenant(sorConfiguration)
 	if err != nil {
-		panic(err.Error())
+		common.Log.Warningf("failed to configure system; %s", err.Error())
+		return err
 	}
 
 	sorConfigurationJSON, _ := json.MarshalIndent(sorConfiguration, "", "  ")
 	common.Log.Debugf("SOR configured:\n%s", sorConfigurationJSON)
+
+	return nil
 }
 
 // resolveSubjectAccount resolves the BPI subject account for a given subject account id

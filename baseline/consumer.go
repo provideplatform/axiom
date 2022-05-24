@@ -74,12 +74,18 @@ const contractTypeERC1820Registry = "erc1820-registry"
 type Message struct {
 	baseline.Message
 	ProtocolMessage *ProtocolMessage `sql:"-" json:"protocol_message,omitempty"`
+
+	// HACK -- convenience ptr ... for access during baselineOutbound()
+	subjectAccount *SubjectAccount `sql:"-" json:"-"`
 }
 
 // ProtocolMessage is a baseline protocol message
 // see https://github.com/ethereum-oasis/baseline/blob/master/core/types/src/protocol.ts
 type ProtocolMessage struct {
 	baseline.ProtocolMessage
+
+	// HACK -- convenience ptr ... for access during baselineInbound()
+	subjectAccount *SubjectAccount `sql:"-" json:"-"`
 }
 
 func init() {
@@ -252,6 +258,43 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *nats.Msg) {
 
 	switch *protomsg.Opcode {
 	case baseline.ProtocolMessageOpcodeBaseline:
+		if protomsg.Identifier == nil {
+			common.Log.Warningf("inbound protocol message specified invalid workflow identifier; %s", err.Error())
+			msg.Term()
+			return
+		}
+
+		if protomsg.Recipient == nil {
+			common.Log.Warningf("inbound protocol message specified invalid recipient; %s", err.Error())
+			msg.Term()
+			return
+		}
+
+		if protomsg.Sender == nil {
+			common.Log.Warningf("inbound protocol message specified invalid sender; %s", err.Error())
+			msg.Term()
+			return
+		}
+
+		workflow := FindWorkflowByID(*protomsg.Identifier)
+		if workflow == nil {
+			common.Log.Warningf("inbound protocol message failed to resolve workflow: %s", protomsg.Identifier.String())
+			msg.Term() // FIXME-- should this just return and allow for redelivery in case of temporary latency issues?
+			return
+		}
+
+		org := lookupBaselineOrganization(*protomsg.Recipient)
+		if orgID, ok := org.Metadata["organization_id"].(string); ok {
+			subjectAccountID := subjectAccountIDFactory(orgID, workflow.WorkgroupID.String())
+			protomsg.subjectAccount, err = resolveSubjectAccount(subjectAccountID)
+		}
+
+		if protomsg.subjectAccount == nil {
+			common.Log.Warningf("inbound protocol message failed to resolve subject account for recipient: %s; workflow id: %s", *protomsg.Recipient, *protomsg.Identifier)
+			msg.Term() // FIXME-- should this just return and allow for redelivery in case of temporary latency issues?
+			return
+		}
+
 		success := protomsg.baselineInbound()
 		if !success {
 			common.Log.Warning("failed to baseline inbound protocol message")

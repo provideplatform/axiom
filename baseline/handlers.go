@@ -139,7 +139,7 @@ func sendProtocolMessageHandler(c *gin.Context) {
 		}
 
 		subjectAccountID := subjectAccountIDFactory(organizationID.String(), workflow.WorkgroupID.String())
-		subjectAccount, err := resolveSubjectAccount(subjectAccountID)
+		message.subjectAccount, err = resolveSubjectAccount(subjectAccountID)
 		if err != nil {
 			provide.RenderError("failed to resolve BPI subject account", 403, c)
 			return
@@ -147,7 +147,7 @@ func sendProtocolMessageHandler(c *gin.Context) {
 
 		authorizedSender := false
 		for _, participant := range workstep.Participants {
-			if participant.Address != nil && *participant.Address == *subjectAccount.Metadata.OrganizationAddress {
+			if participant.Address != nil && *participant.Address == *message.subjectAccount.Metadata.OrganizationAddress {
 				authorizedSender = true
 				break
 			}
@@ -331,6 +331,7 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 				},
 			},
 		},
+		nil,
 	}
 	payload, _ := json.Marshal(msg)
 
