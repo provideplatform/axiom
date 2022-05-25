@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/provideplatform/provide-go/api"
+	"github.com/provideplatform/provide-go/common"
 	provide "github.com/provideplatform/provide-go/common"
 )
 
@@ -18,6 +19,34 @@ type SAPService struct {
 	mutex        sync.Mutex
 	clientID     *string
 	clientSecret *string
+}
+
+// SAPFactory initializes a SAPService instance
+func SAPFactory(params *System) *SAPService {
+	var endpoint *url.URL
+	var err error
+
+	if params.EndpointURL != nil {
+		endpoint, err = url.Parse(*params.EndpointURL)
+		if err != nil {
+			common.Log.Warningf("failed to parse endpoint url: %s", *params.EndpointURL)
+			return nil
+		}
+	}
+
+	return &SAPService{
+		api.Client{
+			Host:     *params.EndpointURL,
+			Path:     endpoint.Path,
+			Scheme:   endpoint.Scheme,
+			Token:    params.Auth.Token,
+			Username: provide.StringOrNil(*params.Auth.Username),
+			Password: provide.StringOrNil(*params.Auth.Password),
+		},
+		sync.Mutex{},
+		params.Auth.ClientID,
+		params.Auth.ClientSecret,
+	}
 }
 
 // InitSAPService convenience method to initialize an `ident.SAPService` instance
@@ -196,8 +225,8 @@ func (s *SAPService) ListSchemas(params map[string]interface{}) (interface{}, er
 			}
 
 			schemas = append(schemas, map[string]interface{}{
-				"id":          systemSchema["idoctype"],
 				"description": nil,
+				"name":        systemSchema["idoctype"],
 				"type":        systemSchema["idoctypedescr"],
 			})
 		}
@@ -228,7 +257,35 @@ func (s *SAPService) GetSchema(recordType string, params map[string]interface{})
 		return nil, fmt.Errorf("failed to fetch business object model; status: %v", status)
 	}
 
-	return resp, nil
+	models := make([]interface{}, 0)
+
+	if basicType, basicTypeOk := resp.(map[string]interface{}); basicTypeOk {
+		if segmentsStruct, segmentsStructOk := basicType["segmentstruct"].([]interface{}); segmentsStructOk {
+			fields := make([]interface{}, 0)
+
+			for _, item := range segmentsStruct {
+				raw, _ := json.Marshal(item)
+				systemField := map[string]interface{}{}
+				err = json.Unmarshal(raw, &systemField)
+				if err != nil {
+					return nil, fmt.Errorf("failed to unmarshal idoc segment struct; status: %v; %s", status, err.Error())
+				}
+
+				attributes := systemField["field_attrib"].(map[string]interface{})
+				fields = append(fields, map[string]interface{}{
+					"name":        systemField["fieldname"],
+					"description": attributes["descrp"],
+					"type":        attributes["datatype"],
+				})
+			}
+
+			models = append(models, map[string]interface{}{
+				"fields": fields,
+			})
+		}
+	}
+
+	return models, nil
 }
 
 // CreateObject is a generic way to create a business object in the SAP environment

@@ -59,6 +59,67 @@ func (s *SubjectAccount) validate() bool {
 	return true
 }
 
+func (s *SubjectAccount) listSystems() ([]*middleware.System, error) {
+	token, err := s.authorizeAccessToken()
+	if err != nil {
+		common.Log.Warningf("failed to vend organization access token; %s", err.Error())
+		return nil, err
+	}
+
+	org, err := ident.GetOrganizationDetails(*token.AccessToken, *s.Metadata.OrganizationID, map[string]interface{}{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve organization: %s; %s", *s.Metadata.OrganizationID, err.Error())
+	}
+
+	systems := make([]*middleware.System, 0)
+
+	if workgroupsMap, workgroupsMapOk := org.Metadata["workgroups"].(map[string]interface{}); workgroupsMapOk {
+		if workgroup, workgroupOk := workgroupsMap[*s.Metadata.WorkgroupID].(map[string]interface{}); workgroupOk {
+			common.Log.Debugf("resolved workgroup... %s", workgroup)
+			if systemSecretIDs, systemSecretIDsOk := workgroup["system_secret_ids"].([]string); systemSecretIDsOk {
+				common.Log.Debugf("resolved system secret ids... %s", systemSecretIDs)
+				for _, secretID := range systemSecretIDs {
+					secret, err := vault.FetchSecret(
+						*token.AccessToken,
+						s.Metadata.Vault.ID.String(),
+						secretID,
+						map[string]interface{}{},
+					)
+					if err != nil {
+						return nil, fmt.Errorf("failed to fetch system secret: %s; %s", secretID, err.Error())
+					}
+
+					var system *middleware.System
+					err = json.Unmarshal([]byte(*secret.Value), &system)
+					if err != nil {
+						return nil, fmt.Errorf("failed to unmarshal system secret value: %s", err.Error())
+					}
+
+					systems = append(systems, system)
+				}
+			}
+		}
+	}
+
+	return systems, nil
+}
+
+func (s *SubjectAccount) resolveSystem(mappingType string) (middleware.SOR, error) {
+	systems, err := s.listSystems()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, sys := range systems {
+		if sys.Name != nil && *sys.Name == "sap" {
+			// HACK!!! TODO-- reesolve all systems and return []*middleware.SOR
+			return middleware.SystemFactory(sys), nil
+		}
+	}
+
+	return nil, fmt.Errorf("no system resolved for type: %s", mappingType)
+}
+
 func (s *SubjectAccount) persistMetadata() bool {
 	raw, err := json.Marshal(s.Metadata)
 	if err != nil {

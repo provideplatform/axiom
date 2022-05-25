@@ -100,7 +100,11 @@ func (m *ProtocolMessage) baselineInbound() bool {
 		return false
 	}
 
-	sor := middleware.SORFactoryByType(m.subjectAccount.Metadata.SOR, *m.Type, nil)
+	sor, err := m.subjectAccount.resolveSystem(*m.Type)
+	if err != nil {
+		common.Log.Warningf("failed to resolve system for subject account for mapping type: %s*m.Type")
+		return false
+	}
 
 	if baselineRecord.ID == nil {
 		// TODO -- map baseline record id -> internal record id (i.e, this is currently done but lazily on outbound message)
@@ -163,6 +167,13 @@ func (m *Message) baselineOutbound() bool {
 		return false
 	}
 
+	if m.token == nil {
+		m.Errors = append(m.Errors, &provide.Error{
+			Message: common.StringOrNil("access token not resolved"),
+		})
+		return false
+	}
+
 	if m.subjectAccount.Metadata == nil || m.subjectAccount.Metadata.SOR == nil {
 		m.Errors = append(m.Errors, &provide.Error{
 			Message: common.StringOrNil("invalid system configuration"),
@@ -170,9 +181,11 @@ func (m *Message) baselineOutbound() bool {
 		return false
 	}
 
-	// FIXME -- org.metadata.workgroups.<id>.system_secret_ids
-	// m.subjectAccount.Metadata
-	sor := middleware.SORFactoryByType(m.subjectAccount.Metadata.SOR, *m.Type, nil)
+	sor, err := m.subjectAccount.resolveSystem(*m.Type)
+	if err != nil {
+		common.Log.Warningf("failed to resolve system for subject account for mapping type: %s*m.Type")
+		return false
+	}
 
 	var baselineContext *BaselineContext
 	baselineRecord := lookupBaselineRecordByInternalID(*m.ID)
@@ -290,6 +303,7 @@ func (m *Message) baselineOutbound() bool {
 					Type:      m.Type,
 				},
 				nil,
+				nil,
 			}
 
 			if recipient.Address != nil {
@@ -342,9 +356,10 @@ func (m *Message) baselineOutbound() bool {
 			Type:   m.Type,
 		},
 		nil,
+		nil,
 	}
 
-	err := m.prove()
+	err = m.prove()
 	if err != nil {
 		msg := fmt.Sprintf("failed to prove outbound baseline protocol message; invalid state transition; %s", err.Error())
 		common.Log.Warning(msg)
@@ -417,6 +432,7 @@ func (m *ProtocolMessage) broadcast(recipient string) error {
 			Type:       m.Type,
 			Payload:    m.Payload,
 		},
+		nil,
 		nil,
 	})
 

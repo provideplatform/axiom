@@ -5,12 +5,19 @@ import (
 	"sync"
 
 	"github.com/provideplatform/provide-go/api"
+	"github.com/provideplatform/provide-go/common"
 )
 
 // ExcelService
 type ExcelService struct {
 	api.Client
 	mutex sync.Mutex
+}
+
+// ExcelFactory initializes an Excel instance
+func ExcelFactory(params *System) *ExcelService {
+	common.Log.Warningf("ExcelFactory not implemented")
+	return nil
 }
 
 // InitExcelService convenience method to initialize a default `ExcelService` instance

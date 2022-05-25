@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	uuid "github.com/kthomas/go.uuid"
+	"github.com/provideplatform/provide-go/common"
 )
 
 // EphemeralMemoryService
@@ -12,6 +13,12 @@ type EphemeralMemoryService struct {
 	mutex   sync.Mutex
 	records map[string]interface{}
 	status  map[string]interface{}
+}
+
+// EphemeralMemoryFactory initializes a EphemeralMemory instance
+func EphemeralMemoryFactory(params *System) *EphemeralMemoryService {
+	common.Log.Warningf("EphemeralMemory not implemented")
+	return nil
 }
 
 // InitEphemeralMemoryService convenience method to initialize a EphemeralMemory instance

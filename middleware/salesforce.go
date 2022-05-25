@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/provideplatform/provide-go/api"
+	"github.com/provideplatform/provide-go/common"
 )
 
 const defaultSalesforceHost = "testnet.dappsuite.network"
@@ -16,6 +17,12 @@ const defaultSalesforceScheme = "https"
 type SalesforceService struct {
 	api.Client
 	mutex sync.Mutex
+}
+
+// SalesforceService initializes a Salesforce instance
+func SalesforceFactory(params *System) *SalesforceService {
+	common.Log.Warningf("SalesforceNowFactory not implemented")
+	return nil
 }
 
 // InitSalesforceService convenience method to initialize a Salesforce instance

@@ -1,5 +1,7 @@
 package middleware
 
+import "github.com/provideplatform/provide-go/common"
+
 const sorIdentifierDynamics365 = "dynamics365"
 const sorIdentifierEphemeralMemory = "ephemeral"
 const sorIdentifierExcel = "excel"
@@ -12,6 +14,24 @@ const sorTypeServiceNowIncident = "servicenow_incident"
 
 const SORBusinessObjectStatusError = "error"
 const SORBusinessObjectStatusSuccess = "success"
+
+type System struct {
+	Auth        *SystemAuthentication `json:"auth"`
+	EndpointURL *string               `json:"endpoint_url"`
+	Name        *string               `json:"name"`
+	System      *string               `json:"system"`
+	Type        *string               `json:"type"`
+}
+
+type SystemAuthentication struct {
+	Method                   *string `json:"method"`
+	Username                 *string `json:"username"`
+	Password                 *string `json:"password"`
+	RequireClientCredentials bool    `json:"require_client_credentials"`
+	ClientID                 *string `json:"client_id"`
+	ClientSecret             *string `json:"client_secret"`
+	Token                    *string `json:"token"`
+}
 
 // SOR defines an interface for system of record backends
 type SOR interface {
@@ -60,4 +80,36 @@ func SORFactoryByType(params map[string]interface{}, recordType string, token *s
 	}
 
 	return SORFactory(params, token)
+}
+
+// SystemFactory initializes and returns a system using the given middleware params
+func SystemFactory(params *System) SOR {
+	if params.Name == nil && params.System == nil {
+		common.Log.Warningf("middleware system factory called with invalid system identifier")
+	}
+
+	identifier := params.Name
+	if identifier == nil {
+		// HACK!!!
+		identifier = params.System
+	}
+
+	switch *identifier {
+	case sorIdentifierDynamics365:
+		return Dynamics365Factory(params)
+	case sorIdentifierEphemeralMemory:
+		return EphemeralMemoryFactory(params)
+	case sorIdentifierExcel:
+		return ExcelFactory(params)
+	case sorIdentifierSAP:
+		return SAPFactory(params)
+	case sorIdentifierSalesforce:
+		return SalesforceFactory(params)
+	case sorIdentifierServiceNow:
+		return ServiceNowFactory(params)
+	default:
+		break
+	}
+
+	return nil
 }

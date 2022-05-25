@@ -24,6 +24,12 @@ type ServiceNowService struct {
 	mutex sync.Mutex
 }
 
+// ServiceNowFactory initializes a ServiceNow instance
+func ServiceNowFactory(params *System) *ServiceNowService {
+	common.Log.Warningf("ServiceNowFactory not implemented")
+	return nil
+}
+
 // InitServiceNowService convenience method to initialize a ServiceNow instance
 func InitServiceNowService(token *string) *ServiceNowService {
 	host := defaultServiceNowHost

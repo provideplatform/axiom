@@ -25,6 +25,12 @@ const defaultServiceBusContextTimeout = 10 * time.Second
 const subscribeTickInterval = 500 * time.Millisecond
 const subscribeSleepInterval = 250 * time.Millisecond
 
+// Dynamics365Factory initializes a Dynamics365Service instance
+func Dynamics365Factory(params *System) *Dynamics365Service {
+	common.Log.Warningf("Dynamics365Factory not implemented")
+	return nil
+}
+
 // Dynamics365Service for the D365 API
 type Dynamics365Service struct {
 	client api.Client

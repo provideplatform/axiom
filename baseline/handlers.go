@@ -159,6 +159,10 @@ func sendProtocolMessageHandler(c *gin.Context) {
 		}
 	}
 
+	// HACK!!
+	token, _ := util.ParseBearerAuthorizationHeader(c, nil)
+	message.token = common.StringOrNil(token.Raw)
+
 	if message.baselineOutbound() {
 		message.ProtocolMessage.Payload.Object = nil
 		provide.Render(message.ProtocolMessage, 202, c)
@@ -331,6 +335,7 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 				},
 			},
 		},
+		nil,
 		nil,
 	}
 	payload, _ := json.Marshal(msg)
@@ -585,20 +590,6 @@ func listSchemasHandler(c *gin.Context) {
 		return
 	}
 
-	subjectAccountID := subjectAccountIDFactory(organizationID.String(), c.Param("id"))
-	subjectAccount, err := resolveSubjectAccount(subjectAccountID)
-	if err != nil {
-		provide.RenderError(err.Error(), 403, c)
-		return
-	}
-
-	token, _ := util.ParseBearerAuthorizationHeader(c, nil)
-	sor := middleware.SORFactory(subjectAccount.Metadata.SOR, &token.Raw)
-	if sor == nil {
-		provide.RenderError("invalid or unsupported system", 400, c)
-		return
-	}
-
 	if c.Query("ref") != "" {
 		// short-circuit and query mappings API if `ref` query parameter is provided
 		mappings := make([]*Mapping, 0)
@@ -608,11 +599,41 @@ func listSchemasHandler(c *gin.Context) {
 		return
 	}
 
-	schemas, err := sor.ListSchemas(map[string]interface{}{
-		"q": c.Param("q"),
-	})
+	subjectAccountID := subjectAccountIDFactory(organizationID.String(), c.Param("id"))
+	subjectAccount, err := resolveSubjectAccount(subjectAccountID)
+	if err != nil {
+		provide.RenderError(err.Error(), 403, c)
+		return
+	}
 
-	// FIXME-- aggregate local mappings and dedupe/enrich with SOR results
+	systems, err := subjectAccount.listSystems()
+	if err != nil {
+		provide.RenderError("failed to list systems for subject account", 403, c)
+		return
+	}
+
+	resp := make([]interface{}, 0) // FIXME?? use []*Mapping
+
+	// FIXME-- dispatch goroutine-per-system with channel to sync the returned schemas for aggregation...
+	for _, system := range systems {
+		sor := middleware.SystemFactory(system)
+		if sor == nil {
+			common.Log.Warningf("subject account has unsupported or misconfigured system: %s; skipping...", *system.Name)
+			continue
+		}
+
+		schemas, err := sor.ListSchemas(map[string]interface{}{
+			"q": c.Param("q"),
+		})
+		if err != nil {
+			provide.RenderError(err.Error(), 500, c)
+			return
+		}
+
+		resp = append(resp, schemas)
+	}
+
+	// TODO-- aggregate local mappings and dedupe/enrich with SOR results
 	// to return blended API response
 
 	if err != nil {
@@ -620,7 +641,7 @@ func listSchemasHandler(c *gin.Context) {
 		return
 	}
 
-	provide.Render(schemas, 200, c)
+	provide.Render(resp, 200, c)
 }
 
 func schemaDetailsHandler(c *gin.Context) {
