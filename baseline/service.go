@@ -102,7 +102,7 @@ func (m *ProtocolMessage) baselineInbound() bool {
 
 	sor, err := m.subjectAccount.resolveSystem(*m.Type)
 	if err != nil {
-		common.Log.Warningf("failed to resolve system for subject account for mapping type: %s*m.Type")
+		common.Log.Warningf("failed to resolve system for subject account for mapping type: %s", *m.Type)
 		return false
 	}
 
@@ -183,7 +183,7 @@ func (m *Message) baselineOutbound() bool {
 
 	sor, err := m.subjectAccount.resolveSystem(*m.Type)
 	if err != nil {
-		common.Log.Warningf("failed to resolve system for subject account for mapping type: %s*m.Type")
+		common.Log.Warningf("failed to resolve system for subject account for mapping type: %s", *m.Type)
 		return false
 	}
 
