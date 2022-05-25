@@ -457,6 +457,14 @@ func listMappingsHandler(c *gin.Context) {
 		query = db.Where("organization_id = ?", organizationID)
 	}
 
+	if c.Query("ref") != "" {
+		query = query.Where("ref = ?", c.Query("ref"))
+	}
+
+	if c.Query("version") != "" {
+		query = query.Where("version = ?", c.Query("version"))
+	}
+
 	query = query.Order("type DESC")
 	provide.Paginate(c, query, &Mapping{}).Find(&mappings)
 
@@ -587,15 +595,6 @@ func listSchemasHandler(c *gin.Context) {
 	organizationID := util.AuthorizedSubjectID(c, "organization")
 	if organizationID == nil {
 		provide.RenderError("unauthorized", 401, c)
-		return
-	}
-
-	if c.Query("ref") != "" {
-		// short-circuit and query mappings API if `ref` query parameter is provided
-		mappings := make([]*Mapping, 0)
-		query := ListMappingsByRefQuery(c.Query("ref"), common.StringOrNil(c.Query("version")))
-		provide.Paginate(c, query, &Mapping{}).Find(&mappings)
-		provide.Render(mappings, 200, c)
 		return
 	}
 
