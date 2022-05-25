@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"os"
@@ -180,6 +181,28 @@ func (s *SAPService) ListSchemas(params map[string]interface{}) (interface{}, er
 
 	if status != 200 {
 		return nil, fmt.Errorf("failed to fetch business object model; status: %v", status)
+	}
+
+	schemas := make([]interface{}, 0)
+
+	if items, ok := resp.([]interface{}); ok {
+		for _, item := range items {
+			raw, _ := json.Marshal(item)
+			systemSchema := map[string]interface{}{}
+
+			err = json.Unmarshal(raw, &systemSchema)
+			if err != nil {
+				return nil, fmt.Errorf("failed to unmarshal; status: %v; %s", status, err.Error())
+			}
+
+			schemas = append(schemas, map[string]interface{}{
+				"id":          systemSchema["idoctype"],
+				"description": nil,
+				"type":        systemSchema["idoctypedescr"],
+			})
+		}
+
+		return schemas, nil
 	}
 
 	return resp, nil

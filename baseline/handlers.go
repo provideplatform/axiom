@@ -533,6 +533,11 @@ func updateMappingHandler(c *gin.Context) {
 		return
 	}
 
+	if _mapping.Ref != nil {
+		provide.RenderError("cannot specify ref", 400, c)
+		return
+	}
+
 	if mapping.Update(_mapping) {
 		provide.Render(nil, 204, c)
 	} else if len(mapping.Errors) > 0 {
@@ -594,9 +599,22 @@ func listSchemasHandler(c *gin.Context) {
 		return
 	}
 
+	if c.Query("ref") != "" {
+		// short-circuit and query mappings API if `ref` query parameter is provided
+		mappings := make([]*Mapping, 0)
+		query := ListMappingsByRefQuery(c.Query("ref"), common.StringOrNil(c.Query("version")))
+		provide.Paginate(c, query, &Mapping{}).Find(&mappings)
+		provide.Render(mappings, 200, c)
+		return
+	}
+
 	schemas, err := sor.ListSchemas(map[string]interface{}{
 		"q": c.Param("q"),
 	})
+
+	// FIXME-- aggregate local mappings and dedupe/enrich with SOR results
+	// to return blended API response
+
 	if err != nil {
 		provide.RenderError(err.Error(), 422, c)
 		return

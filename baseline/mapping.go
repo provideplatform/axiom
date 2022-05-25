@@ -1,6 +1,9 @@
 package baseline
 
 import (
+	"errors"
+	"fmt"
+
 	"github.com/jinzhu/gorm"
 	dbconf "github.com/kthomas/go-db-config"
 	uuid "github.com/kthomas/go.uuid"
@@ -15,7 +18,9 @@ type Mapping struct {
 	baseline.Mapping
 	Models         []*MappingModel `sql:"-" json:"models"`
 	OrganizationID *uuid.UUID      `json:"organization_id"`
+	Ref            *string         `json:"ref,omitempty"`
 	RefMappingID   *uuid.UUID      `json:"ref_mapping_id"`
+	Version        *string         `json:"version"`
 	WorkgroupID    *uuid.UUID      `json:"workgroup_id"`
 }
 
@@ -36,6 +41,10 @@ type MappingField struct {
 	RefFieldID     *uuid.UUID `json:"ref_field_id"`
 }
 
+func mappingRefFactory(organizationID uuid.UUID, mappingType string) string {
+	return common.SHA256(fmt.Sprintf("%s.%s", organizationID.String(), mappingType))
+}
+
 // FindMappingByID finds a mapping for the given id
 func FindMappingByID(id uuid.UUID) *Mapping {
 	db := dbconf.DatabaseConnection()
@@ -49,6 +58,16 @@ func FindMappingByID(id uuid.UUID) *Mapping {
 		model.Fields = FindMappingFieldsByMappingModelID(model.ID)
 	}
 	return mapping
+}
+
+// ListMappingsByRefQuery returns a query to list of mappings which match the given ref and optional version
+func ListMappingsByRefQuery(ref string, version *string) *gorm.DB {
+	db := dbconf.DatabaseConnection()
+	query := db.Where("ref = ?", ref)
+	if version != nil {
+		query = query.Where("version = ?", *version)
+	}
+	return query
 }
 
 // FindMappingModelsByMappingID finds the mapping models for the given mapping id
@@ -80,10 +99,24 @@ func (m *Mapping) enrich() {
 	}
 }
 
+func (m *Mapping) enrichRef() error {
+	if m.OrganizationID == nil {
+		return errors.New("cannot enrich ref with nil mapping organization id")
+	}
+	if m.Type == nil {
+		return errors.New("cannot enrich ref with nil mapping type")
+	}
+
+	m.Ref = common.StringOrNil(mappingRefFactory(*m.OrganizationID, *m.Type))
+	return nil
+}
+
 func (m *Mapping) Create() bool {
 	if !m.Validate() {
 		return false
 	}
+
+	m.enrichRef()
 
 	db := dbconf.DatabaseConnection()
 	tx := db.Begin()
@@ -184,7 +217,12 @@ func (m *Mapping) Update(mapping *Mapping) bool {
 }
 
 func (m *Mapping) Validate() bool {
-	return true
+	if m.Ref != nil {
+		m.Errors = append(m.Errors, &provide.Error{
+			Message: common.StringOrNil("mapping ref must not be provided"),
+		})
+	}
+	return len(m.Errors) == 0
 }
 
 func (m *MappingModel) TableName() string {

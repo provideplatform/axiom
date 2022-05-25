@@ -171,6 +171,7 @@ func (m *Message) baselineOutbound() bool {
 	}
 
 	// FIXME -- org.metadata.workgroups.<id>.system_secret_ids
+	// m.subjectAccount.Metadata
 	sor := middleware.SORFactoryByType(m.subjectAccount.Metadata.SOR, *m.Type, nil)
 
 	var baselineContext *BaselineContext
