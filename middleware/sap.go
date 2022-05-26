@@ -34,9 +34,14 @@ func SAPFactory(params *System) *SAPService {
 		}
 	}
 
+	if params.Auth == nil {
+		// HACK
+		params.Auth = &SystemAuthentication{}
+	}
+
 	return &SAPService{
 		api.Client{
-			Host:     *params.EndpointURL,
+			Host:     endpoint.Host,
 			Path:     endpoint.Path,
 			Scheme:   endpoint.Scheme,
 			Token:    params.Auth.Token,
