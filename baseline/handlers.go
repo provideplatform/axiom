@@ -635,7 +635,7 @@ func listSchemasHandler(c *gin.Context) {
 				for _, result := range arr {
 					if schema, schemaOk := result.(map[string]interface{}); schemaOk {
 						if schemaType, schemaTypeOk := schema["type"].(string); schemaTypeOk && strings.Contains(schemaType, c.Query("q")) {
-							resp = append(resp, schemaType)
+							resp = append(resp, schema)
 						}
 					}
 				}
