@@ -629,7 +629,11 @@ func listSchemasHandler(c *gin.Context) {
 			return
 		}
 
-		resp = append(resp, schemas)
+		if arr, arrOk := schemas.([]interface{}); arrOk {
+			for _, schema := range arr {
+				resp = append(resp, schema)
+			}
+		}
 	}
 
 	// TODO-- aggregate local mappings and dedupe/enrich with SOR results
