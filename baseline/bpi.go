@@ -81,7 +81,7 @@ func (s *SubjectAccount) listSystems() ([]*middleware.System, error) {
 					common.Log.Debugf("resolved system secret id... %s", secretID)
 					secret, err := vault.FetchSecret(
 						*token.AccessToken,
-						s.Metadata.Vault.ID.String(),
+						workgroup["vault_id"].(string),
 						secretID.(string),
 						map[string]interface{}{},
 					)
