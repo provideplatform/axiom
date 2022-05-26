@@ -76,9 +76,10 @@ func (s *SubjectAccount) listSystems() ([]*middleware.System, error) {
 	if workgroupsMap, workgroupsMapOk := org.Metadata["workgroups"].(map[string]interface{}); workgroupsMapOk {
 		if workgroup, workgroupOk := workgroupsMap[*s.Metadata.WorkgroupID].(map[string]interface{}); workgroupOk {
 			common.Log.Debugf("resolved workgroup... %s", workgroup)
-			if systemSecretIDs, systemSecretIDsOk := workgroup["system_secret_ids"].([]string); systemSecretIDsOk {
-				common.Log.Debugf("resolved system secret ids... %s", systemSecretIDs)
-				for _, secretID := range systemSecretIDs {
+			if systemSecretIDs, systemSecretIDsOk := workgroup["system_secret_ids"]; systemSecretIDsOk {
+				var secretIDs []string = systemSecretIDs.([]string)
+				for _, secretID := range secretIDs {
+					common.Log.Debugf("resolved system secret id... %s", secretID)
 					secret, err := vault.FetchSecret(
 						*token.AccessToken,
 						s.Metadata.Vault.ID.String(),
