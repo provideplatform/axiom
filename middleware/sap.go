@@ -230,9 +230,9 @@ func (s *SAPService) ListSchemas(params map[string]interface{}) (interface{}, er
 			}
 
 			schemas = append(schemas, map[string]interface{}{
-				"description": nil,
+				"description": systemSchema["idoctypedescr"],
 				"name":        systemSchema["idoctype"],
-				"type":        systemSchema["idoctypedescr"],
+				"type":        systemSchema["idoctype"],
 			})
 		}
 
