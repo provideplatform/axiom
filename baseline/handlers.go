@@ -630,7 +630,18 @@ func listSchemasHandler(c *gin.Context) {
 		}
 
 		if arr, arrOk := schemas.([]interface{}); arrOk {
-			resp = append(resp, arr...)
+			if len(c.Param("q")) > 0 {
+				// HACK!! proof of concept filter only... proper impl forthcoming
+				for _, result := range arr {
+					if schema, schemaOk := result.(map[string]interface{}); schemaOk {
+						if schemaType, schemaTypeOk := schema["type"].(string); schemaTypeOk && strings.Contains(schemaType, c.Param("q")) {
+							resp = append(resp, schemaType)
+						}
+					}
+				}
+			} else {
+				resp = append(resp, arr...)
+			}
 		}
 	}
 
