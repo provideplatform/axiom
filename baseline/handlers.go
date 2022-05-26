@@ -659,20 +659,33 @@ func schemaDetailsHandler(c *gin.Context) {
 		return
 	}
 
-	token, _ := util.ParseBearerAuthorizationHeader(c, nil)
-	sor := middleware.SORFactory(subjectAccount.Metadata.SOR, &token.Raw)
-	if sor == nil {
-		provide.RenderError("invalid or unsupported system", 400, c)
-		return
-	}
-
-	schema, err := sor.GetSchema(c.Param("schemaId"), map[string]interface{}{})
+	systems, err := subjectAccount.listSystems()
 	if err != nil {
-		provide.RenderError(err.Error(), 422, c)
+		provide.RenderError("failed to list systems for subject account", 403, c)
 		return
 	}
 
-	provide.Render(schema, 200, c)
+	var resp interface{}
+
+	// FIXME-- filter systems to resolve the original system from which the requested schema is being requested...
+	for _, system := range systems {
+		sor := middleware.SystemFactory(system)
+		if sor == nil {
+			common.Log.Warningf("subject account has unsupported or misconfigured system: %s; skipping...", *system.Name)
+			continue
+		}
+
+		resp, err = sor.GetSchema(c.Param("schemaId"), map[string]interface{}{})
+		if err != nil {
+			provide.RenderError(err.Error(), 422, c) // FIXME-- pass the status code thru...
+			return
+		}
+
+		provide.Render(resp, 200, c)
+		return
+	}
+
+	provide.RenderError("not found", 404, c)
 }
 
 func createWorkflowHandler(c *gin.Context) {
