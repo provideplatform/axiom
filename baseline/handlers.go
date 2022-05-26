@@ -630,9 +630,7 @@ func listSchemasHandler(c *gin.Context) {
 		}
 
 		if arr, arrOk := schemas.([]interface{}); arrOk {
-			for _, schema := range arr {
-				resp = append(resp, schema)
-			}
+			resp = append(resp, arr...)
 		}
 	}
 
