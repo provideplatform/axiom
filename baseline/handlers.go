@@ -622,7 +622,7 @@ func listSchemasHandler(c *gin.Context) {
 		}
 
 		schemas, err := sor.ListSchemas(map[string]interface{}{
-			"q": c.Param("q"),
+			"q": c.Query("q"),
 		})
 		if err != nil {
 			provide.RenderError(err.Error(), 500, c)
@@ -630,11 +630,11 @@ func listSchemasHandler(c *gin.Context) {
 		}
 
 		if arr, arrOk := schemas.([]interface{}); arrOk {
-			if len(c.Param("q")) > 0 {
+			if len(c.Query("q")) > 0 {
 				// HACK!! proof of concept filter only... proper impl forthcoming
 				for _, result := range arr {
 					if schema, schemaOk := result.(map[string]interface{}); schemaOk {
-						if schemaType, schemaTypeOk := schema["type"].(string); schemaTypeOk && strings.Contains(schemaType, c.Param("q")) {
+						if schemaType, schemaTypeOk := schema["type"].(string); schemaTypeOk && strings.Contains(schemaType, c.Query("q")) {
 							resp = append(resp, schemaType)
 						}
 					}
