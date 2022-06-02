@@ -21,6 +21,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/dgrijalva/jwt-go"
@@ -702,7 +703,13 @@ func schemaDetailsHandler(c *gin.Context) {
 			continue
 		}
 
-		resp, err = sor.GetSchema(c.Param("schemaId"), map[string]interface{}{})
+		schemaID, err := url.QueryUnescape(c.Param("schemaId"))
+		if err != nil {
+			provide.RenderError("invalid schema id", 400, c)
+			return
+		}
+
+		resp, err = sor.GetSchema(schemaID, map[string]interface{}{})
 		if err != nil {
 			provide.RenderError(err.Error(), 422, c) // FIXME-- pass the status code thru...
 			return
