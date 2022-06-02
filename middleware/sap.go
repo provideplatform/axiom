@@ -278,7 +278,7 @@ func (s *SAPService) GetSchema(recordType string, params map[string]interface{})
 		return nil, fmt.Errorf("failed to fetch business object model; status: %v", status)
 	}
 
-	models := make([]interface{}, 0)
+	var schema interface{}
 
 	if basicType, basicTypeOk := resp.(map[string]interface{}); basicTypeOk {
 		if segmentsStruct, segmentsStructOk := basicType["segmentstruct"].([]interface{}); segmentsStructOk {
@@ -300,13 +300,15 @@ func (s *SAPService) GetSchema(recordType string, params map[string]interface{})
 				})
 			}
 
-			models = append(models, map[string]interface{}{
-				"fields": fields,
-			})
+			schema = map[string]interface{}{
+				"description": basicType["idoctypedescr"],
+				"fields":      fields,
+				"type":        basicType["idoctype"],
+			}
 		}
 	}
 
-	return models, nil
+	return schema, nil
 }
 
 // CreateObject is a generic way to create a business object in the SAP environment
