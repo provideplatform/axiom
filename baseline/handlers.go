@@ -227,23 +227,7 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 	bearerToken := params["token"].(string)
 
 	token, err := jwt.Parse(bearerToken, func(_jwtToken *jwt.Token) (interface{}, error) {
-		var kid *string
-		if kidhdr, ok := _jwtToken.Header["kid"].(string); ok {
-			kid = &kidhdr
-		}
-
-		publicKey, _, _, _ := util.ResolveJWTKeypair(kid)
-		if publicKey == nil {
-			msg := "failed to resolve a valid JWT verification key"
-			if kid != nil {
-				msg = fmt.Sprintf("%s; invalid kid specified in header: %s", msg, *kid)
-			} else {
-				msg = fmt.Sprintf("%s; no default verification key configured", msg)
-			}
-			return nil, fmt.Errorf(msg)
-		}
-
-		return publicKey, nil
+		return nil, nil
 	})
 
 	if err != nil {
@@ -281,6 +265,37 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 	subjectAccount, err := resolveSubjectAccount(subjectAccountID)
 	if err != nil {
 		provide.RenderError(err.Error(), 403, c)
+		return
+	}
+
+	// parse the token again, this time verifying the signature origin as the named subject account
+	_, err = jwt.Parse(bearerToken, func(_jwtToken *jwt.Token) (interface{}, error) {
+		var kid *string
+		if kidhdr, ok := _jwtToken.Header["kid"].(string); ok {
+			kid = &kidhdr
+		}
+
+		jwks, err := subjectAccount.parseJWKs()
+		if err != nil {
+			return nil, err
+		}
+
+		publicKey := jwks[*kid]
+		if publicKey == nil {
+			msg := "failed to resolve a valid JWT verification key"
+			if kid != nil {
+				msg = fmt.Sprintf("%s; invalid kid specified in header: %s", msg, *kid)
+			} else {
+				msg = fmt.Sprintf("%s; no default verification key configured", msg)
+			}
+			return nil, fmt.Errorf(msg)
+		}
+
+		return publicKey, nil
+	})
+	if err != nil {
+		msg := fmt.Sprintf("failed to accept workgroup invitation; failed to parse jwt; %s", err.Error())
+		provide.RenderError(msg, 403, c)
 		return
 	}
 

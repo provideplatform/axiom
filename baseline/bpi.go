@@ -28,6 +28,7 @@ import (
 	"github.com/jinzhu/gorm"
 	dbconf "github.com/kthomas/go-db-config"
 	natsutil "github.com/kthomas/go-natsutil"
+	"github.com/kthomas/go-pgputil"
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideplatform/baseline/common"
 	"github.com/provideplatform/baseline/middleware"
@@ -37,6 +38,7 @@ import (
 	"github.com/provideplatform/provide-go/api/nchain"
 	"github.com/provideplatform/provide-go/api/vault"
 	"github.com/provideplatform/provide-go/common/util"
+	"golang.org/x/crypto/ssh"
 )
 
 const prvdSubjectAccountType = "PRVD"
@@ -172,6 +174,77 @@ func (s *SubjectAccount) persistMetadata() bool {
 	return s.MetadataSecretID != nil && *s.MetadataSecretID != uuid.Nil
 }
 
+func (s *SubjectAccount) resolveCredentials() bool {
+	jwks, err := s.resolveJWKs()
+	if err != nil {
+		return false
+	}
+
+	// FIXME-- expand this interface
+	credentials := map[string]interface{}{
+		"jwks": jwks,
+	}
+
+	credsJSON, _ := json.Marshal(credentials)
+	_credsJSON := json.RawMessage(credsJSON)
+	s.Credentials = &_credsJSON
+
+	return s.Credentials != nil
+}
+
+// resolveJWKs resolves the configured JWKs for the subject account
+func (s *SubjectAccount) resolveJWKs() (map[string]*ident.JSONWebKey, error) {
+	token, err := s.authorizeAccessToken()
+	if err != nil {
+		s.Errors = append(s.Errors, &provide.Error{
+			Message: common.StringOrNil(err.Error()),
+		})
+		return nil, err
+	}
+
+	keys, err := vault.ListKeys(
+		*token.AccessToken,
+		s.VaultID.String(),
+		map[string]interface{}{
+			"type": "RSA-4096",
+		},
+	)
+	if err != nil {
+		s.Errors = append(s.Errors, &provide.Error{
+			Message: common.StringOrNil(fmt.Sprintf("failed to list RSA keys for BPI subject account %s in vault %s; %s", *s.ID, s.VaultID.String(), err.Error())),
+		})
+		return nil, err
+	}
+
+	jwks := map[string]*ident.JSONWebKey{}
+
+	for _, key := range keys {
+		publicKey, err := pgputil.DecodeRSAPublicKeyFromPEM([]byte(*key.PublicKey))
+		if err != nil {
+			common.Log.Warningf("failed to parse JWT public key; %s", err.Error())
+			continue
+		}
+
+		sshPublicKey, err := ssh.NewPublicKey(publicKey)
+		if err != nil {
+			common.Log.Warningf("failed to resolve JWT public key fingerprint; %s", err.Error())
+			continue
+		}
+
+		fingerprint := common.StringOrNil(ssh.FingerprintLegacyMD5(sshPublicKey))
+
+		jwks[*fingerprint] = &ident.JSONWebKey{
+			E:           fmt.Sprintf("%X", publicKey.E),
+			Fingerprint: *fingerprint,
+			Kid:         *fingerprint,
+			N:           publicKey.N.String(),
+			PublicKey:   *key.PublicKey,
+		}
+	}
+
+	return jwks, nil
+}
+
 func (s *SubjectAccount) create(tx *gorm.DB) bool {
 	if !s.validate() {
 		return false
@@ -215,6 +288,14 @@ func (s *SubjectAccount) create(tx *gorm.DB) bool {
 	err = s.resolveWorkgroupParticipants()
 	if err != nil {
 		msg := fmt.Sprintf("failed to resolve counterparties for BPI subject account; %s", err.Error())
+		s.Errors = append(s.Errors, &provide.Error{
+			Message: common.StringOrNil(msg),
+		})
+		return false
+	}
+
+	if !s.resolveCredentials() {
+		msg := fmt.Sprintf("failed to resolve credentials for BPI subject account; %s", err.Error())
 		s.Errors = append(s.Errors, &provide.Error{
 			Message: common.StringOrNil(msg),
 		})
@@ -351,6 +432,33 @@ func (s *SubjectAccount) encryptRefreshToken() bool {
 
 	s.RefreshToken = &resp.Data
 	return s.RefreshToken != nil
+}
+
+func (s *SubjectAccount) parseJWKs() (map[string]*ident.JSONWebKey, error) {
+	if s.Credentials == nil {
+		return nil, fmt.Errorf("failed to resolve credentials for BPI subject account %s", *s.ID)
+	}
+
+	var creds map[string]interface{}
+	err := json.Unmarshal(*s.Credentials, &creds)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal credentials for BPI subject account %s; %s", *s.ID, err.Error())
+	}
+
+	jwksMap, jwksOk := creds["jwks"].(map[string]interface{})
+	if !jwksOk {
+		return nil, fmt.Errorf("failed to unmarshal JWKs from resolved credentials for BPI subject account %s", *s.ID)
+	}
+
+	var jwks map[string]*ident.JSONWebKey
+	jwksRaw, _ := json.Marshal(jwksMap) // HACK!!
+	err = json.Unmarshal(jwksRaw, &jwks)
+	if err != nil {
+		common.Log.Warningf("failed to unmarshal credentials for BPI subject account %s; %s", *s.ID, err.Error())
+		return nil, err
+	}
+
+	return jwks, nil
 }
 
 func init() {
