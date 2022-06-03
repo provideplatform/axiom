@@ -25,6 +25,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dgrijalva/jwt-go"
 	"github.com/jinzhu/gorm"
 	dbconf "github.com/kthomas/go-db-config"
 	natsutil "github.com/kthomas/go-natsutil"
@@ -51,6 +52,20 @@ var (
 	// SubjectAccountsByID lazy loaded, in-memory cache for subject account id -> BPI subject account; in-memory cache available only to instances serving the API
 	SubjectAccountsByID map[string][]*SubjectAccount
 )
+
+// InviteClaims represent JWT invitation claims
+type InviteClaims struct {
+	jwt.MapClaims
+	Baseline *BaselineClaims `json:"baseline"`
+}
+
+// BaselineClaims represent JWT claims encoded within the invite token
+// FIXME!! this should be referenced from lib package
+type BaselineClaims struct {
+	InvitorOrganizationAddress *string `json:"invitor_organization_address"`
+	RegistryContractAddress    *string `json:"registry_contract_address"`
+	WorkgroupID                *string `json:"workgroup_id"`
+}
 
 // SubjectAccount is a baseline BPI Subject Account per the specification
 type SubjectAccount struct {

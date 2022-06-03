@@ -227,7 +227,7 @@ func createWorkgroupHandler(c *gin.Context) {
 func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[string]interface{}) {
 	bearerToken := params["token"].(string)
 
-	var claims jwt.MapClaims
+	claims := &InviteClaims{}
 	var jwtParser jwt.Parser
 	_, _, err := jwtParser.ParseUnverified(bearerToken, claims)
 
@@ -238,20 +238,28 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 		return
 	}
 
-	baselineClaim, ok := claims["baseline"].(map[string]interface{})
-	if !ok {
-		msg := fmt.Sprintf("failed to accept workgroup invitation; no baseline claim provided; %s", err.Error())
+	if claims.Baseline == nil {
+		msg := "failed to accept workgroup invitation; no baseline claim resolved in VC"
 		common.Log.Warningf(msg)
 		provide.RenderError(msg, 422, c)
 		return
 	}
 
-	var identifier *string
-	if id, identifierOk := baselineClaim["workgroup_id"].(string); identifierOk {
-		identifier = common.StringOrNil(id)
+	if claims.Baseline.WorkgroupID == nil {
+		msg := "failed to accept workgroup invitation; no baseline workgroup identifier claim resolved in VC"
+		common.Log.Warningf(msg)
+		provide.RenderError(msg, 422, c)
+		return
 	}
 
-	identifierUUID, err := uuid.FromString(*identifier)
+	if claims.Baseline.InvitorOrganizationAddress == nil {
+		msg := "failed to accept workgroup invitation; no baseline invitor organization address claim resolved in VC"
+		common.Log.Warningf(msg)
+		provide.RenderError(msg, 422, c)
+		return
+	}
+
+	identifierUUID, err := uuid.FromString(*claims.Baseline.WorkgroupID)
 	if err != nil {
 		msg := fmt.Sprintf("failed to accept workgroup invitation; invalid identifier; %s", err.Error())
 		common.Log.Warningf(msg)
@@ -305,16 +313,6 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 		return
 	}
 
-	var invitorAddress *string
-	if addr, invitorAddressOk := baselineClaim["invitor_organization_address"].(string); invitorAddressOk {
-		invitorAddress = common.StringOrNil(addr)
-	} else {
-		msg := "no invitor address provided in vc"
-		common.Log.Warningf(msg)
-		provide.RenderError(msg, 422, c)
-		return
-	}
-
 	// FIXME!!
 	// var registryContractAddress *string
 	// if addr, registryContractAddressOk := baselineClaim["registry_contract_address"].(string); registryContractAddressOk {
@@ -340,9 +338,9 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 
 	invitor := &Participant{
 		baseline.Participant{
-			Address: invitorAddress,
+			Address: claims.Baseline.InvitorOrganizationAddress,
 		},
-		invitorAddress,
+		claims.Baseline.InvitorOrganizationAddress,
 		make([]*Workgroup, 0),
 		make([]*Workflow, 0),
 		make([]*Workstep, 0),
@@ -352,7 +350,7 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 	participants := make([]*Participant, 0)
 	participants = append(participants, invitor)
 
-	err = CacheBaselineOrganizationIssuedVC(*invitorAddress, *vc)
+	err = CacheBaselineOrganizationIssuedVC(*claims.Baseline.InvitorOrganizationAddress, *vc)
 	if err != nil {
 		msg := fmt.Sprintf("failed to cache organization-issued vc; %s", err.Error())
 		common.Log.Warningf(msg)
