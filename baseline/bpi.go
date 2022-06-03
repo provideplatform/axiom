@@ -268,7 +268,6 @@ func (s *SubjectAccount) resolveJWKs() (map[string]*ident.JSONWebKey, error) {
 		}
 
 		fingerprint := common.StringOrNil(ssh.FingerprintLegacyMD5(sshPublicKey))
-
 		jwks[*fingerprint] = &ident.JSONWebKey{
 			E:           fmt.Sprintf("%X", publicKey.E),
 			Fingerprint: *fingerprint,
@@ -276,6 +275,8 @@ func (s *SubjectAccount) resolveJWKs() (map[string]*ident.JSONWebKey, error) {
 			N:           publicKey.N.String(),
 			PublicKey:   *key.PublicKey,
 		}
+
+		common.Log.Debugf("resolved JWK for BPI subject account %s: %s", *s.ID, *key.PublicKey)
 	}
 
 	return jwks, nil
