@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"strings"
@@ -231,7 +232,7 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 		return nil, nil
 	})
 
-	if err != nil {
+	if err != nil && !errors.Is(err, jwt.ErrInvalidKeyType) {
 		msg := fmt.Sprintf("failed to accept workgroup invitation; failed to parse jwt; %s", err.Error())
 		common.Log.Warningf(msg)
 		provide.RenderError(msg, 422, c)
@@ -276,7 +277,7 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 			kid = &kidhdr
 		}
 
-		jwks, err := subjectAccount.resolveJWKs() //.parseJWKs()
+		jwks, err := subjectAccount.parseJWKs()
 		if err != nil {
 			return nil, err
 		}
@@ -294,13 +295,14 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 
 		publicKey, err := pgputil.DecodeRSAPublicKeyFromPEM([]byte(jwk.PublicKey))
 		if err != nil {
-			common.Log.Warningf("failed to parse JWT public key; %s", err.Error())
+			common.Log.Warningf("failed to parse JWT public key for BPI subject account %s; %s", *subjectAccount.ID, err.Error())
 			return nil, fmt.Errorf("failed to parse JWT public key; %s", err.Error())
 		}
 
 		common.Log.Debugf("resolved JWK for BPI subject account %s: %s", *subjectAccount.ID, *kid)
 		return publicKey, nil
 	})
+
 	if err != nil {
 		msg := fmt.Sprintf("failed to accept workgroup invitation; failed to parse jwt; %s", err.Error())
 		provide.RenderError(msg, 403, c)
