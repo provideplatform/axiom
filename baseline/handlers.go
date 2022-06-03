@@ -20,7 +20,6 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/url"
 	"strings"
@@ -228,20 +227,17 @@ func createWorkgroupHandler(c *gin.Context) {
 func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[string]interface{}) {
 	bearerToken := params["token"].(string)
 
-	token, err := jwt.Parse(bearerToken, func(_jwtToken *jwt.Token) (interface{}, error) {
-		return nil, nil
-	})
+	var claims jwt.MapClaims
+	var jwtParser jwt.Parser
+	_, _, err := jwtParser.ParseUnverified(bearerToken, claims)
 
-	if err != nil && !errors.Is(err, jwt.ErrInvalidKeyType) {
+	if err != nil {
 		msg := fmt.Sprintf("failed to accept workgroup invitation; failed to parse jwt; %s", err.Error())
 		common.Log.Warningf(msg)
 		provide.RenderError(msg, 422, c)
 		return
 	}
 
-	claims := token.Claims.(jwt.MapClaims)
-	// prvd := claims["prvd"].(map[string]interface{})
-	// data := prvd["data"].(map[string]interface{})
 	baselineClaim, ok := claims["baseline"].(map[string]interface{})
 	if !ok {
 		msg := fmt.Sprintf("failed to accept workgroup invitation; no baseline claim provided; %s", err.Error())
