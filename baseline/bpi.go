@@ -138,6 +138,42 @@ func (s *SubjectAccount) resolveSystem(mappingType string) (middleware.SOR, erro
 	return nil, fmt.Errorf("no system resolved for type: %s", mappingType)
 }
 
+func (s *SubjectAccount) persistCredentials() bool {
+	raw, err := json.Marshal(s.Credentials)
+	if err != nil {
+		s.Errors = append(s.Errors, &provide.Error{
+			Message: common.StringOrNil(err.Error()),
+		})
+		return false
+	}
+
+	token, err := s.authorizeAccessToken()
+	if err != nil {
+		s.Errors = append(s.Errors, &provide.Error{
+			Message: common.StringOrNil(err.Error()),
+		})
+		return false
+	}
+
+	secret, err := vault.CreateSecret(
+		*token.AccessToken,
+		s.VaultID.String(),
+		hex.EncodeToString(raw),
+		fmt.Sprintf("BPI subject account credentials %s", *s.ID),
+		fmt.Sprintf("BPI subject account credentials %s", *s.ID),
+		vaultSecretTypeBPISubjectAccount,
+	)
+	if err != nil {
+		s.Errors = append(s.Errors, &provide.Error{
+			Message: common.StringOrNil(fmt.Sprintf("failed to store BPI subject account credentials for subject account %s in vault %s; %s", *s.ID, s.VaultID.String(), err.Error())),
+		})
+		return false
+	}
+
+	s.CredentialsSecretID = &secret.ID
+	return s.CredentialsSecretID != nil && *s.CredentialsSecretID != uuid.Nil
+}
+
 func (s *SubjectAccount) persistMetadata() bool {
 	raw, err := json.Marshal(s.Metadata)
 	if err != nil {
@@ -302,6 +338,10 @@ func (s *SubjectAccount) create(tx *gorm.DB) bool {
 		return false
 	}
 
+	if !s.persistCredentials() {
+		return false
+	}
+
 	if !s.persistMetadata() {
 		return false
 	}
@@ -344,10 +384,48 @@ func (s *SubjectAccount) enrich() error {
 		}
 	}
 
-	err := s.enrichMetadata()
+	err := s.enrichCredentials()
+	if err != nil {
+		common.Log.Warningf("failed to enrich BPI subject account credentials; %s", err.Error())
+		return err
+	}
+
+	err = s.enrichMetadata()
 	if err != nil {
 		common.Log.Warningf("failed to enrich BPI subject account metadata; %s", err.Error())
 		return err
+	}
+
+	return nil
+}
+
+func (s *SubjectAccount) enrichCredentials() error {
+	if s.Credentials == nil && s.CredentialsSecretID != nil {
+		token, err := s.authorizeAccessToken()
+		if err != nil {
+			return err
+		}
+
+		secret, err := vault.FetchSecret(
+			*token.AccessToken,
+			s.VaultID.String(),
+			s.CredentialsSecretID.String(),
+			map[string]interface{}{},
+		)
+		if err != nil {
+			return err
+		}
+
+		raw, err := hex.DecodeString(*secret.Value)
+		if err != nil {
+			common.Log.Warningf("failed to decode BPI subject account credentials from hex; %s", err.Error())
+			return err
+		}
+
+		err = json.Unmarshal(raw, &s.Credentials)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -482,7 +560,7 @@ func FindSubjectAccountByID(id string) *SubjectAccount {
 	return subjectAccount
 }
 
-func (s *SubjectAccount) configureSOR() error {
+func (s *SubjectAccount) configureSystem() error {
 	sor := middleware.SORFactory(s.Metadata.SOR, nil)
 	if sor == nil {
 		common.Log.Warning("middleware system configuration not resolved")
