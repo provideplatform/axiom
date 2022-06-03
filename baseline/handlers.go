@@ -295,7 +295,7 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 			kid = &kidhdr
 		}
 
-		jwks, err := invitorSubjectAccount.parseJWKs()
+		jwks, err := invitorSubjectAccount.resolveJWKs() //parseJWKs()
 		if err != nil {
 			return nil, err
 		}
