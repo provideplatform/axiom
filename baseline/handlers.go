@@ -294,6 +294,7 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 
 		publicKey, err := pgputil.DecodeRSAPublicKeyFromPEM([]byte(jwk.PublicKey))
 		if err != nil {
+			common.Log.Warningf("failed to parse JWT public key; %s", err.Error())
 			return nil, fmt.Errorf("failed to parse JWT public key; %s", err.Error())
 		}
 
