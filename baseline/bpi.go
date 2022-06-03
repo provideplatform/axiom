@@ -242,7 +242,7 @@ func (s *SubjectAccount) resolveJWKs() (map[string]*ident.JSONWebKey, error) {
 		*token.AccessToken,
 		s.VaultID.String(),
 		map[string]interface{}{
-			"type": "RSA-4096",
+			"spec": "RSA-4096",
 		},
 	)
 	if err != nil {
