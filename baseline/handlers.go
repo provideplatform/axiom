@@ -229,7 +229,7 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 
 	var claims jwt.MapClaims
 	var jwtParser jwt.Parser
-	token, _, err := jwtParser.ParseUnverified(bearerToken, claims)
+	_, _, err := jwtParser.ParseUnverified(bearerToken, claims)
 
 	if err != nil {
 		msg := fmt.Sprintf("failed to accept workgroup invitation; failed to parse jwt; %s", err.Error())
@@ -237,10 +237,6 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 		provide.RenderError(msg, 422, c)
 		return
 	}
-
-	claims = token.Claims.(jwt.MapClaims)
-	// prvd := claims["prvd"].(map[string]interface{})
-	// data := prvd["data"].(map[string]interface{})
 
 	baselineClaim, ok := claims["baseline"].(map[string]interface{})
 	if !ok {
