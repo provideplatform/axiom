@@ -297,7 +297,7 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 			return nil, fmt.Errorf("failed to parse JWT public key; %s", err.Error())
 		}
 
-		common.Log.Debugf("resolved JWT for BPI subject account %s: %s", *subjectAccount.ID, *kid)
+		common.Log.Debugf("resolved JWK for BPI subject account %s: %s", *subjectAccount.ID, *kid)
 		return publicKey, nil
 	})
 	if err != nil {
