@@ -259,6 +259,13 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 		return
 	}
 
+	if claims.Baseline.InvitorSubjectAccountID == nil {
+		msg := "failed to accept workgroup invitation; no baseline invitor subject account id claim resolved in VC"
+		common.Log.Warningf(msg)
+		provide.RenderError(msg, 422, c)
+		return
+	}
+
 	identifierUUID, err := uuid.FromString(*claims.Baseline.WorkgroupID)
 	if err != nil {
 		msg := fmt.Sprintf("failed to accept workgroup invitation; invalid identifier; %s", err.Error())
@@ -267,11 +274,18 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 		return
 	}
 
+	invitorSubjectAccount, err := resolveSubjectAccount(*claims.Baseline.InvitorSubjectAccountID)
+	if err != nil {
+		provide.RenderError(err.Error(), 404, c)
+		return
+	}
+
 	subjectAccountID := subjectAccountIDFactory(organizationID.String(), identifierUUID.String())
 	subjectAccount, err := resolveSubjectAccount(subjectAccountID)
 	if err != nil {
-		provide.RenderError(err.Error(), 403, c)
-		return
+		common.Log.Debugf("no BPI subject account resolved during attempted workgroup invite acceptance for subject account %s", subjectAccountID)
+		// provide.RenderError(err.Error(), 403, c)
+		// return
 	}
 
 	// parse the token again, this time verifying the signature origin as the named subject account
@@ -281,7 +295,7 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 			kid = &kidhdr
 		}
 
-		jwks, err := subjectAccount.parseJWKs()
+		jwks, err := invitorSubjectAccount.parseJWKs()
 		if err != nil {
 			return nil, err
 		}
@@ -299,11 +313,11 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 
 		publicKey, err := pgputil.DecodeRSAPublicKeyFromPEM([]byte(jwk.PublicKey))
 		if err != nil {
-			common.Log.Warningf("failed to parse JWT public key for BPI subject account %s; %s", *subjectAccount.ID, err.Error())
+			common.Log.Warningf("failed to parse JWT public key for BPI subject account %s; %s", *invitorSubjectAccount.ID, err.Error())
 			return nil, fmt.Errorf("failed to parse JWT public key; %s", err.Error())
 		}
 
-		common.Log.Debugf("resolved JWK for BPI subject account %s: %s", *subjectAccount.ID, *kid)
+		common.Log.Debugf("resolved JWK for BPI subject account %s: %s", *invitorSubjectAccount.ID, *kid)
 		return publicKey, nil
 	})
 
@@ -359,16 +373,23 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 	}
 
 	var authorizedVC *string // TODO: vend NATS bearer token
+	common.Log.Warningf("TODO-- vent counterparty VC...")
+
+	obj := map[string]interface{}{
+		"authorized_bearer_token": authorizedVC,
+	}
+
+	if subjectAccount != nil && subjectAccount.Metadata != nil && subjectAccount.Metadata.OrganizationAddress != nil {
+		// FIXME... allow "subject_account" param to be provided
+		obj["address"] = *subjectAccount.Metadata.OrganizationAddress
+	}
 
 	msg := &ProtocolMessage{
 		baseline.ProtocolMessage{
 			Opcode:     common.StringOrNil(baseline.ProtocolMessageOpcodeJoin),
 			Identifier: &identifierUUID,
 			Payload: &baseline.ProtocolMessagePayload{
-				Object: map[string]interface{}{
-					"address":                 *subjectAccount.Metadata.OrganizationAddress,
-					"authorized_bearer_token": authorizedVC,
-				},
+				Object: obj,
 			},
 		},
 		nil,

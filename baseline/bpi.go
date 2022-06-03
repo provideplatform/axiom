@@ -63,6 +63,7 @@ type InviteClaims struct {
 // FIXME!! this should be referenced from lib package
 type BaselineClaims struct {
 	InvitorOrganizationAddress *string `json:"invitor_organization_address"`
+	InvitorSubjectAccountID    *string `json:"invitor_subject_account_id"`
 	RegistryContractAddress    *string `json:"registry_contract_address"`
 	WorkgroupID                *string `json:"workgroup_id"`
 }
