@@ -30,6 +30,7 @@ import (
 	"github.com/jinzhu/gorm"
 	dbconf "github.com/kthomas/go-db-config"
 	natsutil "github.com/kthomas/go-natsutil"
+	"github.com/kthomas/go-pgputil"
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideplatform/baseline/common"
 	"github.com/provideplatform/baseline/middleware"
@@ -280,8 +281,8 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 			return nil, err
 		}
 
-		publicKey := jwks[*kid]
-		if publicKey == nil {
+		jwk := jwks[*kid]
+		if jwk == nil {
 			msg := "failed to resolve a valid JWT verification key"
 			if kid != nil {
 				msg = fmt.Sprintf("%s; invalid kid specified in header: %s", msg, *kid)
@@ -289,6 +290,11 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 				msg = fmt.Sprintf("%s; no default verification key configured", msg)
 			}
 			return nil, fmt.Errorf(msg)
+		}
+
+		publicKey, err := pgputil.DecodeRSAPublicKeyFromPEM([]byte(jwk.PublicKey))
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse JWT public key; %s", err.Error())
 		}
 
 		return publicKey, nil
