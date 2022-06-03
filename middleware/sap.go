@@ -280,8 +280,9 @@ func (s *SAPService) GetSchema(recordType string, params map[string]interface{})
 
 	var schema interface{}
 
-	if basicType, basicTypeOk := resp.(map[string]interface{}); basicTypeOk {
-		if segmentsStruct, segmentsStructOk := basicType["segmentstruct"].([]interface{}); segmentsStructOk {
+	if _resp, respOk := resp.(map[string]interface{}); respOk {
+		basicType, _ := _resp["basictype"].(map[string]interface{})
+		if segmentsStruct, segmentsStructOk := _resp["segmentstruct"].([]interface{}); segmentsStructOk {
 			fields := make([]interface{}, 0)
 
 			for _, item := range segmentsStruct {
@@ -303,6 +304,7 @@ func (s *SAPService) GetSchema(recordType string, params map[string]interface{})
 			schema = map[string]interface{}{
 				"description": basicType["idoctypedescr"],
 				"fields":      fields,
+				"name":        basicType["idoctype"],
 				"type":        basicType["idoctype"],
 			}
 		}
