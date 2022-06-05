@@ -362,21 +362,24 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 	invitor.Cache()
 
 	participants := make([]*Participant, 0)
-	participants = append(participants, invitor)
+	participants = append(participants, invitor) // FIXME!! this should be used to dispatch join opcode to the L3
 
-	err = CacheBaselineOrganizationIssuedVC(*claims.Baseline.InvitorOrganizationAddress, *vc)
-	if err != nil {
-		msg := fmt.Sprintf("failed to cache organization-issued vc; %s", err.Error())
-		common.Log.Warningf(msg)
-		provide.RenderError(msg, 422, c)
-		return
+	if vc != nil {
+		err = CacheBaselineOrganizationIssuedVC(*claims.Baseline.InvitorOrganizationAddress, *vc)
+		if err != nil {
+			msg := fmt.Sprintf("failed to cache organization-issued vc; %s", err.Error())
+			common.Log.Warningf(msg)
+			provide.RenderError(msg, 422, c)
+			return
+		}
 	}
 
-	var authorizedVC *string // TODO: vend NATS bearer token
-	common.Log.Warningf("TODO-- vent counterparty VC...")
+	// FIXME -- audit use of `authorized_bearer_token` and `jwt`
+	// var authorizedVC *string // TODO: vend NATS bearer token
+	// common.Log.Warningf("TODO-- vent counterparty VC...")
 
 	obj := map[string]interface{}{
-		"authorized_bearer_token": authorizedVC,
+		// 	"authorized_bearer_token": authorizedVC,
 	}
 
 	if subjectAccount != nil && subjectAccount.Metadata != nil && subjectAccount.Metadata.OrganizationAddress != nil {
