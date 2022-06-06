@@ -209,7 +209,7 @@ func createWorkgroupHandler(c *gin.Context) {
 
 	err = json.Unmarshal(buf, &params)
 	if err != nil {
-		msg := fmt.Sprintf("failed to umarshal workgroup invitation acceptance request; %s", err.Error())
+		msg := fmt.Sprintf("failed to unmarshal workgroup invitation acceptance request; %s", err.Error())
 		common.Log.Warning(msg)
 		provide.RenderError(msg, 422, c)
 		return
@@ -217,12 +217,30 @@ func createWorkgroupHandler(c *gin.Context) {
 
 	isAcceptInvite := params["token"] != nil && params["subject_account_params"] != nil
 
-	if !isAcceptInvite {
-		provide.RenderError("not implemented", 501, c)
-		return
-	} else {
+	if isAcceptInvite {
 		acceptWorkgroupInvite(c, *organizationID, params)
+		return
 	}
+
+	var workgroup *Workgroup
+
+	err = json.Unmarshal(buf, &workgroup) // can you unmarshal buf twice?
+	if err != nil {
+		msg := fmt.Sprintf("failed to unmarshal workgroup params; %s", err.Error())
+		provide.RenderError(msg, 422, c)
+		return
+	}
+
+	workgroup.OrganizationID = organizationID
+
+	if !workgroup.Create() {
+		obj := map[string]interface{}{}
+		obj["errors"] = workgroup.Errors
+		provide.Render(obj, 422, c)
+		return
+	}
+
+	provide.Render(workgroup, 201, c)
 }
 
 func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[string]interface{}) {

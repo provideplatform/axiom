@@ -81,6 +81,7 @@ func (w *Workgroup) Create() bool {
 	success := false
 
 	if newRecord {
+		// make it a tx?
 		db := dbconf.DatabaseConnection()
 		result := db.Create(&w)
 		rowsAffected := result.RowsAffected
@@ -92,9 +93,10 @@ func (w *Workgroup) Create() bool {
 				})
 			}
 		}
-		if FindWorkgroupByID(w.ID) == nil {
-			success = rowsAffected > 0
-		}
+
+		// if FindWorkgroupByID(w.ID) == nil { // WHY??
+		success = rowsAffected > 0
+		// }
 	}
 
 	return success
@@ -183,5 +185,17 @@ func (w *Workgroup) removeParticipant(participant string, tx *gorm.DB) bool {
 }
 
 func (w *Workgroup) Validate() bool {
-	return true
+	if w.Name == nil {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil("name is required"),
+		})
+	}
+
+	// if w.OrganizationID == nil {
+	// 	w.Errors = append(w.Errors, &provide.Error{
+	// 		Message: common.StringOrNil("organization_id is required"),
+	// 	})
+	// }
+
+	return len(w.Errors) == 0
 }
