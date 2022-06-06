@@ -87,7 +87,53 @@ func (s *SubjectAccount) validate() bool {
 
 	if s.refreshTokenRaw == nil && s.Metadata != nil && s.Metadata.OrganizationRefreshToken != nil {
 		s.refreshTokenRaw = s.Metadata.OrganizationRefreshToken
+	}
 
+	// FIXME-- repeat code with handlers - validateSubjectAccountParams
+	if s.Metadata == nil {
+		s.Errors = append(s.Errors, &provide.Error{
+			Message: common.StringOrNil("metadata is required"),
+		})
+	}
+
+	if s.Metadata.OrganizationID == nil || uuid.FromStringOrNil(*s.Metadata.OrganizationID) == uuid.Nil {
+		s.Errors = append(s.Errors, &provide.Error{
+			Message: common.StringOrNil("organization_id is required"),
+		})
+	}
+
+	if s.Metadata.OrganizationAddress == nil {
+		s.Errors = append(s.Errors, &provide.Error{
+			Message: common.StringOrNil("organization_address is required"),
+		})
+	}
+
+	if s.Metadata.OrganizationRefreshToken == nil {
+		s.Errors = append(s.Errors, &provide.Error{
+			Message: common.StringOrNil("organization_refresh_token is required"),
+		})
+	}
+
+	if s.Metadata.WorkgroupID == nil || uuid.FromStringOrNil(*s.Metadata.WorkgroupID) == uuid.Nil {
+		s.Errors = append(s.Errors, &provide.Error{
+			Message: common.StringOrNil("workgroup_id is required"),
+		})
+	}
+
+	if s.Metadata.NetworkID == nil || uuid.FromStringOrNil(*s.Metadata.NetworkID) == uuid.Nil {
+		s.Errors = append(s.Errors, &provide.Error{
+			Message: common.StringOrNil("network_id is required"),
+		})
+	}
+
+	if s.Metadata.RegistryContractAddress == nil {
+		s.Errors = append(s.Errors, &provide.Error{
+			Message: common.StringOrNil("registry_contract_address is required"),
+		})
+	}
+
+	if len(s.Errors) > 0 {
+		return false
 	}
 
 	return true

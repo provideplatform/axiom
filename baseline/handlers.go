@@ -34,6 +34,7 @@ import (
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideplatform/baseline/common"
 	"github.com/provideplatform/baseline/middleware"
+	"github.com/provideplatform/provide-go/api"
 	"github.com/provideplatform/provide-go/api/baseline"
 	"github.com/provideplatform/provide-go/api/ident"
 	provide "github.com/provideplatform/provide-go/common"
@@ -214,7 +215,7 @@ func createWorkgroupHandler(c *gin.Context) {
 		return
 	}
 
-	isAcceptInvite := params["token"] != nil
+	isAcceptInvite := params["token"] != nil && params["subject_account_params"] == nil
 
 	if !isAcceptInvite {
 		provide.RenderError("not implemented", 501, c)
@@ -280,13 +281,13 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 		return
 	}
 
-	subjectAccountID := subjectAccountIDFactory(organizationID.String(), identifierUUID.String())
-	subjectAccount, err := resolveSubjectAccount(subjectAccountID)
-	if err != nil {
-		common.Log.Debugf("no BPI subject account resolved during attempted workgroup invite acceptance for subject account %s", subjectAccountID)
-		// provide.RenderError(err.Error(), 403, c)
-		// return
-	}
+	// subjectAccountID := subjectAccountIDFactory(organizationID.String(), identifierUUID.String())
+	// subjectAccount, err := resolveSubjectAccount(subjectAccountID)
+	// if err != nil {
+	// 	common.Log.Debugf("no BPI subject account resolved during attempted workgroup invite acceptance for subject account %s", subjectAccountID)
+	// 	// provide.RenderError(err.Error(), 403, c)
+	// 	// return
+	// }
 
 	// parse the token again, this time verifying the signature origin as the named subject account
 	_, err = jwt.Parse(bearerToken, func(_jwtToken *jwt.Token) (interface{}, error) {
@@ -377,6 +378,56 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 	// FIXME -- audit use of `authorized_bearer_token` and `jwt`
 	// var authorizedVC *string // TODO: vend NATS bearer token
 	// common.Log.Warningf("TODO-- vent counterparty VC...")
+
+	subjectAccountParams := params["subject_account_params"]
+	raw, err := json.Marshal(subjectAccountParams)
+
+	var subjectAccount *SubjectAccount
+	err = json.Unmarshal(raw, &subjectAccount)
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	if isValid, errors := validateSubjectAccountParams(subjectAccount); !isValid {
+		obj := map[string]interface{}{}
+		obj["errors"] = errors
+		provide.Render(obj, 422, c)
+		return
+	}
+
+	subjectAccountID := subjectAccountIDFactory(*subjectAccount.Metadata.OrganizationID, *subjectAccount.Metadata.WorkgroupID)
+	if FindSubjectAccountByID(subjectAccountID) != nil {
+		provide.RenderError("BPI subject account exists", 409, c)
+		return
+	}
+
+	subjectAccount.ID = &subjectAccountID
+	subjectAccount.SubjectID = common.StringOrNil(organizationID.String())
+
+	db := dbconf.DatabaseConnection()
+	tx := db.Begin()
+	defer tx.RollbackUnlessCommitted()
+
+	if subjectAccount.create(tx) {
+		SubjectAccounts = append(SubjectAccounts, subjectAccount)
+		SubjectAccountsByID[subjectAccountID] = append(SubjectAccountsByID[subjectAccountID], subjectAccount)
+
+		err = subjectAccount.startDaemon(subjectAccount.Metadata.OrganizationRefreshToken)
+		if err != nil {
+			provide.RenderError(fmt.Sprintf("BPI subject account initialization failed; %s", err.Error()), 500, c)
+			return
+		}
+
+		tx.Commit()
+
+		common.Log.Debugf("BPI subject account intiailized: %s", *subjectAccount.ID)
+	} else {
+		obj := map[string]interface{}{}
+		obj["errors"] = subjectAccount.Errors
+		provide.Render(obj, 422, c)
+		return
+	}
 
 	obj := map[string]interface{}{
 		// 	"authorized_bearer_token": authorizedVC,
@@ -1713,53 +1764,10 @@ func createSubjectAccountHandler(c *gin.Context) {
 		return
 	}
 
-	if subjectAccount.Metadata == nil {
-		provide.RenderError("metadata is required", 422, c)
-		return
-	}
-
-	if subjectAccount.Metadata.OrganizationID == nil {
-		provide.RenderError("organization_id is required", 422, c)
-		return
-	} else {
-		if uuid.FromStringOrNil(*subjectAccount.Metadata.OrganizationID) == uuid.Nil {
-			provide.RenderError("organization_id is required", 422, c)
-			return
-		}
-	}
-
-	if subjectAccount.Metadata.OrganizationAddress == nil {
-		provide.RenderError("organization_address is required", 422, c)
-		return
-	}
-
-	if subjectAccount.Metadata.OrganizationRefreshToken == nil {
-		provide.RenderError("organization_refresh_token is required", 422, c)
-		return
-	}
-
-	if subjectAccount.Metadata.WorkgroupID == nil {
-		provide.RenderError("workgroup_id is required", 422, c)
-		return
-	} else {
-		if uuid.FromStringOrNil(*subjectAccount.Metadata.WorkgroupID) == uuid.Nil {
-			provide.RenderError("workgroup_id is required", 422, c)
-			return
-		}
-	}
-
-	if subjectAccount.Metadata.NetworkID == nil {
-		provide.RenderError("network_id is required", 422, c)
-		return
-	} else {
-		if uuid.FromStringOrNil(*subjectAccount.Metadata.NetworkID) == uuid.Nil {
-			provide.RenderError("network_id is required", 422, c)
-			return
-		}
-	}
-
-	if subjectAccount.Metadata.RegistryContractAddress == nil {
-		provide.RenderError("registry_contract_address is required", 422, c)
+	if isValid, errors := validateSubjectAccountParams(subjectAccount); !isValid {
+		obj := map[string]interface{}{}
+		obj["errors"] = errors
+		provide.Render(obj, 422, c)
 		return
 	}
 
@@ -1791,8 +1799,63 @@ func createSubjectAccountHandler(c *gin.Context) {
 		common.Log.Debugf("BPI subject account intiailized: %s", *subjectAccount.ID)
 		provide.Render(subjectAccount, 201, c)
 	} else {
-		provide.RenderError(fmt.Sprintf("BPI subject account initialization failed; %s", *subjectAccount.Errors[0].Message), 500, c)
+		obj := map[string]interface{}{}
+		obj["errors"] = subjectAccount.Errors
+		provide.Render(obj, 422, c)
 	}
+}
+
+func validateSubjectAccountParams(params *SubjectAccount) (bool, []*api.Error) {
+	errors := make([]*api.Error, 0)
+
+	if params.Metadata == nil {
+		errors = append(errors, &api.Error{
+			Message: common.StringOrNil("metadata is required"),
+		})
+		return false, errors
+	}
+
+	if params.Metadata.OrganizationID == nil || uuid.FromStringOrNil(*params.Metadata.OrganizationID) == uuid.Nil {
+		errors = append(errors, &api.Error{
+			Message: common.StringOrNil("organization_id is required"),
+		})
+	}
+
+	if params.Metadata.OrganizationAddress == nil {
+		errors = append(errors, &api.Error{
+			Message: common.StringOrNil("organization_address is required"),
+		})
+	}
+
+	if params.Metadata.OrganizationRefreshToken == nil {
+		errors = append(errors, &api.Error{
+			Message: common.StringOrNil("organization_refresh_token is required"),
+		})
+	}
+
+	if params.Metadata.WorkgroupID == nil || uuid.FromStringOrNil(*params.Metadata.WorkgroupID) == uuid.Nil {
+		errors = append(errors, &api.Error{
+			Message: common.StringOrNil("workgroup_id is required"),
+		})
+	}
+
+	if params.Metadata.NetworkID == nil || uuid.FromStringOrNil(*params.Metadata.NetworkID) == uuid.Nil {
+		errors = append(errors, &api.Error{
+			Message: common.StringOrNil("network_id is required"),
+		})
+	}
+
+	if params.Metadata.RegistryContractAddress == nil {
+		errors = append(errors, &api.Error{
+			Message: common.StringOrNil("registry_contract_address is required"),
+		})
+	}
+
+	if len(errors) > 0 {
+		return false, errors
+	}
+
+	return true, nil
 }
 
 func updateSubjectAccountsHandler(c *gin.Context) {
