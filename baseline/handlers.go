@@ -215,7 +215,7 @@ func createWorkgroupHandler(c *gin.Context) {
 		return
 	}
 
-	isAcceptInvite := params["token"] != nil && params["subject_account_params"] == nil
+	isAcceptInvite := params["token"] != nil && params["subject_account_params"] != nil
 
 	if !isAcceptInvite {
 		provide.RenderError("not implemented", 501, c)
