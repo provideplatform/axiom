@@ -100,6 +100,15 @@ func (w *Workgroup) Create() bool {
 	return success
 }
 
+func (w *Workgroup) Update(other *Workgroup) bool {
+	if !w.Validate() {
+		return false
+	}
+
+	// TODO-- update local workgroup using properties on other
+	return len(w.Errors) == 0
+}
+
 func (w *Workgroup) participantsCount(tx *gorm.DB) int {
 	rows, err := tx.Raw("SELECT count(*) FROM workgroups_participants WHERE workgroup_id=?", w.ID).Rows()
 	if err != nil {

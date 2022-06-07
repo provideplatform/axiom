@@ -90,6 +90,7 @@ func InstallWorkgroupsAPI(r *gin.Engine) {
 	r.GET("/api/v1/workgroups", listWorkgroupsHandler)
 	r.GET("/api/v1/workgroups/:id", workgroupDetailsHandler)
 	r.POST("/api/v1/workgroups", createWorkgroupHandler)
+	r.PUT("/api/v1/workgroups/:id", updateWorkgroupHandler)
 }
 
 // InstallWorkflowsAPI installs workflow management APIs
@@ -216,12 +217,85 @@ func createWorkgroupHandler(c *gin.Context) {
 	}
 
 	isAcceptInvite := params["token"] != nil && params["subject_account_params"] != nil
+	isCreateWorkgroup := params["token"] == nil && params["subject_account_params"] == nil
 
-	if !isAcceptInvite {
-		provide.RenderError("not implemented", 501, c)
-		return
-	} else {
+	if isCreateWorkgroup {
+		token, _ := util.ParseBearerAuthorizationHeader(c, nil)
+		resp, err := ident.CreateApplication(token.Raw, params)
+		if err != nil {
+			// FIXME-- pass err status thru
+			provide.RenderError(err.Error(), 422, c)
+			return
+		}
+
+		common.Log.Debugf("created ident application %s", resp.ID)
+		// TODO-- persist the workgroup
+	} else if isAcceptInvite {
 		acceptWorkgroupInvite(c, *organizationID, params)
+	} else {
+		provide.RenderError("token and subject_account_params are required to accept workgroup invitations", 422, c)
+		return
+	}
+}
+
+func updateWorkgroupHandler(c *gin.Context) {
+	organizationID := util.AuthorizedSubjectID(c, "organization")
+	if organizationID == nil {
+		provide.RenderError("unauthorized", 401, c)
+		return
+	}
+
+	var params map[string]interface{}
+
+	buf, err := c.GetRawData()
+	if err != nil {
+		provide.RenderError(err.Error(), 400, c)
+		return
+	}
+
+	err = json.Unmarshal(buf, &params)
+	if err != nil {
+		msg := fmt.Sprintf("failed to umarshal workgroup invitation acceptance request; %s", err.Error())
+		common.Log.Warning(msg)
+		provide.RenderError(msg, 422, c)
+		return
+	}
+
+	workgroupID, err := uuid.FromString(c.Param("id"))
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	workgroup := FindWorkgroupByID(workgroupID)
+	if workgroup == nil {
+		provide.RenderError("not found", 404, c)
+		return
+	}
+
+	token, _ := util.ParseBearerAuthorizationHeader(c, nil)
+	err = ident.UpdateApplication(token.Raw, workgroupID.String(), params)
+	if err != nil {
+		// FIXME-- pass err status thru
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	var _workgroup *Workgroup
+	err = json.Unmarshal(buf, &_workgroup)
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	if workgroup.Update(_workgroup) {
+		provide.Render(nil, 204, c)
+	} else if len(workgroup.Errors) > 0 {
+		obj := map[string]interface{}{}
+		obj["errors"] = workgroup.Errors
+		provide.Render(obj, 422, c)
+	} else {
+		provide.RenderError("internal persistence error", 500, c)
 	}
 }
 
