@@ -38,17 +38,10 @@ type Workgroup struct {
 	baseline.Workgroup
 	Name           *string          `json:"name"`
 	Description    *string          `json:"description"`
-	Status         *string          `json:"status"`
-	Config         *json.RawMessage `sql:"type:json" json:"config"`
 	OrganizationID *uuid.UUID       `json:"-"`
 	Participants   []*Participant   `sql:"-" json:"participants,omitempty"`
 	Workflows      []*Workflow      `sql:"-" json:"workflows,omitempty"`
 }
-
-// user_id ?
-// network_id ?
-// l2_network_id ?
-// defined config struct ?
 
 // FindWorkgroupByID retrieves a workgroup for the given id
 func FindWorkgroupByID(id uuid.UUID) *Workgroup {
@@ -101,9 +94,49 @@ func (w *Workgroup) Create() bool {
 			}
 		}
 
-		// if FindWorkgroupByID(w.ID) == nil { // WHY??
 		success = rowsAffected > 0
-		// }
+	}
+
+	return success
+}
+
+func (w *Workgroup) Update(other *Workgroup) bool {
+	if !other.Validate() {
+		return false
+	}
+
+	db := dbconf.DatabaseConnection()
+	tx := db.Begin()
+	defer tx.RollbackUnlessCommitted()
+
+	if other.Name != nil {
+		w.Name = other.Name
+	}
+
+	if other.Description != nil {
+		w.Description = other.Description
+	}
+
+	// privacy_policy ?
+	// security_policy ?
+	// tokenization_policy ?
+
+	// broadcast changes ?
+
+	result := tx.Save(&w)
+	rowsAffected := result.RowsAffected
+	errors := result.GetErrors()
+	if len(errors) > 0 {
+		for _, err := range errors {
+			w.Errors = append(w.Errors, &provide.Error{
+				Message: common.StringOrNil(err.Error()),
+			})
+		}
+	}
+
+	success := rowsAffected >= 1 && len(errors) == 0
+	if success {
+		tx.Commit()
 	}
 
 	return success
@@ -192,17 +225,5 @@ func (w *Workgroup) removeParticipant(participant string, tx *gorm.DB) bool {
 }
 
 func (w *Workgroup) Validate() bool {
-	if w.Name == nil {
-		w.Errors = append(w.Errors, &provide.Error{
-			Message: common.StringOrNil("name is required"),
-		})
-	}
-
-	// if w.OrganizationID == nil {
-	// 	w.Errors = append(w.Errors, &provide.Error{
-	// 		Message: common.StringOrNil("organization_id is required"),
-	// 	})
-	// }
-
-	return len(w.Errors) == 0
+	return true
 }

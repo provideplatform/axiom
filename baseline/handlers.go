@@ -41,10 +41,6 @@ import (
 	"github.com/provideplatform/provide-go/common/util"
 )
 
-const workgroupStatusDraft = "draft"
-const workgroupStatusPending = "pending"
-const workgroupStatusComplete = "complete"
-
 // InstallBPIAPI installs public API for interacting with the baseline protocol abstraction
 // layer, i.e., with `Subject`, `SubjectContext` and `BPIAccount`
 func InstallBPIAPI(r *gin.Engine) {
@@ -94,6 +90,8 @@ func InstallWorkgroupsAPI(r *gin.Engine) {
 	r.GET("/api/v1/workgroups", listWorkgroupsHandler)
 	r.GET("/api/v1/workgroups/:id", workgroupDetailsHandler)
 	r.POST("/api/v1/workgroups", createWorkgroupHandler)
+	r.PUT("/api/v1/workgroups/:id", updateWorkgroupHandler)
+	// delete?
 }
 
 // InstallWorkflowsAPI installs workflow management APIs
@@ -235,12 +233,6 @@ func createWorkgroupHandler(c *gin.Context) {
 		return
 	}
 
-	if workgroup.Status != nil {
-		provide.RenderError("cannot set workgroup status", 422, c)
-		return
-	}
-
-	workgroup.Status = common.StringOrNil(workgroupStatusDraft)
 	workgroup.OrganizationID = organizationID
 
 	if !workgroup.Create() {
@@ -495,6 +487,49 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 	}
 }
 
+func updateWorkgroupHandler(c *gin.Context) {
+	organizationID := util.AuthorizedSubjectID(c, "organization")
+	if organizationID == nil {
+		provide.RenderError("unauthorized", 401, c)
+		return
+	}
+
+	buf, err := c.GetRawData()
+	if err != nil {
+		provide.RenderError(err.Error(), 400, c)
+		return
+	}
+
+	workgroupID, err := uuid.FromString(c.Param("id"))
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	workgroup := FindWorkgroupByID(workgroupID)
+	if workgroup == nil {
+		provide.RenderError("not found", 404, c)
+		return
+	}
+
+	var _workgroup *Workgroup
+	err = json.Unmarshal(buf, &_workgroup)
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	if workgroup.Update(_workgroup) {
+		provide.Render(nil, 204, c)
+	} else if len(workgroup.Errors) > 0 {
+		obj := map[string]interface{}{}
+		obj["errors"] = workgroup.Errors
+		provide.Render(obj, 422, c)
+	} else {
+		provide.RenderError("internal persistence error", 500, c)
+	}
+}
+
 func listWorkgroupsHandler(c *gin.Context) {
 	organizationID := util.AuthorizedSubjectID(c, "organization")
 	if organizationID == nil {
@@ -527,7 +562,10 @@ func workgroupDetailsHandler(c *gin.Context) {
 		return
 	}
 
-	workgroup := LookupBaselineWorkgroup(c.Param("id"))
+	// why this
+	// workgroup := LookupBaselineWorkgroup(c.Param("id"))
+	workgroupID := uuid.FromStringOrNil(c.Param("id"))
+	workgroup := FindWorkgroupByID(workgroupID)
 
 	if workgroup != nil {
 		provide.Render(workgroup, 200, c)
