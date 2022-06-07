@@ -188,7 +188,7 @@ func (m *Mapping) Delete() bool {
 // this method uses a db transaction to wipe the old models and fields to
 // perform a wholesale update of the entire mapping...
 func (m *Mapping) Update(mapping *Mapping) bool {
-	if !m.Validate() {
+	if !mapping.Validate() {
 		return false
 	}
 
