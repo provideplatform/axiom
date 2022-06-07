@@ -28,6 +28,7 @@ import (
 	"github.com/provideplatform/baseline/common"
 	provide "github.com/provideplatform/provide-go/api"
 	"github.com/provideplatform/provide-go/api/baseline"
+	"github.com/provideplatform/provide-go/api/ident"
 )
 
 const requireCounterpartiesSleepInterval = time.Second * 15
@@ -226,4 +227,18 @@ func (w *Workgroup) removeParticipant(participant string, tx *gorm.DB) bool {
 
 func (w *Workgroup) Validate() bool {
 	return true
+}
+
+func (w *Workgroup) Enrich(token string) bool {
+	app, err := ident.GetApplicationDetails(token, w.ID.String(), map[string]interface{}{})
+	if err != nil {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil(err.Error()),
+		})
+		return false
+	}
+
+	w.Config = app.Config
+
+	return len(w.Errors) == 0
 }

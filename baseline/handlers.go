@@ -235,6 +235,7 @@ func createWorkgroupHandler(c *gin.Context) {
 			return
 		}
 
+		workgroup.ID = resp.ID
 		workgroup.OrganizationID = organizationID
 
 		if !workgroup.Create() {
@@ -582,6 +583,18 @@ func listWorkgroupsHandler(c *gin.Context) {
 	query := db.Where("organization_id = ?", organizationID).Order("workgroups.created_at DESC")
 
 	provide.Paginate(c, query, &Workgroup{}).Find(&workgroups)
+
+	token, _ := util.ParseBearerAuthorizationHeader(c, nil)
+
+	for _, workgroup := range workgroups {
+		if !workgroup.Enrich(token.Raw) {
+			obj := map[string]interface{}{}
+			obj["errors"] = workgroup.Errors
+			provide.Render(obj, 422, c)
+			return
+		}
+	}
+
 	provide.Render(workgroups, 200, c)
 }
 
@@ -594,11 +607,31 @@ func workgroupDetailsHandler(c *gin.Context) {
 
 	workgroup := LookupBaselineWorkgroup(c.Param("id"))
 
-	if workgroup != nil {
-		provide.Render(workgroup, 200, c)
-	} else {
-		provide.RenderError("workgroup not found", 404, c)
+	if workgroup == nil {
+		workgroupID, err := uuid.FromString(c.Param("id"))
+		if err != nil {
+			provide.RenderError(err.Error(), 422, c)
+			return
+		}
+
+		workgroup = FindWorkgroupByID(workgroupID)
 	}
+
+	if workgroup == nil {
+		provide.RenderError("workgroup not found", 404, c)
+		return
+	}
+
+	token, _ := util.ParseBearerAuthorizationHeader(c, nil)
+
+	if !workgroup.Enrich(token.Raw) {
+		obj := map[string]interface{}{}
+		obj["errors"] = workgroup.Errors
+		provide.Render(obj, 422, c)
+		return
+	}
+
+	provide.Render(workgroup, 200, c)
 }
 
 func createPublicWorkgroupInviteHandler(c *gin.Context) {
