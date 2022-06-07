@@ -36,12 +36,19 @@ const requireCounterpartiesTickerInterval = time.Second * 30 // HACK
 // Workgroup is a baseline workgroup prototype
 type Workgroup struct {
 	baseline.Workgroup
-	Name           *string        `json:"name"`
-	Description    *string        `json:"description"`
-	OrganizationID *uuid.UUID     `json:"-"`
-	Participants   []*Participant `sql:"-" json:"participants,omitempty"`
-	Workflows      []*Workflow    `sql:"-" json:"workflows,omitempty"`
+	Name           *string          `json:"name"`
+	Description    *string          `json:"description"`
+	Status         *string          `json:"status"`
+	Config         *json.RawMessage `sql:"type:json" json:"config"`
+	OrganizationID *uuid.UUID       `json:"-"`
+	Participants   []*Participant   `sql:"-" json:"participants,omitempty"`
+	Workflows      []*Workflow      `sql:"-" json:"workflows,omitempty"`
 }
+
+// user_id ?
+// network_id ?
+// l2_network_id ?
+// defined config struct ?
 
 // FindWorkgroupByID retrieves a workgroup for the given id
 func FindWorkgroupByID(id uuid.UUID) *Workgroup {

@@ -41,6 +41,10 @@ import (
 	"github.com/provideplatform/provide-go/common/util"
 )
 
+const workgroupStatusDraft = "draft"
+const workgroupStatusPending = "pending"
+const workgroupStatusComplete = "complete"
+
 // InstallBPIAPI installs public API for interacting with the baseline protocol abstraction
 // layer, i.e., with `Subject`, `SubjectContext` and `BPIAccount`
 func InstallBPIAPI(r *gin.Engine) {
@@ -231,6 +235,12 @@ func createWorkgroupHandler(c *gin.Context) {
 		return
 	}
 
+	if workgroup.Status != nil {
+		provide.RenderError("cannot set workgroup status", 422, c)
+		return
+	}
+
+	workgroup.Status = common.StringOrNil(workgroupStatusDraft)
 	workgroup.OrganizationID = organizationID
 
 	if !workgroup.Create() {
