@@ -200,17 +200,16 @@ func createWorkgroupHandler(c *gin.Context) {
 		return
 	}
 
-	var params map[string]interface{}
-
 	buf, err := c.GetRawData()
 	if err != nil {
 		provide.RenderError(err.Error(), 400, c)
 		return
 	}
 
+	var params map[string]interface{}
 	err = json.Unmarshal(buf, &params)
 	if err != nil {
-		msg := fmt.Sprintf("failed to umarshal workgroup invitation acceptance request; %s", err.Error())
+		msg := fmt.Sprintf("failed to unmarshal workgroup params; %s", err.Error())
 		common.Log.Warning(msg)
 		provide.RenderError(msg, 422, c)
 		return
@@ -223,19 +222,41 @@ func createWorkgroupHandler(c *gin.Context) {
 		token, _ := util.ParseBearerAuthorizationHeader(c, nil)
 		resp, err := ident.CreateApplication(token.Raw, params)
 		if err != nil {
-			// FIXME-- pass err status thru
 			provide.RenderError(err.Error(), 422, c)
 			return
 		}
 
-		common.Log.Debugf("created ident application %s", resp.ID)
-		// TODO-- persist the workgroup
-	} else if isAcceptInvite {
-		acceptWorkgroupInvite(c, *organizationID, params)
-	} else {
-		provide.RenderError("token and subject_account_params are required to accept workgroup invitations", 422, c)
+		var workgroup *Workgroup
+
+		err = json.Unmarshal(buf, &workgroup)
+		if err != nil {
+			msg := fmt.Sprintf("failed to unmarshal workgroup params; %s", err.Error())
+			provide.RenderError(msg, 422, c)
+			return
+		}
+
+		workgroup.OrganizationID = organizationID
+
+		if !workgroup.Create() {
+			obj := map[string]interface{}{}
+			obj["errors"] = workgroup.Errors
+			provide.Render(obj, 422, c)
+			return
+		}
+
+		workgroup.Config = resp.Config
+		// application.network_id ?
+
+		provide.Render(workgroup, 201, c)
 		return
 	}
+
+	if isAcceptInvite {
+		acceptWorkgroupInvite(c, *organizationID, params)
+		return
+	}
+
+	provide.RenderError("failed to create workgroup; must provide subject_account_params and token or create workgroup params", 422, c)
 }
 
 func updateWorkgroupHandler(c *gin.Context) {
@@ -245,17 +266,16 @@ func updateWorkgroupHandler(c *gin.Context) {
 		return
 	}
 
-	var params map[string]interface{}
-
 	buf, err := c.GetRawData()
 	if err != nil {
 		provide.RenderError(err.Error(), 400, c)
 		return
 	}
 
+	var params map[string]interface{}
 	err = json.Unmarshal(buf, &params)
 	if err != nil {
-		msg := fmt.Sprintf("failed to umarshal workgroup invitation acceptance request; %s", err.Error())
+		msg := fmt.Sprintf("failed to handle update workgroup params; %s", err.Error())
 		common.Log.Warning(msg)
 		provide.RenderError(msg, 422, c)
 		return
@@ -276,7 +296,6 @@ func updateWorkgroupHandler(c *gin.Context) {
 	token, _ := util.ParseBearerAuthorizationHeader(c, nil)
 	err = ident.UpdateApplication(token.Raw, workgroupID.String(), params)
 	if err != nil {
-		// FIXME-- pass err status thru
 		provide.RenderError(err.Error(), 422, c)
 		return
 	}

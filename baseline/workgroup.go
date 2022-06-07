@@ -38,6 +38,7 @@ type Workgroup struct {
 	baseline.Workgroup
 	Name           *string        `json:"name"`
 	Description    *string        `json:"description"`
+	Config         interface{}    `sql:"-" json:"config"`
 	OrganizationID *uuid.UUID     `json:"-"`
 	Participants   []*Participant `sql:"-" json:"participants,omitempty"`
 	Workflows      []*Workflow    `sql:"-" json:"workflows,omitempty"`
@@ -92,21 +93,53 @@ func (w *Workgroup) Create() bool {
 				})
 			}
 		}
-		if FindWorkgroupByID(w.ID) == nil {
-			success = rowsAffected > 0
-		}
+
+		success = rowsAffected > 0
 	}
 
 	return success
 }
 
 func (w *Workgroup) Update(other *Workgroup) bool {
-	if !w.Validate() {
+	if !other.Validate() {
 		return false
 	}
 
-	// TODO-- update local workgroup using properties on other
-	return len(w.Errors) == 0
+	db := dbconf.DatabaseConnection()
+	tx := db.Begin()
+	defer tx.RollbackUnlessCommitted()
+
+	if other.Name != nil {
+		w.Name = other.Name
+	}
+
+	if other.Description != nil {
+		w.Description = other.Description
+	}
+
+	// privacy_policy ?
+	// security_policy ?
+	// tokenization_policy ?
+
+	// broadcast changes ?
+
+	result := tx.Save(&w)
+	rowsAffected := result.RowsAffected
+	errors := result.GetErrors()
+	if len(errors) > 0 {
+		for _, err := range errors {
+			w.Errors = append(w.Errors, &provide.Error{
+				Message: common.StringOrNil(err.Error()),
+			})
+		}
+	}
+
+	success := rowsAffected >= 1 && len(errors) == 0
+	if success {
+		tx.Commit()
+	}
+
+	return success
 }
 
 func (w *Workgroup) participantsCount(tx *gorm.DB) int {
