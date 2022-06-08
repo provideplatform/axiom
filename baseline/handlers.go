@@ -618,12 +618,18 @@ func workgroupDetailsHandler(c *gin.Context) {
 	}
 
 	if workgroup == nil {
-		provide.RenderError("workgroup not found", 404, c)
+		provide.RenderError("not found", 404, c)
 		return
 	}
 
 	token, _ := util.ParseBearerAuthorizationHeader(c, nil)
+	_, err := ident.GetApplicationDetails(token.Raw, workgroup.ID.String(), map[string]interface{}{})
+	if err != nil {
+		provide.RenderError(err.Error(), 404, c) // FIXME-- pass thru ident status
+		return
+	}
 
+	// FIXME-- the following enrich call should be handed the above application ptr
 	if !workgroup.Enrich(token.Raw) {
 		obj := map[string]interface{}{}
 		obj["errors"] = workgroup.Errors
