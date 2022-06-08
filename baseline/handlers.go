@@ -246,7 +246,7 @@ func createWorkgroupHandler(c *gin.Context) {
 		}
 
 		workgroup.Config = resp.Config
-		// application.network_id ?
+		workgroup.NetworkID = &resp.NetworkID
 
 		provide.Render(workgroup, 201, c)
 		return
