@@ -40,6 +40,7 @@ type Workgroup struct {
 	Name           *string        `json:"name"`
 	Description    *string        `json:"description"`
 	Config         interface{}    `sql:"-" json:"config"`
+	NetworkID      *uuid.UUID     `sql:"-" json:"network_id"`
 	OrganizationID *uuid.UUID     `json:"-"`
 	Participants   []*Participant `sql:"-" json:"participants,omitempty"`
 	Workflows      []*Workflow    `sql:"-" json:"workflows,omitempty"`
@@ -239,6 +240,7 @@ func (w *Workgroup) Enrich(token string) bool {
 	}
 
 	w.Config = app.Config
+	w.NetworkID = &app.NetworkID
 
 	return len(w.Errors) == 0
 }
