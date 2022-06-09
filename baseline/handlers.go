@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/dgrijalva/jwt-go"
@@ -60,6 +61,8 @@ func InstallBPIAPI(r *gin.Engine) {
 	r.POST("/api/v1/subjects/:id/accounts", createSubjectAccountHandler)
 	r.PUT("/api/v1/subjects/:id/accounts/:accountId", updateSubjectAccountsHandler)
 }
+
+const defaultResultsPerPage = 25
 
 // InstallCredentialsAPI installs public API for interacting with verifiable credentials
 func InstallCredentialsAPI(r *gin.Engine) {
@@ -568,34 +571,45 @@ func listWorkgroupsHandler(c *gin.Context) {
 		return
 	}
 
-	// token, _ := util.ParseBearerAuthorizationHeader(c, nil)
-	// resp, err := ident.ListApplications(token.Raw, map[string]interface{}{})
+	var rpp int64
+	var err error
 
-	// if err == nil {
-	// 	provide.Render(resp, 200, c)
-	// } else {
-	// 	provide.RenderError(fmt.Sprintf("failed to list workgroups; %s", err.Error()), 500, c)
-	// }
-
-	var workgroups []*Workgroup
-
-	db := dbconf.DatabaseConnection()
-	query := db.Where("organization_id = ?", organizationID).Order("workgroups.created_at DESC")
-
-	provide.Paginate(c, query, &Workgroup{}).Find(&workgroups)
-
-	token, _ := util.ParseBearerAuthorizationHeader(c, nil)
-
-	for _, workgroup := range workgroups {
-		if !workgroup.Enrich(token.Raw) {
-			obj := map[string]interface{}{}
-			obj["errors"] = workgroup.Errors
-			provide.Render(obj, 422, c)
-			return
-		}
+	rpp, err = strconv.ParseInt(c.Query("rpp"), 10, 64)
+	if err != nil {
+		rpp = defaultResultsPerPage
 	}
 
-	provide.Render(workgroups, 200, c)
+	token, _ := util.ParseBearerAuthorizationHeader(c, nil)
+	resp, err := ident.ListApplications(token.Raw, map[string]interface{}{
+		"rpp":  250, // HACK
+		"type": "baseline",
+	})
+
+	if err == nil {
+		workgroups := make([]*Workgroup, 0)
+
+		for _, app := range resp {
+			workgroup := FindWorkgroupByID(app.ID)
+			if workgroup != nil {
+				if !workgroup.Enrich(token.Raw) {
+					obj := map[string]interface{}{}
+					obj["errors"] = workgroup.Errors
+					provide.Render(obj, 422, c)
+					return
+				}
+
+				workgroups = append(workgroups, workgroup)
+			}
+
+			if len(workgroups) == int(rpp) {
+				break
+			}
+		}
+
+		provide.Render(workgroups, 200, c)
+	} else {
+		provide.RenderError(fmt.Sprintf("failed to list workgroups; %s", err.Error()), 500, c)
+	}
 }
 
 func workgroupDetailsHandler(c *gin.Context) {
