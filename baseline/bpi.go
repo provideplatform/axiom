@@ -151,31 +151,20 @@ func (s *SubjectAccount) listSystems() ([]*middleware.System, error) {
 		return nil, fmt.Errorf("failed to resolve organization: %s; %s", *s.Metadata.OrganizationID, err.Error())
 	}
 
-	systems := make([]*middleware.System, 0)
+	var systems []*middleware.System
 
 	if workgroupsMap, workgroupsMapOk := org.Metadata["workgroups"].(map[string]interface{}); workgroupsMapOk {
 		if workgroup, workgroupOk := workgroupsMap[*s.Metadata.WorkgroupID].(map[string]interface{}); workgroupOk {
 			common.Log.Debugf("resolved workgroup... %s", workgroup)
 			if systemSecretIDs, systemSecretIDsOk := workgroup["system_secret_ids"].([]interface{}); systemSecretIDsOk {
+				secretIDs := make([]string, 0)
 				for _, secretID := range systemSecretIDs {
-					common.Log.Debugf("resolved system secret id... %s", secretID)
-					secret, err := vault.FetchSecret(
-						*token.AccessToken,
-						workgroup["vault_id"].(string),
-						secretID.(string),
-						map[string]interface{}{},
-					)
-					if err != nil {
-						return nil, fmt.Errorf("failed to fetch system secret: %s; %s", secretID, err.Error())
-					}
+					secretIDs = append(secretIDs, secretID.(string))
+				}
 
-					var system *middleware.System
-					err = json.Unmarshal([]byte(*secret.Value), &system)
-					if err != nil {
-						return nil, fmt.Errorf("failed to unmarshal system secret value: %s", err.Error())
-					}
-
-					systems = append(systems, system)
+				systems, err = resolveSystems(*token.AccessToken, workgroup["vault_id"].(string), secretIDs)
+				if err != nil {
+					return nil, fmt.Errorf("failed to unmarshal system secret value: %s", err.Error())
 				}
 			}
 		}
@@ -1023,4 +1012,31 @@ func (s *SubjectAccount) startDaemon(refreshToken *string) error {
 // subjectAccountIDFactory returns H(organization_id, workgroup_id)
 func subjectAccountIDFactory(organizationID, workgroupID string) string {
 	return common.SHA256(fmt.Sprintf("%s.%s", organizationID, workgroupID))
+}
+
+func resolveSystems(accessToken, vaultID string, systemSecretIDs []string) ([]*middleware.System, error) {
+	systems := make([]*middleware.System, 0)
+
+	for _, secretID := range systemSecretIDs {
+		common.Log.Debugf("resolved system secret id... %s", secretID)
+		secret, err := vault.FetchSecret(
+			accessToken,
+			vaultID,
+			secretID,
+			map[string]interface{}{},
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch system secret: %s; %s", secretID, err.Error())
+		}
+
+		var system *middleware.System
+		err = json.Unmarshal([]byte(*secret.Value), &system)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal system secret value: %s", err.Error())
+		}
+
+		systems = append(systems, system)
+	}
+
+	return systems, nil
 }
