@@ -875,7 +875,7 @@ func listSchemasHandler(c *gin.Context) {
 		}
 	} else {
 		if c.Query("vault_id") == "" {
-			provide.RenderError("vaulty_id required for querying ephemerally-referenced system secrets", 422, c)
+			provide.RenderError("vault_id required for querying ephemerally-referenced system secrets", 422, c)
 			return
 		}
 
@@ -960,7 +960,7 @@ func schemaDetailsHandler(c *gin.Context) {
 		}
 	} else {
 		if c.Query("vault_id") == "" {
-			provide.RenderError("vaulty_id required for querying ephemerally-referenced system secrets", 422, c)
+			provide.RenderError("vault_id required for querying ephemerally-referenced system secrets", 422, c)
 			return
 		}
 
