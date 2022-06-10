@@ -940,17 +940,37 @@ func schemaDetailsHandler(c *gin.Context) {
 		return
 	}
 
-	subjectAccountID := subjectAccountIDFactory(organizationID.String(), c.Param("id"))
-	subjectAccount, err := resolveSubjectAccount(subjectAccountID)
-	if err != nil {
-		provide.RenderError(err.Error(), 403, c)
-		return
-	}
+	var systems []*middleware.System
+	var err error
 
-	systems, err := subjectAccount.listSystems()
-	if err != nil {
-		provide.RenderError("failed to list systems for subject account", 403, c)
-		return
+	useEphemeralSystem := c.Query("system_secret_ids") != ""
+
+	if !useEphemeralSystem {
+		subjectAccountID := subjectAccountIDFactory(organizationID.String(), c.Param("id"))
+		subjectAccount, err := resolveSubjectAccount(subjectAccountID)
+		if err != nil {
+			provide.RenderError(err.Error(), 403, c)
+			return
+		}
+
+		systems, err = subjectAccount.listSystems()
+		if err != nil {
+			provide.RenderError("failed to list systems for subject account", 403, c)
+			return
+		}
+	} else {
+		if c.Query("vault_id") == "" {
+			provide.RenderError("vaulty_id required for querying ephemerally-referenced system secrets", 422, c)
+			return
+		}
+
+		token, _ := util.ParseBearerAuthorizationHeader(c, nil)
+		systemSecretIDs := strings.Split(c.Query("system_secret_ids"), ",")
+		systems, err = resolveSystems(token.Raw, c.Query("vault_id"), systemSecretIDs)
+		if err != nil {
+			provide.RenderError("failed to list systems for ephemerally-referenced system secrets", 403, c)
+			return
+		}
 	}
 
 	var resp interface{}
