@@ -858,7 +858,7 @@ func listSchemasHandler(c *gin.Context) {
 	var systems []*middleware.System
 	var err error
 
-	useEphemeralSystem := c.Query("system_secret_id") != ""
+	useEphemeralSystem := c.Query("system_secret_ids") != ""
 
 	if !useEphemeralSystem {
 		subjectAccountID := subjectAccountIDFactory(organizationID.String(), c.Param("id"))
