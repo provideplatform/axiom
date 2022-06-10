@@ -250,6 +250,7 @@ func createWorkgroupHandler(c *gin.Context) {
 
 		workgroup.Config = resp.Config
 		workgroup.NetworkID = &resp.NetworkID
+		workgroup.UserID = resp.UserID
 
 		provide.Render(workgroup, 201, c)
 		return
