@@ -910,8 +910,10 @@ func listSchemasHandler(c *gin.Context) {
 				// HACK!! proof of concept filter only... proper impl forthcoming
 				for _, result := range arr {
 					if schema, schemaOk := result.(map[string]interface{}); schemaOk {
-						if schemaType, schemaTypeOk := schema["type"].(string); schemaTypeOk && strings.Contains(schemaType, c.Query("q")) {
-							resp = append(resp, schema)
+						if schemaType, schemaTypeOk := schema["type"].(string); schemaTypeOk {
+							if strings.Contains(strings.ToLower(schemaType), strings.ToLower(c.Query("q"))) {
+								resp = append(resp, schema)
+							}
 						}
 					}
 				}
