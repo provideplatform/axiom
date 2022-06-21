@@ -91,6 +91,7 @@ func InstallSchemasAPI(r *gin.Engine) {
 func InstallWorkgroupsAPI(r *gin.Engine) {
 	r.GET("/api/v1/workgroups", listWorkgroupsHandler)
 	r.GET("/api/v1/workgroups/:id", workgroupDetailsHandler)
+	r.GET("/api/v1/workgroups/:id/analytics", workgroupAnalyticsHandler)
 	r.POST("/api/v1/workgroups", createWorkgroupHandler)
 	r.PUT("/api/v1/workgroups/:id", updateWorkgroupHandler)
 }
@@ -651,6 +652,54 @@ func workgroupDetailsHandler(c *gin.Context) {
 	}
 
 	provide.Render(workgroup, 200, c)
+}
+
+func workgroupAnalyticsHandler(c *gin.Context) {
+	organizationID := util.AuthorizedSubjectID(c, "organization")
+	if organizationID == nil {
+		provide.RenderError("unauthorized", 401, c)
+		return
+	}
+
+	workgroup := LookupBaselineWorkgroup(c.Param("id"))
+
+	if workgroup == nil {
+		workgroupID, err := uuid.FromString(c.Param("id"))
+		if err != nil {
+			provide.RenderError(err.Error(), 422, c)
+			return
+		}
+
+		workgroup = FindWorkgroupByID(workgroupID)
+	}
+
+	if workgroup == nil {
+		provide.RenderError("not found", 404, c)
+		return
+	}
+
+	token, _ := util.ParseBearerAuthorizationHeader(c, nil)
+	_, err := ident.GetApplicationDetails(token.Raw, workgroup.ID.String(), map[string]interface{}{})
+	if err != nil {
+		provide.RenderError(err.Error(), 404, c) // FIXME-- pass thru ident status
+		return
+	}
+
+	// FIXME-- the following enrich call should be handed the above application ptr
+	if !workgroup.Enrich(token.Raw) {
+		obj := map[string]interface{}{}
+		obj["errors"] = workgroup.Errors
+		provide.Render(obj, 422, c)
+		return
+	}
+
+	analytics, err := workgroup.queryAnalytics()
+	if err != nil {
+		provide.RenderError(err.Error(), 500, c)
+		return
+	}
+
+	provide.Render(analytics, 200, c)
 }
 
 func createPublicWorkgroupInviteHandler(c *gin.Context) {
