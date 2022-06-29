@@ -17,7 +17,6 @@
 package baseline
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/jinzhu/gorm"
@@ -115,16 +114,24 @@ func (m *Mapping) enrich() {
 	}
 }
 
-func (m *Mapping) enrichRef() error {
+func (m *Mapping) enrichRef() bool {
 	if m.OrganizationID == nil {
-		return errors.New("cannot enrich ref with nil mapping organization id")
+		m.Errors = append(m.Errors, &provide.Error{
+			Message: common.StringOrNil("cannot enrich ref with nil mapping organization id"),
+		})
 	}
 	if m.Type == nil {
-		return errors.New("cannot enrich ref with nil mapping type")
+		m.Errors = append(m.Errors, &provide.Error{
+			Message: common.StringOrNil("cannot enrich ref with nil mapping type"),
+		})
+	}
+
+	if (len(m.Errors) > 0) {
+		return false
 	}
 
 	m.Ref = common.StringOrNil(mappingRefFactory(*m.OrganizationID, *m.Type))
-	return nil
+	return true
 }
 
 func (m *Mapping) Create() bool {
@@ -132,7 +139,9 @@ func (m *Mapping) Create() bool {
 		return false
 	}
 
-	m.enrichRef()
+	if !m.enrichRef() {
+		return false
+	}
 
 	db := dbconf.DatabaseConnection()
 	tx := db.Begin()
@@ -199,6 +208,10 @@ func (m *Mapping) Update(mapping *Mapping) bool {
 	m.Name = mapping.Name
 	m.Description = mapping.Description
 	m.Type = mapping.Type
+
+	if !m.enrichRef() {
+		return false
+	}
 
 	for _, model := range m.Models {
 		tx.Delete(&model) // this should also wipe the constrained fields...
