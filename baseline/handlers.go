@@ -21,6 +21,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
@@ -79,6 +80,11 @@ func InstallMappingsAPI(r *gin.Engine) {
 // InstallPublicWorkgroupAPI installs an API servicing a configured public workgroup
 func InstallPublicWorkgroupAPI(r *gin.Engine) {
 	r.POST("/api/v1/pub/invite", createPublicWorkgroupInviteHandler)
+}
+
+// InstallSystemsAPI installs system management APIs
+func InstallSystemsAPI(r *gin.Engine) {
+	r.POST("/api/v1/systems/:id/reachability", systemReachabilityHandler)
 }
 
 // InstallSchemasAPI installs middleware schemas API
@@ -738,6 +744,67 @@ func createPublicWorkgroupInviteHandler(c *gin.Context) {
 			"organization_name": params.OrganizationName,
 		},
 	})
+}
+
+func systemReachabilityHandler(c *gin.Context) {
+	organizationID := util.AuthorizedSubjectID(c, "organization")
+	if organizationID == nil {
+		provide.RenderError("unauthorized", 401, c)
+		return
+	}
+
+	subjectAccountID := c.Param("id")
+	if subjectAccountID == "" {
+		provide.RenderError("invalid subject account id", 400, c)
+		return
+	}
+
+	s, err := resolveSubjectAccount(subjectAccountID)
+	if err != nil {
+		provide.RenderError(err.Error(), 403, c)
+		return
+	}
+
+	buf, err := c.GetRawData()
+	if err != nil {
+		provide.RenderError(err.Error(), 400, c)
+		return
+	}
+
+	var system middleware.System
+	err = json.Unmarshal(buf, &system)
+	if err != nil {
+		msg := fmt.Sprintf("failed to check system reachability status; %s", err.Error())
+		provide.RenderError(msg, 422, c)
+		return
+	}
+
+	switch *system.Type {
+	case "sap":
+		sor := middleware.SAPFactory(&system) // use middleware.SORFactory(s.Metadata.SOR, nil) instead? i don't think so because this endpoint is for systems that have not been created yet
+		if err := sor.HealthCheck(); err != nil {
+			msg := fmt.Sprintf("system healthcheck failed; %s", err.Error())
+			provide.RenderError(msg, 422, c)
+			return
+		}
+
+		sorConfiguration := map[string]interface{}{
+			"bpi_endpoint":    s.Metadata.OrganizationProxyEndpoint,
+			"ident_endpoint":  fmt.Sprintf("%s://%s", os.Getenv("IDENT_API_SCHEME"), os.Getenv("IDENT_API_HOST")),
+			"organization_id": s.Metadata.OrganizationID,
+			"refresh_token":   s.Metadata.OrganizationRefreshToken,
+		}
+
+		if err = sor.ConfigureTenant(sorConfiguration); err != nil {
+			msg := fmt.Sprintf("failed to configure system; %s", err.Error())
+			provide.RenderError(msg, 422, c)
+			return
+		}
+
+		provide.Render(nil, 204, c)
+	default:
+		provide.RenderError("not implemented", 501, c)
+	}
 }
 
 func listMappingsHandler(c *gin.Context) {
