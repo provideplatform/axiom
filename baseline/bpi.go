@@ -613,7 +613,7 @@ func FindSubjectAccountByID(id string) *SubjectAccount {
 }
 
 func (s *SubjectAccount) configureSystem() error {
-	sor := middleware.SORFactory(s.Metadata.SOR, nil) // reference as to why i'm not using middleware.SORFactory in systemReachabilityHandler -- "SubjectAccount.Metadata.SOR contains one or more systems of record configurations"
+	sor := middleware.SORFactory(s.Metadata.SOR, nil)
 	if sor == nil {
 		common.Log.Warning("middleware system configuration not resolved")
 		return errors.New("middleware  system configuration not resolved")
