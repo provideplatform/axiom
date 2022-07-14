@@ -84,7 +84,7 @@ func InstallPublicWorkgroupAPI(r *gin.Engine) {
 
 // InstallSystemsAPI installs system management APIs
 func InstallSystemsAPI(r *gin.Engine) {
-	r.POST("/api/v1/systems/:id/reachability", systemReachabilityHandler)
+	r.POST("/api/v1/systems/reachability", systemReachabilityHandler)
 }
 
 // InstallSchemasAPI installs middleware schemas API
@@ -753,9 +753,30 @@ func systemReachabilityHandler(c *gin.Context) {
 		return
 	}
 
-	subjectAccountID := c.Param("id")
-	if subjectAccountID == "" {
-		provide.RenderError("invalid subject account id", 400, c)
+	buf, err := c.GetRawData()
+	if err != nil {
+		provide.RenderError(err.Error(), 400, c)
+		return
+	}
+
+	var params map[string]interface{}
+	err = json.Unmarshal(buf, &params)
+	if err != nil {
+		msg := fmt.Sprintf("failed to check system reachability status; %s", err.Error())
+		provide.RenderError(msg, 422, c)
+		return
+	}
+
+	if params["subject_account_id"] == nil {
+		msg := "failed to check system reachability status; subject_account_id is required"
+		provide.RenderError(msg, 422, c)
+		return
+	}
+
+	subjectAccountID, subjectAccountIDOk := params["subject_account_id"].(string)
+	if !subjectAccountIDOk {
+		msg := "failed to check system reachability status; failed to parse subject_account_id"
+		provide.RenderError(msg, 422, c)
 		return
 	}
 
@@ -765,23 +786,30 @@ func systemReachabilityHandler(c *gin.Context) {
 		return
 	}
 
-	buf, err := c.GetRawData()
-	if err != nil {
-		provide.RenderError(err.Error(), 400, c)
+	if params["system"] == nil {
+		msg := "failed to check system reachability status; system is required"
+		provide.RenderError(msg, 422, c)
 		return
 	}
 
 	var system middleware.System
-	err = json.Unmarshal(buf, &system)
+	raw, _ := json.Marshal(params["system"])
+	err = json.Unmarshal(raw, &system)
 	if err != nil {
 		msg := fmt.Sprintf("failed to check system reachability status; %s", err.Error())
 		provide.RenderError(msg, 422, c)
 		return
 	}
 
+	if system.Type == nil {
+		msg := "failed to check system reachability status; system type required"
+		provide.RenderError(msg, 422, c)
+		return
+	}
+
 	switch *system.Type {
 	case "sap":
-		sor := middleware.SAPFactory(&system) // use middleware.SORFactory(s.Metadata.SOR, nil) instead? i don't think so because this endpoint is for systems that have not been created yet
+		sor := middleware.SAPFactory(&system)
 		if err := sor.HealthCheck(); err != nil {
 			msg := fmt.Sprintf("system healthcheck failed; %s", err.Error())
 			provide.RenderError(msg, 422, c)
@@ -803,7 +831,8 @@ func systemReachabilityHandler(c *gin.Context) {
 
 		provide.Render(nil, 204, c)
 	default:
-		provide.RenderError("not implemented", 501, c)
+		msg := fmt.Sprintf("system healthcheck failed; %s sor not implemented", *system.Type)
+		provide.RenderError(msg, 422, c)
 	}
 }
 
