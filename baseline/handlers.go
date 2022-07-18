@@ -21,7 +21,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 
@@ -759,41 +758,14 @@ func systemReachabilityHandler(c *gin.Context) {
 		return
 	}
 
-	var params map[string]interface{}
-	err = json.Unmarshal(buf, &params)
+	var system middleware.System
+	raw, err := json.Marshal(buf)
 	if err != nil {
 		msg := fmt.Sprintf("failed to check system reachability status; %s", err.Error())
 		provide.RenderError(msg, 422, c)
 		return
 	}
 
-	if params["subject_account_id"] == nil {
-		msg := "failed to check system reachability status; subject_account_id is required"
-		provide.RenderError(msg, 422, c)
-		return
-	}
-
-	subjectAccountID, subjectAccountIDOk := params["subject_account_id"].(string)
-	if !subjectAccountIDOk {
-		msg := "failed to check system reachability status; failed to parse subject_account_id"
-		provide.RenderError(msg, 422, c)
-		return
-	}
-
-	s, err := resolveSubjectAccount(subjectAccountID)
-	if err != nil {
-		provide.RenderError(err.Error(), 403, c)
-		return
-	}
-
-	if params["system"] == nil {
-		msg := "failed to check system reachability status; system is required"
-		provide.RenderError(msg, 422, c)
-		return
-	}
-
-	var system middleware.System
-	raw, _ := json.Marshal(params["system"])
 	err = json.Unmarshal(raw, &system)
 	if err != nil {
 		msg := fmt.Sprintf("failed to check system reachability status; %s", err.Error())
@@ -812,19 +784,6 @@ func systemReachabilityHandler(c *gin.Context) {
 		sor := middleware.SAPFactory(&system)
 		if err := sor.HealthCheck(); err != nil {
 			msg := fmt.Sprintf("system healthcheck failed; %s", err.Error())
-			provide.RenderError(msg, 422, c)
-			return
-		}
-
-		sorConfiguration := map[string]interface{}{
-			"bpi_endpoint":    s.Metadata.OrganizationProxyEndpoint,
-			"ident_endpoint":  fmt.Sprintf("%s://%s", os.Getenv("IDENT_API_SCHEME"), os.Getenv("IDENT_API_HOST")),
-			"organization_id": s.Metadata.OrganizationID,
-			"refresh_token":   s.Metadata.OrganizationRefreshToken,
-		}
-
-		if err = sor.ConfigureTenant(sorConfiguration); err != nil {
-			msg := fmt.Sprintf("failed to configure system; %s", err.Error())
 			provide.RenderError(msg, 422, c)
 			return
 		}
