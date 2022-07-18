@@ -759,14 +759,7 @@ func systemReachabilityHandler(c *gin.Context) {
 	}
 
 	var system middleware.System
-	raw, err := json.Marshal(buf)
-	if err != nil {
-		msg := fmt.Sprintf("failed to check system reachability status; %s", err.Error())
-		provide.RenderError(msg, 422, c)
-		return
-	}
-
-	err = json.Unmarshal(raw, &system)
+	err = json.Unmarshal(buf, &system)
 	if err != nil {
 		msg := fmt.Sprintf("failed to check system reachability status; %s", err.Error())
 		provide.RenderError(msg, 422, c)

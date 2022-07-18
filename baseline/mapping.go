@@ -126,7 +126,7 @@ func (m *Mapping) enrichRef() bool {
 		})
 	}
 
-	if (len(m.Errors) > 0) {
+	if len(m.Errors) > 0 {
 		return false
 	}
 
