@@ -1120,6 +1120,8 @@ func createWorkflowHandler(c *gin.Context) {
 		return
 	}
 
+	workflow.OrganizationID = organizationID
+
 	if workflow.Create(nil) {
 		provide.Render(workflow, 201, c)
 	} else if len(workflow.Errors) > 0 {
@@ -1167,7 +1169,7 @@ func deployWorkflowHandler(c *gin.Context) {
 	_workflow.Status = common.StringOrNil(workflowStatusDeployed) // HACK!!!
 	_workflow.Version = workflow.Version
 
-	if workflow.Update(_workflow, *organizationID) {
+	if workflow.Update(_workflow) {
 		provide.Render(workflow, 202, c)
 	} else if len(workflow.Errors) > 0 {
 		obj := map[string]interface{}{}
@@ -1323,7 +1325,7 @@ func updateWorkflowHandler(c *gin.Context) {
 		return
 	}
 
-	if workflow.Update(_workflow, *organizationID) {
+	if workflow.Update(_workflow) {
 		provide.Render(nil, 204, c)
 	} else if len(workflow.Errors) > 0 {
 		obj := map[string]interface{}{}
@@ -1377,19 +1379,19 @@ func listWorkflowsHandler(c *gin.Context) {
 	filterPrototypes := strings.ToLower(c.Query("filter_prototypes")) == "true"
 
 	db := dbconf.DatabaseConnection()
-	query := db.Order("workflows.created_at DESC")
+	query := db.Where("organization_id = ?", organizationID).Order("created_at DESC")
 
 	if c.Query("workgroup_id") != "" {
-		query = query.Where("workflows.workgroup_id = ?", c.Query("workgroup_id"))
+		query = query.Where("workgroup_id = ?", c.Query("workgroup_id"))
 	}
 	if c.Query("workflow_id") != "" {
-		query = query.Where("workflows.workflow_id = ?", c.Query("workflow_id"))
+		query = query.Where("workflow_id = ?", c.Query("workflow_id"))
 	}
 	if filterInstances {
-		query = query.Where("workflows.workflow_id IS NULL")
+		query = query.Where("workflow_id IS NULL")
 	}
 	if filterPrototypes {
-		query = query.Where("workflows.workflow_id IS NOT NULL")
+		query = query.Where("workflow_id IS NOT NULL")
 	}
 
 	provide.Paginate(c, query, &Workflow{}).Find(&workflows)
