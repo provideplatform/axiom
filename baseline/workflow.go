@@ -488,13 +488,6 @@ func (w *Workflow) Update(other *Workflow) bool {
 		return false
 	}
 
-	if other.OrganizationID != nil && *other.OrganizationID != *w.OrganizationID {
-		w.Errors = append(w.Errors, &provide.Error{
-			Message: common.StringOrNil("cannot modify workflow organization_id"),
-		})
-		return false
-	}
-
 	// these validations are for update only...
 	if w.isPrototype() {
 		if *w.Status == workflowStatusDeployed && other.Status != nil && *other.Status != *w.Status && *other.Status != workflowStatusDeprecated {
@@ -590,7 +583,7 @@ func (w *Workflow) createVersion(previous *Workflow, version string) bool {
 		return false
 	}
 
-	previousVersionParsed, err := common.ParseIntFromString(*previous.Version)
+	previousVersionParsed, err := common.ParseIntFromString(*previous.Version) // TODO-- use semver
 	if err != nil {
 		w.Errors = append(w.Errors, &provide.Error{
 			Message: common.StringOrNil(err.Error()),
