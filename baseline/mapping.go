@@ -216,9 +216,15 @@ func (m *Mapping) Update(mapping *Mapping) bool {
 	tx := db.Begin()
 	defer tx.RollbackUnlessCommitted()
 
-	m.Name = mapping.Name
-	m.Description = mapping.Description
-	m.Type = mapping.Type
+	if mapping.Name != "" {
+		m.Name = mapping.Name
+	}
+	if mapping.Description != nil {
+		m.Description = mapping.Description
+	}
+	if mapping.Type != nil {
+		m.Type = mapping.Type
+	}
 
 	if !m.enrichRef() {
 		return false
