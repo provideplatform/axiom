@@ -788,6 +788,13 @@ func (w *Workflow) ParseMetadata() map[string]interface{} {
 func (w *Workflow) Validate() bool {
 	var proto *Workflow
 
+	if w.OrganizationID == nil {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil("organization_id is required"),
+		})
+		return false
+	}
+
 	if !w.isPrototype() {
 		proto = FindWorkflowByID(*w.WorkflowID)
 
