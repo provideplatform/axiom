@@ -60,6 +60,7 @@ type Workflow struct {
 	Description    *string        `json:"description"`
 	UpdatedAt      *time.Time     `json:"updated_at"`
 	Participants   []*Participant `sql:"-" json:"participants,omitempty"`
+	OrganizationID *uuid.UUID     `json:"-"`
 	WorkgroupID    *uuid.UUID     `json:"workgroup_id"`
 	WorkflowID     *uuid.UUID     `json:"workflow_id"` // when nil, indicates the workflow is a prototype (not an instance)
 	Worksteps      []*Workstep    `json:"worksteps,omitempty"`
@@ -229,7 +230,7 @@ func proverParamsFactory(name, identifier string, noteStoreID, nullifierStoreID 
 }
 
 // deploy the workflow
-func (w *Workflow) deploy(organizationID uuid.UUID) bool {
+func (w *Workflow) deploy() bool {
 	if w.Status != nil && *w.Status != workflowStatusDraft {
 		w.Errors = append(w.Errors, &provide.Error{
 			Message: common.StringOrNil(fmt.Sprintf("cannot deploy workflow with status: %s", *w.Status)),
@@ -279,7 +280,7 @@ func (w *Workflow) deploy(organizationID uuid.UUID) bool {
 
 	for _, workstep := range worksteps {
 		params := map[string]interface{}{
-			"organization_id": organizationID.String(),
+			"organization_id": w.OrganizationID.String(),
 			"workstep_id":     workstep.ID.String(),
 		}
 		payload, _ := json.Marshal(params)
@@ -292,7 +293,7 @@ func (w *Workflow) deploy(organizationID uuid.UUID) bool {
 	}
 
 	params := map[string]interface{}{
-		"organization_id": organizationID.String(),
+		"organization_id": w.OrganizationID.String(),
 		"workflow_id":     w.ID.String(),
 	}
 	payload, _ := json.Marshal(params)
@@ -482,7 +483,7 @@ func (w *Workflow) Create(tx *gorm.DB) bool {
 }
 
 // Update the workflow
-func (w *Workflow) Update(other *Workflow, organizationID uuid.UUID) bool {
+func (w *Workflow) Update(other *Workflow) bool {
 	if !w.Validate() {
 		return false
 	}
@@ -510,7 +511,7 @@ func (w *Workflow) Update(other *Workflow, organizationID uuid.UUID) bool {
 			w.Version = other.Version
 
 			if *w.Status == workflowStatusDraft && other.Status != nil && *other.Status == workflowStatusDeployed {
-				if !w.deploy(organizationID) { // deploy the workflow...
+				if !w.deploy() { // deploy the workflow...
 					return false
 				}
 			}
@@ -582,7 +583,7 @@ func (w *Workflow) createVersion(previous *Workflow, version string) bool {
 		return false
 	}
 
-	previousVersionParsed, err := common.ParseIntFromString(*previous.Version)
+	previousVersionParsed, err := common.ParseIntFromString(*previous.Version) // TODO-- use semver
 	if err != nil {
 		w.Errors = append(w.Errors, &provide.Error{
 			Message: common.StringOrNil(err.Error()),
@@ -786,6 +787,13 @@ func (w *Workflow) ParseMetadata() map[string]interface{} {
 
 func (w *Workflow) Validate() bool {
 	var proto *Workflow
+
+	if w.OrganizationID == nil {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil("organization_id is required"),
+		})
+		return false
+	}
 
 	if !w.isPrototype() {
 		proto = FindWorkflowByID(*w.WorkflowID)
