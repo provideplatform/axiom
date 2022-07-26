@@ -17,6 +17,7 @@
 package baseline
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -579,10 +580,12 @@ func (w *Workstep) setParticipantExecutionPayload(
 	secret, err := vault.CreateSecret(
 		token,
 		subjectAccount.VaultID.String(),
-		string(rawWitness),
-		fmt.Sprintf("baseline.workstep.%s.participant.%s.execution", w.ID, address),
-		fmt.Sprintf("baseline workstep execution by participant %s", address),
-		vaultSecretTypeWorkstepExecution,
+		map[string]interface{}{
+			"description": fmt.Sprintf("baseline workstep execution by participant %s", address),
+			"name":        fmt.Sprintf("baseline.workstep.%s.participant.%s.execution", w.ID, address),
+			"type":        vaultSecretTypeWorkstepExecution,
+			"value":       hex.EncodeToString(rawWitness),
+		},
 	)
 	if err != nil {
 		w.Errors = append(w.Errors, &provide.Error{

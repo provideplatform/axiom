@@ -805,7 +805,6 @@ func consumeSubjectAccountRegistrationMsg(msg *nats.Msg) {
 		return
 	}
 
-	var orgDomain *string
 	var orgZeroKnowledgePublicKey *string
 
 	vaults, err := vault.ListVaults(*orgToken.AccessToken, map[string]interface{}{})
@@ -846,23 +845,17 @@ func consumeSubjectAccountRegistrationMsg(msg *nats.Msg) {
 	// 	updateOrgMetadata = true
 	// }
 
-	// FIXME!! add domain to subjectAccount.Metadata
-	// if domain, domainOk := metadata["domain"].(string); domainOk {
-	// 	orgDomain = common.StringOrNil(domain)
-	// }
+	if subjectAccount.Metadata.OrganizationDomain == nil {
+		common.Log.Warningf("failed to resolve organization domain for storage in the public org registry; BPI subject account id: %s", subjectAccountID)
+		msg.Nak()
+		return
+	}
 
 	if subjectAccount.Metadata.OrganizationAddress == nil {
 		common.Log.Warningf("failed to resolve organization public address for storage in the public org registry; BPI subject account id: %s", subjectAccountID)
 		msg.Nak()
 		return
 	}
-
-	// FIXME!!
-	// if subjectAccount.Metadata.Domain == nil {
-	// 	common.Log.Warningf("failed to resolve organization domain for storage in the public org registry; BPI subject account id: %s", subjectAccountID)
-	// 	msg.Nak()
-	// 	return
-	// }
 
 	if subjectAccount.Metadata.OrganizationMessagingEndpoint == nil {
 		common.Log.Warningf("failed to resolve organization messaging endpoint for storage in the public org registry; BPI subject account id: %s", subjectAccountID)
@@ -957,7 +950,7 @@ func consumeSubjectAccountRegistrationMsg(msg *nats.Msg) {
 		"params": []interface{}{
 			*subjectAccount.Metadata.OrganizationAddress,
 			*organization.Name,
-			*orgDomain,
+			*subjectAccount.Metadata.OrganizationDomain,
 			*subjectAccount.Metadata.OrganizationMessagingEndpoint,
 			*orgZeroKnowledgePublicKey,
 			"{}",

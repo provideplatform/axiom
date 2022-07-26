@@ -209,10 +209,12 @@ func (s *SubjectAccount) persistCredentials() bool {
 	secret, err := vault.CreateSecret(
 		*token.AccessToken,
 		s.VaultID.String(),
-		hex.EncodeToString(raw),
-		fmt.Sprintf("BPI subject account credentials %s", *s.ID),
-		fmt.Sprintf("BPI subject account credentials %s", *s.ID),
-		vaultSecretTypeBPISubjectAccount,
+		map[string]interface{}{
+			"description": fmt.Sprintf("BPI subject account credentials %s", *s.ID),
+			"name":        fmt.Sprintf("BPI subject account credentials %s", *s.ID),
+			"type":        vaultSecretTypeBPISubjectAccount,
+			"value":       hex.EncodeToString(raw),
+		},
 	)
 	if err != nil {
 		s.Errors = append(s.Errors, &provide.Error{
@@ -245,10 +247,12 @@ func (s *SubjectAccount) persistMetadata() bool {
 	secret, err := vault.CreateSecret(
 		*token.AccessToken,
 		s.VaultID.String(),
-		hex.EncodeToString(raw),
-		fmt.Sprintf("BPI subject account metadata %s", *s.ID),
-		fmt.Sprintf("BPI subject account metadata %s", *s.ID),
-		vaultSecretTypeBPISubjectAccount,
+		map[string]interface{}{
+			"description": fmt.Sprintf("BPI subject account metadata %s", *s.ID),
+			"name":        fmt.Sprintf("BPI subject account metadata %s", *s.ID),
+			"type":        vaultSecretTypeBPISubjectAccount,
+			"value":       hex.EncodeToString(raw),
+		},
 	)
 	if err != nil {
 		s.Errors = append(s.Errors, &provide.Error{

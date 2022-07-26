@@ -18,6 +18,7 @@ package baseline
 
 import (
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -82,7 +83,16 @@ func CacheBaselineOrganizationIssuedVC(address, vc string) error {
 	}
 
 	secretName := fmt.Sprintf("verifiable credential for %s", address)
-	resp, err := vault.CreateSecret(*token, subjectAccount.Metadata.Vault.ID.String(), vc, secretName, secretName, "verifiable_credential")
+	resp, err := vault.CreateSecret(
+		*token,
+		subjectAccount.Metadata.Vault.ID.String(),
+		map[string]interface{}{
+			"description": secretName,
+			"name":        secretName,
+			"type":        "verifiable_credential",
+			"value":       hex.EncodeToString([]byte(vc)),
+		},
+	)
 	if err != nil {
 		common.Log.Warningf("failed to cache verifiable credential for baseline organization: %s; %s", address, err.Error())
 		return err
