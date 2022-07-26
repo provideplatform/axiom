@@ -70,7 +70,7 @@ func (m *ProtocolMessage) baselineInbound() bool {
 				return false
 			}
 
-			workflow.Worksteps = make([]*baseline.WorkstepInstance, 0)
+			workflow.Worksteps = make([]*WorkstepInstance, 0)
 		}
 
 		if baselineContext == nil {
@@ -78,12 +78,9 @@ func (m *ProtocolMessage) baselineInbound() bool {
 
 			baselineContextID, _ := uuid.NewV4()
 			baselineContext = &BaselineContext{
-				baseline.BaselineContext{
-					ID:         &baselineContextID,
-					BaselineID: m.BaselineID,
-				},
-				make([]*BaselineRecord, 0),
-				nil,
+				ID:         &baselineContextID,
+				BaselineID: m.BaselineID,
+				Records:    make([]*BaselineRecord, 0),
 			}
 
 			if workflow != nil {
@@ -93,12 +90,10 @@ func (m *ProtocolMessage) baselineInbound() bool {
 		}
 
 		baselineRecord = &BaselineRecord{
-			baseline.BaselineRecord{
-				BaselineID: m.BaselineID,
-				ContextID:  baselineContext.ID,
-				Type:       m.Type,
-			},
-			baselineContext,
+			BaselineID: m.BaselineID,
+			ContextID:  baselineContext.ID,
+			Type:       m.Type,
+			Context:    baselineContext,
 		}
 
 		err = baselineRecord.cache()
@@ -232,12 +227,9 @@ func (m *Message) baselineOutbound() bool {
 
 				baselineContextID, _ := uuid.NewV4()
 				baselineContext = &BaselineContext{
-					baseline.BaselineContext{
-						ID:         &baselineContextID,
-						BaselineID: m.BaselineID,
-					},
-					make([]*BaselineRecord, 0),
-					nil,
+					ID:         &baselineContextID,
+					BaselineID: m.BaselineID,
+					Records:    make([]*BaselineRecord, 0),
 				}
 
 				if workflow != nil {
@@ -263,12 +255,10 @@ func (m *Message) baselineOutbound() bool {
 
 		// map internal record id -> baseline record id
 		baselineRecord = &BaselineRecord{
-			baseline.BaselineRecord{
-				ID:        m.ID,
-				ContextID: baselineContext.ID,
-				Type:      m.Type,
-			},
-			baselineContext,
+			ID:        m.ID,
+			ContextID: baselineContext.ID,
+			Type:      m.Type,
+			Context:   baselineContext,
 		}
 
 		err = baselineRecord.cache()
@@ -301,25 +291,21 @@ func (m *Message) baselineOutbound() bool {
 
 		for _, recipient := range workflow.Participants {
 			msg := &ProtocolMessage{
-				baseline.ProtocolMessage{
-					BaselineID: baselineRecord.BaselineID,
-					Opcode:     common.StringOrNil(baseline.ProtocolMessageOpcodeSync),
-					Identifier: baselineRecord.Context.WorkflowID,
-					Payload: &baseline.ProtocolMessagePayload{
-						Object: map[string]interface{}{
-							"id":           workflow.ID,
-							"participants": workflow.Participants,
-							"shield":       workflow.Shield,
-							"worksteps":    workflow.Worksteps,
-						},
-						Type: common.StringOrNil(protomsgPayloadTypeWorkflow),
+				BaselineID: baselineRecord.BaselineID,
+				Opcode:     common.StringOrNil(baseline.ProtocolMessageOpcodeSync),
+				Identifier: baselineRecord.Context.WorkflowID,
+				Payload: &ProtocolMessagePayload{
+					Object: map[string]interface{}{
+						"id":           workflow.ID,
+						"participants": workflow.Participants,
+						"shield":       workflow.Shield,
+						"worksteps":    workflow.Worksteps,
 					},
-					Recipient: recipient.Address,
-					Sender:    nil, // FIXME
-					Type:      m.Type,
+					Type: common.StringOrNil(protomsgPayloadTypeWorkflow),
 				},
-				nil,
-				nil,
+				Recipient: recipient.Address,
+				Sender:    nil, // FIXME
+				Type:      m.Type,
 			}
 
 			if recipient.Address != nil {
@@ -356,23 +342,19 @@ func (m *Message) baselineOutbound() bool {
 	}
 
 	m.ProtocolMessage = &ProtocolMessage{
-		baseline.ProtocolMessage{
-			BaselineID: baselineRecord.BaselineID,
-			Opcode:     common.StringOrNil(baseline.ProtocolMessageOpcodeBaseline),
-			Identifier: baselineRecord.Context.WorkflowID,
-			Payload: &baseline.ProtocolMessagePayload{
-				Object: m.Payload.(map[string]interface{}),
-				Type:   m.Type,
-				Witness: map[string]interface{}{
-					"Document.Hash":     hashString,
-					"Document.Preimage": preImageString,
-				},
-			},
-			Shield: shieldAddress,
+		BaselineID: baselineRecord.BaselineID,
+		Opcode:     common.StringOrNil(baseline.ProtocolMessageOpcodeBaseline),
+		Identifier: baselineRecord.Context.WorkflowID,
+		Payload: &ProtocolMessagePayload{
+			Object: m.Payload.(map[string]interface{}),
 			Type:   m.Type,
+			Witness: map[string]interface{}{
+				"Document.Hash":     hashString,
+				"Document.Preimage": preImageString,
+			},
 		},
-		nil,
-		nil,
+		Shield: shieldAddress,
+		Type:   m.Type,
 	}
 
 	err = m.prove()
@@ -392,7 +374,7 @@ func (m *Message) baselineOutbound() bool {
 		return false
 	}
 
-	recipients := make([]*baseline.Participant, 0)
+	recipients := make([]*Participant, 0)
 	if len(m.Recipients) > 0 {
 		recipients = append(recipients, m.Recipients...)
 	} else {
@@ -437,19 +419,15 @@ func (m *ProtocolMessage) broadcast(recipient string) error {
 	}
 
 	payload, err := json.Marshal(&ProtocolMessage{
-		baseline.ProtocolMessage{
-			BaselineID: m.BaselineID,
-			Opcode:     m.Opcode,
-			Sender:     m.Sender,
-			Recipient:  common.StringOrNil(recipient),
-			Shield:     m.Shield,
-			Identifier: m.Identifier,
-			Signature:  m.Signature,
-			Type:       m.Type,
-			Payload:    m.Payload,
-		},
-		nil,
-		nil,
+		BaselineID: m.BaselineID,
+		Opcode:     m.Opcode,
+		Sender:     m.Sender,
+		Recipient:  common.StringOrNil(recipient),
+		Shield:     m.Shield,
+		Identifier: m.Identifier,
+		Signature:  m.Signature,
+		Type:       m.Type,
+		Payload:    m.Payload,
 	})
 
 	if err != nil {

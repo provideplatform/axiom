@@ -24,25 +24,31 @@ import (
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideplatform/baseline/common"
 	provide "github.com/provideplatform/provide-go/api"
-	"github.com/provideplatform/provide-go/api/baseline"
 )
 
 // Mapping is a baseline mapping prototype
 type Mapping struct {
 	provide.Model
-	baseline.Mapping
-	Models         []*MappingModel `sql:"-" json:"models"`
-	OrganizationID *uuid.UUID      `json:"organization_id"`
-	Ref            *string         `json:"ref,omitempty"`
-	RefMappingID   *uuid.UUID      `json:"ref_mapping_id"`
-	Version        *string         `json:"version"`
-	WorkgroupID    *uuid.UUID      `json:"workgroup_id"`
+	Models      []*MappingModel `sql:"-" json:"models"`
+	Name        string          `json:"name"`
+	Description *string         `json:"description"`
+	Type        *string         `json:"type"`
+
+	OrganizationID *uuid.UUID `json:"organization_id"`
+	Ref            *string    `json:"ref,omitempty"`
+	RefMappingID   *uuid.UUID `json:"ref_mapping_id"`
+	Version        *string    `json:"version"`
+	WorkgroupID    *uuid.UUID `json:"workgroup_id"`
 }
 
 // MappingModel is a baseline mapping model prototype
 type MappingModel struct {
 	provide.Model
-	baseline.MappingModel
+	Description *string `json:"description"`
+	PrimaryKey  *string `json:"primary_key"`
+	Standard    *string `json:"standard"`
+	Type        *string `json:"type"`
+
 	MappingID  uuid.UUID       `json:"mapping_id"`
 	RefModelID *uuid.UUID      `json:"ref_model_id"`
 	Fields     []*MappingField `sql:"-" json:"fields"`
@@ -51,7 +57,12 @@ type MappingModel struct {
 // MappingField is a baseline mapping field prototype
 type MappingField struct {
 	provide.Model
-	baseline.MappingField
+	DefaultValue interface{} `json:"default_value,omitempty"`
+	IsPrimaryKey bool        `json:"is_primary_key"`
+	Name         string      `json:"name"`
+	Description  *string     `json:"description"`
+	Type         string      `json:"type"`
+
 	MappingModelID uuid.UUID  `gorm:"column:mappingmodel_id" json:"mapping_model_id"`
 	RefFieldID     *uuid.UUID `json:"ref_field_id"`
 }

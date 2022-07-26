@@ -454,13 +454,10 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 	}
 
 	invitor := &Participant{
-		baseline.Participant{
-			Address: claims.Baseline.InvitorOrganizationAddress,
-		},
-		claims.Baseline.InvitorOrganizationAddress,
-		make([]*Workgroup, 0),
-		make([]*Workflow, 0),
-		make([]*Workstep, 0),
+		Address:    claims.Baseline.InvitorOrganizationAddress,
+		Workgroups: make([]*Workgroup, 0),
+		Workflows:  make([]*Workflow, 0),
+		Worksteps:  make([]*Workstep, 0),
 	}
 	invitor.Cache()
 
@@ -541,15 +538,11 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 	}
 
 	msg := &ProtocolMessage{
-		baseline.ProtocolMessage{
-			Opcode:     common.StringOrNil(baseline.ProtocolMessageOpcodeJoin),
-			Identifier: &identifierUUID,
-			Payload: &baseline.ProtocolMessagePayload{
-				Object: obj,
-			},
+		Opcode:     common.StringOrNil(baseline.ProtocolMessageOpcodeJoin),
+		Identifier: &identifierUUID,
+		Payload: &ProtocolMessagePayload{
+			Object: obj,
 		},
-		nil,
-		nil,
 	}
 	payload, _ := json.Marshal(msg)
 
@@ -1630,7 +1623,7 @@ func executeWorkstepHandler(c *gin.Context) {
 		return
 	}
 
-	var payload *baseline.ProtocolMessagePayload
+	var payload *ProtocolMessagePayload
 	err = json.Unmarshal(buf, &payload)
 	if err != nil {
 		provide.RenderError(err.Error(), 422, c)

@@ -27,7 +27,6 @@ import (
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideplatform/baseline/common"
 	provide "github.com/provideplatform/provide-go/api"
-	"github.com/provideplatform/provide-go/api/baseline"
 	"github.com/provideplatform/provide-go/api/ident"
 )
 
@@ -36,14 +35,19 @@ const requireCounterpartiesTickerInterval = time.Second * 30 // HACK
 
 // Workgroup is a baseline workgroup prototype
 type Workgroup struct {
-	baseline.Workgroup
-	Name           *string        `json:"name"`
-	Description    *string        `json:"description"`
-	Config         interface{}    `sql:"-" json:"config"`
-	NetworkID      *uuid.UUID     `sql:"-" json:"network_id"`
-	OrganizationID *uuid.UUID     `json:"-"`
-	Participants   []*Participant `sql:"-" json:"participants,omitempty"`
-	Workflows      []*Workflow    `sql:"-" json:"workflows,omitempty"`
+	provide.Model
+	Participants       []*Participant `sql:"-" json:"participants,omitempty"`
+	Shield             *string        `json:"shield,omitempty"`
+	Workflows          []*Workflow    `sql:"-" json:"workflows,omitempty"`
+	PrivacyPolicy      interface{}    `json:"privacy_policy"`      // outlines data visibility rules for each participant
+	SecurityPolicy     interface{}    `json:"security_policy"`     // consists of authentication and authorization rules for the workgroup participants
+	TokenizationPolicy interface{}    `json:"tokenization_policy"` // consists of policies governing tokenization of workflow outputs
+
+	Name           *string     `json:"name"`
+	Description    *string     `json:"description"`
+	Config         interface{} `sql:"-" json:"config"`
+	NetworkID      *uuid.UUID  `sql:"-" json:"network_id"`
+	OrganizationID *uuid.UUID  `json:"-"`
 }
 
 // FindWorkgroupByID retrieves a workgroup for the given id

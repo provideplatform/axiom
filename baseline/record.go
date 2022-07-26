@@ -23,14 +23,16 @@ import (
 	"github.com/kthomas/go-redisutil"
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideplatform/baseline/common"
-	"github.com/provideplatform/provide-go/api/baseline"
 )
 
 // BaselineRecord represents a link between an object in the internal system of record
 // and the external BaselineContext
 type BaselineRecord struct {
-	baseline.BaselineRecord
-	Context *BaselineContext `sql:"-" json:"-"`
+	ID         *string          `sql:"-" json:"id,omitempty"`
+	BaselineID *uuid.UUID       `sql:"-" json:"baseline_id,omitempty"`
+	Context    *BaselineContext `sql:"-" json:"-"`
+	ContextID  *uuid.UUID       `sql:"-" json:"context_id"`
+	Type       *string          `sql:"-" json:"type"`
 }
 
 func (r *BaselineRecord) cache() error {
@@ -84,7 +86,7 @@ func (r *BaselineRecord) cache() error {
 	})
 }
 
-func (r *BaselineRecord) resolveExecutableWorkstepContext() (*baseline.WorkstepInstance, error) {
+func (r *BaselineRecord) resolveExecutableWorkstepContext() (*WorkstepInstance, error) {
 	if r.Context == nil && r.Context.Workflow == nil {
 		return nil, fmt.Errorf("failed to resolve workflow context for baseline record: %s", *r.ID)
 	}

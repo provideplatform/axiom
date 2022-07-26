@@ -29,7 +29,6 @@ import (
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideplatform/baseline/common"
 	provide "github.com/provideplatform/provide-go/api"
-	"github.com/provideplatform/provide-go/api/baseline"
 	"github.com/provideplatform/provide-go/api/ident"
 )
 
@@ -55,7 +54,13 @@ const workflowStatusFailed = "failed"
 
 // Workflow is a baseline workflow prototype
 type Workflow struct {
-	baseline.Workflow
+	provide.Model
+	DeployedAt *time.Time       `json:"deployed_at"`
+	Metadata   *json.RawMessage `sql:"type:json not null" json:"metadata,omitempty"`
+	Shield     *string          `json:"shield,omitempty"`
+	Status     *string          `json:"status"`
+	Version    *string          `json:"version"`
+
 	Name           *string        `json:"name"`
 	Description    *string        `json:"description"`
 	UpdatedAt      *time.Time     `json:"updated_at"`
@@ -76,8 +81,9 @@ type WorkflowVersion struct {
 
 // WorkflowInstance is a baseline workflow instance
 type WorkflowInstance struct {
-	baseline.WorkflowInstance
-	Worksteps []*baseline.WorkstepInstance `json:"worksteps,omitempty"`
+	Workflow
+	WorkflowID *uuid.UUID          `json:"workflow_id,omitempty"` // references the workflow prototype identifier
+	Worksteps  []*WorkstepInstance `json:"worksteps,omitempty"`
 }
 
 func (f *WorkflowInstance) TableName() string {
@@ -148,15 +154,12 @@ func baselineWorkflowFactory(subjectAccount *SubjectAccount, objectType string, 
 	}
 
 	workflow := &WorkflowInstance{
-		baseline.WorkflowInstance{
-			Worksteps: make([]*baseline.WorkstepInstance, 0),
-		},
-		make([]*baseline.WorkstepInstance, 0),
+		Worksteps: make([]*WorkstepInstance, 0),
 	}
 	workflow.ID = identifierUUID
 
 	for _, party := range subjectAccount.Metadata.Counterparties {
-		workflow.Participants = append(workflow.Participants, &baseline.Participant{
+		workflow.Participants = append(workflow.Participants, &Participant{
 			Address:           party.Address,
 			MessagingEndpoint: party.MessagingEndpoint,
 			WebsocketEndpoint: party.WebsocketEndpoint,
@@ -174,7 +177,7 @@ func baselineWorkflowFactory(subjectAccount *SubjectAccount, objectType string, 
 		return nil, err
 	}
 	for _, org := range orgs {
-		workflow.Participants = append(workflow.Participants, &baseline.Participant{
+		workflow.Participants = append(workflow.Participants, &Participant{
 			Address:           common.StringFromInterface(org.Metadata["address"]),
 			APIEndpoint:       common.StringFromInterface(org.Metadata["api_endpoint"]),
 			MessagingEndpoint: common.StringFromInterface(org.Metadata["messaging_endpoint"]),
