@@ -28,7 +28,6 @@ import (
 	"github.com/kthomas/go-redisutil"
 	"github.com/provideplatform/baseline/common"
 	"github.com/provideplatform/provide-go/api"
-	"github.com/provideplatform/provide-go/api/baseline"
 	"github.com/provideplatform/provide-go/api/ident"
 	"github.com/provideplatform/provide-go/api/nchain"
 	"github.com/provideplatform/provide-go/api/vault"
@@ -256,14 +255,11 @@ func lookupBaselineOrganizationMessagingEndpoint(recipient string) *string {
 				return nil
 			}
 			org := &Participant{
-				baseline.Participant{
-					Address:           common.StringOrNil(recipient),
-					MessagingEndpoint: common.StringOrNil(string(endpoint)),
-				},
-				common.StringOrNil(recipient),
-				make([]*Workgroup, 0),
-				make([]*Workflow, 0),
-				make([]*Workstep, 0),
+				Address:           common.StringOrNil(recipient),
+				MessagingEndpoint: common.StringOrNil(string(endpoint)),
+				Workgroups:        make([]*Workgroup, 0),
+				Workflows:         make([]*Workflow, 0),
+				Worksteps:         make([]*Workstep, 0),
 			}
 
 			err = org.Cache()

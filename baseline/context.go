@@ -23,14 +23,15 @@ import (
 	"github.com/kthomas/go-redisutil"
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideplatform/baseline/common"
-	"github.com/provideplatform/provide-go/api/baseline"
 )
 
 // BaselineContext represents a collection of BaselineRecord instances in the context of a workflow
 type BaselineContext struct {
-	baseline.BaselineContext
-	Records  []*BaselineRecord `sql:"-" json:"records,omitempty"`
-	Workflow *WorkflowInstance `sql:"-" json:"-"`
+	ID         *uuid.UUID        `sql:"-" json:"id,omitempty"`
+	BaselineID *uuid.UUID        `sql:"-" json:"baseline_id,omitempty"`
+	Records    []*BaselineRecord `sql:"-" json:"records,omitempty"`
+	Workflow   *WorkflowInstance `sql:"-" json:"-"`
+	WorkflowID *uuid.UUID        `sql:"-" json:"workflow_id"`
 }
 
 func (c *BaselineContext) cache() error {

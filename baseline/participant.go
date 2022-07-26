@@ -23,12 +23,15 @@ import (
 	"time"
 
 	"github.com/kthomas/go-redisutil"
-	"github.com/provideplatform/provide-go/api/baseline"
 )
 
 // Participant is a party to a baseline workgroup or workflow context
 type Participant struct {
-	baseline.Participant
+	Metadata          map[string]interface{} `sql:"-" json:"metadata,omitempty"`
+	APIEndpoint       *string                `sql:"-" json:"api_endpoint,omitempty"`
+	MessagingEndpoint *string                `sql:"-" json:"messaging_endpoint,omitempty"`
+	WebsocketEndpoint *string                `sql:"-" json:"websocket_endpoint,omitempty"`
+
 	Address    *string      `gorm:"column:participant" json:"address"`
 	Workgroups []*Workgroup `sql:"-" json:"workgroups,omitempty"`
 	Workflows  []*Workflow  `sql:"-" json:"workflows,omitempty"`

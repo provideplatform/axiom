@@ -27,6 +27,7 @@ import (
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/nats-io/nats.go"
 	"github.com/provideplatform/baseline/common"
+	"github.com/provideplatform/provide-go/api"
 	"github.com/provideplatform/provide-go/api/baseline"
 	"github.com/provideplatform/provide-go/api/ident"
 	"github.com/provideplatform/provide-go/api/nchain"
@@ -88,8 +89,15 @@ const contractTypeERC1820Registry = "erc1820-registry"
 
 // Message is a proxy-internal wrapper for protocol message handling
 type Message struct {
-	baseline.Message
+	ID              *string          `sql:"-" json:"id,omitempty"`
+	BaselineID      *uuid.UUID       `sql:"-" json:"baseline_id,omitempty"` // optional; when included, can be used to map outbound message just-in-time
+	Errors          []*api.Error     `sql:"-" json:"errors,omitempty"`
+	MessageID       *string          `sql:"-" json:"message_id,omitempty"`
+	Payload         interface{}      `sql:"-" json:"payload,omitempty"`
 	ProtocolMessage *ProtocolMessage `sql:"-" json:"protocol_message,omitempty"`
+	Recipients      []*Participant   `sql:"-" json:"recipients"`
+	Status          *string          `sql:"-" json:"status,omitempty"`
+	Type            *string          `sql:"-" json:"type,omitempty"`
 
 	// HACK -- convenience ptr ... for access during baselineOutbound()
 	subjectAccount *SubjectAccount `sql:"-" json:"-"`
@@ -99,11 +107,27 @@ type Message struct {
 // ProtocolMessage is a baseline protocol message
 // see https://github.com/ethereum-oasis/baseline/blob/master/core/types/src/protocol.ts
 type ProtocolMessage struct {
-	baseline.ProtocolMessage
+	BaselineID *uuid.UUID              `sql:"-" json:"baseline_id,omitempty"`
+	Opcode     *string                 `sql:"-" json:"opcode,omitempty"`
+	Sender     *string                 `sql:"-" json:"sender,omitempty"`
+	Recipient  *string                 `sql:"-" json:"recipient,omitempty"`
+	Shield     *string                 `sql:"-" json:"shield,omitempty"`
+	Identifier *uuid.UUID              `sql:"-" json:"identifier,omitempty"`
+	Signature  *string                 `sql:"-" json:"signature,omitempty"`
+	Type       *string                 `sql:"-" json:"type,omitempty"`
+	Payload    *ProtocolMessagePayload `sql:"-" json:"payload,omitempty"`
 
 	// HACK -- convenience ptr ... for access during baselineInbound()
 	subjectAccount *SubjectAccount `sql:"-" json:"-"`
 	token          *string         `sql:"-" json:"-"`
+}
+
+// ProtocolMessagePayload is a baseline protocol message payload
+type ProtocolMessagePayload struct {
+	Object  map[string]interface{} `sql:"-" json:"object,omitempty"`
+	Proof   *string                `sql:"-" json:"proof,omitempty"`
+	Type    *string                `sql:"-" json:"type,omitempty"`
+	Witness interface{}            `sql:"-" json:"witness,omitempty"`
 }
 
 func init() {

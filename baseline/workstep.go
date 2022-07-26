@@ -32,7 +32,6 @@ import (
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideplatform/baseline/common"
 	provide "github.com/provideplatform/provide-go/api"
-	"github.com/provideplatform/provide-go/api/baseline"
 	"github.com/provideplatform/provide-go/api/nchain"
 	"github.com/provideplatform/provide-go/api/privacy"
 	"github.com/provideplatform/provide-go/api/vault"
@@ -56,17 +55,29 @@ const workstepStatusFailed = "failed"
 
 // Workstep is a baseline workstep prototype
 type Workstep struct {
-	baseline.Workstep
-	Description  *string        `json:"description"`
-	Participants []*Participant `sql:"-" json:"participants,omitempty"`
-	WorkstepID   *uuid.UUID     `json:"workstep_id"` // when nil, indicates the workstep is a prototype (not an instance)
+	provide.Model
+	Name            *string          `json:"name"`
+	Cardinality     int              `json:"cardinality"`
+	DeployedAt      *time.Time       `json:"deployed_at"`
+	Metadata        *json.RawMessage `sql:"type:json not null" json:"metadata,omitempty"`
+	Prover          *privacy.Prover  `json:"prover,omitempty"`
+	ProverID        *uuid.UUID       `json:"prover_id"`
+	Participants    []*Participant   `sql:"-" json:"participants,omitempty"`
+	RequireFinality bool             `json:"require_finality"`
+	Shield          *string          `json:"shield,omitempty"`
+	Status          *string          `json:"status"`
+	WorkflowID      *uuid.UUID       `json:"workflow_id,omitempty"`
+
+	Description *string    `json:"description"`
+	WorkstepID  *uuid.UUID `json:"workstep_id"` // when nil, indicates the workstep is a prototype (not an instance)
 
 	userInputCardinality bool `json:"-"`
 }
 
 // WorkstepInstance is a baseline workstep instance
 type WorkstepInstance struct {
-	baseline.WorkstepInstance
+	Workstep
+	WorkstepID *uuid.UUID `json:"workstep_id,omitempty"` // references the workstep prototype identifier
 }
 
 func (f *WorkstepInstance) TableName() string {
@@ -116,7 +127,7 @@ func (w *Workstep) Cache() error {
 	})
 }
 
-func baselineWorkstepFactory(identifier *string, workflowID *string, prover *privacy.Prover) *baseline.WorkstepInstance {
+func baselineWorkstepFactory(identifier *string, workflowID *string, prover *privacy.Prover) *WorkstepInstance {
 	var identifierUUID uuid.UUID
 	if identifier != nil {
 		identifierUUID, _ = uuid.FromString(*identifier)
@@ -129,11 +140,11 @@ func baselineWorkstepFactory(identifier *string, workflowID *string, prover *pri
 		workflowUUID, _ = uuid.FromString(*workflowID)
 	}
 
-	workstep := &baseline.WorkstepInstance{
-		baseline.Workstep{
+	workstep := &WorkstepInstance{
+		Workstep{
 			Prover:       prover,
 			ProverID:     &prover.ID,
-			Participants: make([]*baseline.Participant, 0), // FIXME
+			Participants: make([]*Participant, 0), // FIXME
 			WorkflowID:   &workflowUUID,
 		},
 		nil,
@@ -144,8 +155,8 @@ func baselineWorkstepFactory(identifier *string, workflowID *string, prover *pri
 }
 
 // LookupBaselineWorkstep by id
-func LookupBaselineWorkstep(identifier string) *baseline.WorkstepInstance {
-	var workstep *baseline.WorkstepInstance
+func LookupBaselineWorkstep(identifier string) *WorkstepInstance {
+	var workstep *WorkstepInstance
 
 	key := fmt.Sprintf("baseline.workstep.%s", identifier)
 	raw, err := redisutil.Get(key)
@@ -358,7 +369,7 @@ func (w *Workstep) deploy(token string, organizationID uuid.UUID) bool {
 func (w *Workstep) execute(
 	subjectAccount *SubjectAccount,
 	token string,
-	payload *baseline.ProtocolMessagePayload,
+	payload *ProtocolMessagePayload,
 ) (*privacy.ProveResponse, error) {
 	if w.isPrototype() {
 		w.Errors = append(w.Errors, &provide.Error{
@@ -558,7 +569,7 @@ func (w *Workstep) setParticipantExecutionPayload(
 	token string,
 	subjectAccount *SubjectAccount,
 	proof *privacy.ProveResponse,
-	payload *baseline.ProtocolMessagePayload,
+	payload *ProtocolMessagePayload,
 	tx *gorm.DB,
 ) error {
 	address := *subjectAccount.Metadata.OrganizationAddress
