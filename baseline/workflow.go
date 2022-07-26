@@ -798,6 +798,13 @@ func (w *Workflow) Validate() bool {
 		return false
 	}
 
+	if w.WorkgroupID == nil {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil("workgroup_id is required"),
+		})
+		return false
+	}
+
 	if !w.isPrototype() {
 		proto = FindWorkflowByID(*w.WorkflowID)
 
