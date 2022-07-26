@@ -1248,6 +1248,8 @@ func versionWorkflowHandler(c *gin.Context) {
 		_workflow.Description = description
 	}
 
+	_workflow.OrganizationID = organizationID
+
 	if _workflow.createVersion(workflow, *version) {
 		provide.Render(_workflow, 201, c)
 	} else if len(_workflow.Errors) > 0 {
