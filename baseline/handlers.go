@@ -518,6 +518,45 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 			return
 		}
 
+		// give other workgroup participants access to new organization domain models wip -- currently solved by creating mappings after invitation has been accepted
+
+		// token, _ := util.ParseBearerAuthorizationHeader(c, nil)
+		// wg_orgs, err := ident.ListApplicationOrganizations(token.Raw, *claims.Baseline.WorkgroupID, map[string]interface{}{})
+		// if err != nil {
+		// 	subjectAccount.Errors = append(subjectAccount.Errors, &api.Error{
+		// 		Message: common.StringOrNil(err.Error()),
+		// 	})
+
+		// 	obj := map[string]interface{}{}
+		// 	obj["errors"] = subjectAccount.Errors
+		// 	provide.Render(obj, 422, c)
+		// 	return
+		// }
+
+		// give new organization access to all workgroup domain models
+		var mappings []*Mapping
+		tx.Where("workgroup_id = ?", *claims.Baseline.WorkgroupID).Find(&mappings)
+		
+		for _, m := range mappings {
+			result := db.Exec("INSERT INTO mappings_organizations (mapping_id, organization_id, permissions) VALUES (?, ?, ?)", m.ID, *subjectAccount.Metadata.OrganizationID, 0) // TODO-- default permission level ??
+			rowsAffected := result.RowsAffected
+			errors := result.GetErrors()
+			if len(errors) > 0 {
+				for _, err := range errors {
+					subjectAccount.Errors = append(subjectAccount.Errors, &api.Error{
+						Message: common.StringOrNil(err.Error()),
+					})
+				}
+			}
+
+			if rowsAffected == 0 {
+				obj := map[string]interface{}{}
+				obj["errors"] = subjectAccount.Errors
+				provide.Render(obj, 422, c)
+				return
+			}
+		}
+
 		tx.Commit()
 
 		common.Log.Debugf("BPI subject account intiailized: %s", *subjectAccount.ID)
@@ -790,17 +829,15 @@ func listMappingsHandler(c *gin.Context) {
 
 	var mappings []*Mapping
 
-	db := dbconf.DatabaseConnection()
-	var query *gorm.DB
+	query := FindMappingsByOrganizationID(*organizationID)
+	
 	if c.Query("workgroup_id") != "" {
 		workgroupID, err := uuid.FromString(c.Query("workgroup_id"))
 		if err != nil {
 			provide.RenderError(err.Error(), 422, c)
 			return
 		}
-		query = db.Where("organization_id = ? AND workgroup_id = ?", organizationID, workgroupID)
-	} else {
-		query = db.Where("organization_id = ?", organizationID)
+		query = query.Where("workgroup_id = ?", workgroupID)
 	}
 
 	if c.Query("ref") != "" {
@@ -843,7 +880,9 @@ func createMappingHandler(c *gin.Context) {
 
 	mapping.OrganizationID = organizationID
 
-	if mapping.Create() {
+	token, _ := util.ParseBearerAuthorizationHeader(c, nil)
+
+	if mapping.Create(token.Raw) {
 		provide.Render(mapping, 201, c)
 	} else if len(mapping.Errors) > 0 {
 		obj := map[string]interface{}{}
@@ -877,6 +916,11 @@ func updateMappingHandler(c *gin.Context) {
 	mapping := FindMappingByID(mappingID)
 	if mapping == nil {
 		provide.RenderError("not found", 404, c)
+		return
+	}
+
+	if *mapping.OrganizationID != *organizationID {
+		provide.RenderError("forbidden", 403, c)
 		return
 	}
 
@@ -925,6 +969,11 @@ func deleteMappingHandler(c *gin.Context) {
 	mapping := FindMappingByID(mappingID)
 	if mapping == nil {
 		provide.RenderError("not found", 404, c)
+		return
+	}
+
+	if *mapping.OrganizationID != *organizationID {
+		provide.RenderError("forbidden", 403, c)
 		return
 	}
 

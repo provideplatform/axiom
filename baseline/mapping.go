@@ -24,6 +24,7 @@ import (
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideplatform/baseline/common"
 	provide "github.com/provideplatform/provide-go/api"
+	"github.com/provideplatform/provide-go/api/ident"
 )
 
 // Mapping is a baseline mapping prototype
@@ -65,6 +66,13 @@ type MappingField struct {
 
 	MappingModelID uuid.UUID  `gorm:"column:mappingmodel_id" json:"mapping_model_id"`
 	RefFieldID     *uuid.UUID `json:"ref_field_id"`
+}
+
+// MappingsByOrganizationID returns a query to a list of mappings which are associated with the given organization id
+func FindMappingsByOrganizationID(organizationID uuid.UUID) *gorm.DB {
+	db := dbconf.DatabaseConnection()
+	query := db.Where("mo.organization_id = ?", organizationID.String())
+	return query.Joins("JOIN mappings_organizations as mo ON mo.mapping_id = mappings.id")
 }
 
 func mappingRefFactory(organizationID uuid.UUID, mappingType string) string {
@@ -145,12 +153,20 @@ func (m *Mapping) enrichRef() bool {
 	return true
 }
 
-func (m *Mapping) Create() bool {
+func (m *Mapping) Create(token string) bool {
 	if !m.Validate() {
 		return false
 	}
 
 	if !m.enrichRef() {
+		return false
+	}
+
+	wg_orgs, err := ident.ListApplicationOrganizations(token, m.WorkgroupID.String(), map[string]interface{}{})
+	if err != nil {
+		m.Errors = append(m.Errors, &provide.Error{
+			Message: common.StringOrNil(err.Error()),
+		})
 		return false
 	}
 
@@ -170,6 +186,20 @@ func (m *Mapping) Create() bool {
 				})
 			}
 		}
+
+		for _, wg_org := range wg_orgs {
+			result = db.Exec("INSERT INTO mappings_organizations (mapping_id, organization_id, permissions) VALUES (?, ?, ?)", m.ID, *wg_org.ID, 0)
+			rowsAffected = result.RowsAffected
+			errors = result.GetErrors()
+			if len(errors) > 0 {
+				for _, err := range errors {
+					m.Errors = append(m.Errors, &provide.Error{
+						Message: common.StringOrNil(err.Error()),
+					})
+				}
+			}
+		}
+
 		if !tx.NewRecord(m) {
 			success = rowsAffected > 0
 			if success {
