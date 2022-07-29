@@ -263,6 +263,12 @@ func (m *Mapping) Update(mapping *Mapping) bool {
 }
 
 func (m *Mapping) Validate() bool {
+	if m.WorkgroupID == nil {
+		m.Errors = append(m.Errors, &provide.Error{
+			Message: common.StringOrNil("workgroup_id is required"),
+		})
+	}
+
 	if m.Ref != nil {
 		m.Errors = append(m.Errors, &provide.Error{
 			Message: common.StringOrNil("mapping ref must not be provided"),
