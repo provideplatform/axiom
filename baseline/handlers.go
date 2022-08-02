@@ -141,50 +141,56 @@ func sendProtocolMessageHandler(c *gin.Context) {
 	}
 
 	message := &Message{}
-	err = json.Unmarshal(buf, message)
+	err = json.Unmarshal(buf, &message)
 	if err != nil {
 		provide.RenderError(err.Error(), 422, c)
 		return
 	}
 
-	if message.ID != nil {
-		record := lookupBaselineRecordByInternalID(*message.ID)
-		if record == nil {
-			provide.RenderError("baseline record not found", 404, c)
-			return
-		}
+	if message.ID == nil {
+		provide.RenderError("id is required", 422, c)
+		return
+	}
 
-		workstep, err := record.resolveExecutableWorkstepContext()
-		if err != nil {
-			provide.RenderError(err.Error(), 422, c)
-			return
-		}
+	if message.Payload == nil {
+		provide.RenderError("payload is required", 422, c)
+		return
+	}
 
-		workflow := FindWorkflowByID(*workstep.WorkflowID)
-		if workflow == nil {
-			provide.RenderError("workflow not resolved", 500, c)
-			return
-		}
+	if message.Type == nil {
+		provide.RenderError("type is required", 422, c)
+		return
+	}
 
-		subjectAccountID := subjectAccountIDFactory(organizationID.String(), workflow.WorkgroupID.String())
-		message.subjectAccount, err = resolveSubjectAccount(subjectAccountID)
-		if err != nil {
-			provide.RenderError("failed to resolve BPI subject account", 403, c)
-			return
-		}
+	if message.WorkgroupID == nil {
+		provide.RenderError("workgroup_id is required", 422, c)
+		return
+	}
 
-		authorizedSender := false
-		for _, participant := range workstep.Participants {
-			if participant.Address != nil && *participant.Address == *message.subjectAccount.Metadata.OrganizationAddress {
-				authorizedSender = true
-				break
-			}
-		}
+	subjectAccountID := subjectAccountIDFactory(organizationID.String(), message.WorkgroupID.String())
+	message.subjectAccount, err = resolveSubjectAccount(subjectAccountID)
+	if err != nil {
+		provide.RenderError("failed to resolve BPI subject account", 403, c)
+		return
+	}
 
-		if !authorizedSender {
-			provide.RenderError("forbidden", 403, c)
-			return
+	_, _, _, _, workstep, err := message.resolveContext()
+	if err != nil {
+		provide.RenderError(err.Error(), 403, c)
+		return
+	}
+
+	authorizedSender := false
+	for _, participant := range workstep.Participants {
+		if participant.Address != nil && *participant.Address == *message.subjectAccount.Metadata.OrganizationAddress {
+			authorizedSender = true
+			break
 		}
+	}
+
+	if !authorizedSender {
+		provide.RenderError("forbidden", 403, c)
+		return
 	}
 
 	// HACK!!
@@ -479,7 +485,7 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 	// common.Log.Warningf("TODO-- vent counterparty VC...")
 
 	subjectAccountParams := params["subject_account_params"]
-	raw, err := json.Marshal(subjectAccountParams)
+	raw, _ := json.Marshal(subjectAccountParams)
 
 	var subjectAccount *SubjectAccount
 	err = json.Unmarshal(raw, &subjectAccount)
@@ -533,8 +539,11 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 	}
 
 	if subjectAccount != nil && subjectAccount.Metadata != nil && subjectAccount.Metadata.OrganizationAddress != nil {
-		// FIXME... allow "subject_account" param to be provided
 		obj["address"] = *subjectAccount.Metadata.OrganizationAddress
+	}
+
+	if subjectAccount != nil && subjectAccount.Metadata != nil && subjectAccount.Metadata.OrganizationDomain != nil {
+		obj["domain"] = *subjectAccount.Metadata.OrganizationDomain
 	}
 
 	msg := &ProtocolMessage{

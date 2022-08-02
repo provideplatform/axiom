@@ -32,6 +32,96 @@ import (
 	"github.com/provideplatform/provide-go/api/privacy"
 )
 
+// resolveWorkstepContext is a convenience method to resolve the workstep context
+// alongside other relevant items... TODO-- memoize this so it can be reused nicely
+func (m *Message) resolveContext() (middleware.SOR, *BaselineContext, *BaselineRecord, *WorkflowInstance, *WorkstepInstance, error) {
+	var system middleware.SOR
+	var baselineContext *BaselineContext
+	var baselineRecord *BaselineRecord
+	var workflow *WorkflowInstance
+	var workstep *WorkstepInstance
+	var err error
+
+	// if m.subjectAccount == nil {
+	// 	subjectAccountID := subjectAccountIDFactory(organizationID.String(), workflow.WorkgroupID.String())
+	// 	m.subjectAccount, err = resolveSubjectAccount(subjectAccountID)
+	// 	if err != nil {
+	// 		return nil, nil, nil, nil, nil, fmt.Errorf("failed to resolve BPI subject account; %s", err.Error())
+	// 	}
+	// }
+
+	system, err = m.subjectAccount.resolveSystem(*m.Type)
+	if err != nil {
+		return nil, nil, nil, nil, nil, fmt.Errorf("failed to resolve system for subject account for mapping type: %s", *m.Type)
+	}
+
+	baselineRecord = lookupBaselineRecordByInternalID(*m.ID)
+	if baselineRecord == nil {
+		if m.BaselineID != nil {
+			workflow = LookupBaselineWorkflowByBaselineID(m.BaselineID.String())
+			if workflow == nil {
+				err = fmt.Errorf("failed to lookup workflow for given baseline id: %s", m.BaselineID.String())
+			}
+
+			baselineContext = lookupBaselineContext(m.BaselineID.String())
+			if baselineContext == nil {
+				err = fmt.Errorf("failed to lookup baseline context for given baseline id: %s", m.BaselineID.String())
+			}
+		} else {
+			baselineContextID, _ := uuid.NewV4()
+			m.BaselineID = &baselineContextID
+
+			workflow, err = baselineWorkflowFactory(m.subjectAccount, *m.Type, nil)
+
+			if baselineContext == nil {
+				common.Log.Debugf("initializing new baseline context with baseline id: %s", m.BaselineID)
+				baselineContext = &BaselineContext{
+					ID:         m.BaselineID,
+					BaselineID: m.BaselineID,
+					Records:    make([]*BaselineRecord, 0),
+				}
+
+				if workflow != nil {
+					baselineContext.Workflow = workflow
+					baselineContext.WorkflowID = &workflow.ID
+				}
+			}
+		}
+
+		if err != nil {
+			common.Log.Warning(err.Error())
+			m.Errors = append(m.Errors, &provide.Error{
+				Message: common.StringOrNil(err.Error()),
+			})
+			system.UpdateObjectStatus(*m.ID, map[string]interface{}{
+				"errors":     m.Errors,
+				"message_id": m.MessageID,
+				"status":     middleware.SORBusinessObjectStatusError,
+				"type":       *m.Type,
+			})
+			return nil, nil, nil, nil, nil, fmt.Errorf("failed to resolve system for subject account for mapping type: %s; %s", *m.Type, err.Error())
+		}
+	} else {
+		// map internal record id -> baseline record id
+		baselineRecord = &BaselineRecord{
+			ID:        m.ID,
+			Context:   baselineContext,
+			ContextID: baselineContext.ID,
+			Type:      m.Type,
+		}
+	}
+
+	worksteps := FindWorkstepsByWorkflowID(workflow.ID)
+	for _, wrkstp := range worksteps {
+		if wrkstp.Status != nil && *wrkstp.Status == workstepStatusInit {
+			workstep = FindWorkstepInstanceByID(wrkstp.ID)
+			break
+		}
+	}
+
+	return system, baselineContext, baselineRecord, workflow, workstep, err
+}
+
 func (m *ProtocolMessage) baselineInbound() bool {
 	// FIXME-- this check should never be needed here
 	if m.subjectAccount == nil {
@@ -39,6 +129,7 @@ func (m *ProtocolMessage) baselineInbound() bool {
 		return false
 	}
 
+	// FIXME-- use resolveContext() instead...
 	var baselineContext *BaselineContext
 
 	baselineRecord := lookupBaselineRecord(m.BaselineID.String())
@@ -111,7 +202,7 @@ func (m *ProtocolMessage) baselineInbound() bool {
 		return false
 	}
 
-	sor, err := m.subjectAccount.resolveSystem(*m.Type)
+	system, err := m.subjectAccount.resolveSystem(*m.Type)
 	if err != nil {
 		common.Log.Warningf("failed to resolve system for subject account for mapping type: %s", *m.Type)
 		return false
@@ -119,7 +210,7 @@ func (m *ProtocolMessage) baselineInbound() bool {
 
 	if baselineRecord.ID == nil {
 		// TODO -- map baseline record id -> internal record id (i.e, this is currently done but lazily on outbound message)
-		resp, err := sor.CreateObject(map[string]interface{}{
+		resp, err := system.CreateObject(map[string]interface{}{
 			"baseline_id": baselineRecord.BaselineID.String(),
 			"payload":     m.Payload.Object,
 			"type":        m.Type,
@@ -140,7 +231,7 @@ func (m *ProtocolMessage) baselineInbound() bool {
 			return false
 		}
 	} else {
-		err := sor.UpdateObject(*baselineRecord.ID, m.Payload.Object)
+		err := system.UpdateObject(*baselineRecord.ID, m.Payload.Object)
 		if err != nil {
 			common.Log.Warningf("failed to create business object during inbound baseline; %s", err.Error())
 			return false
@@ -170,7 +261,6 @@ func (m *Message) baselineOutbound() bool {
 		return false
 	}
 
-	// FIXME-- this check should never be needed here
 	if m.subjectAccount == nil {
 		m.Errors = append(m.Errors, &provide.Error{
 			Message: common.StringOrNil("subject account not resolved"),
@@ -192,141 +282,79 @@ func (m *Message) baselineOutbound() bool {
 		return false
 	}
 
-	sor, err := m.subjectAccount.resolveSystem(*m.Type)
+	system, _, baselineRecord, workflow, _, err := m.resolveContext()
 	if err != nil {
-		common.Log.Warningf("failed to resolve system for subject account for mapping type: %s", *m.Type)
+		m.Errors = append(m.Errors, &provide.Error{
+			Message: common.StringOrNil(err.Error()),
+		})
 		return false
 	}
 
-	var baselineContext *BaselineContext
-	baselineRecord := lookupBaselineRecordByInternalID(*m.ID)
-	if baselineRecord == nil && m.BaselineID != nil {
-		common.Log.Debugf("attempting to map outbound message to unmapped baseline record with baseline id: %s", m.BaselineID)
-		baselineRecord = lookupBaselineRecord(m.BaselineID.String())
+	err = baselineRecord.cache() // FIXME-- this is currently idempotent, but we should update the cached properties -- we will never cache or persist the payload itself...
+	if err != nil {
+		common.Log.Warning(err.Error())
+		m.Errors = append(m.Errors, &provide.Error{
+			Message: common.StringOrNil(err.Error()),
+		})
+		system.UpdateObjectStatus(*m.ID, map[string]interface{}{
+			"errors":     m.Errors,
+			"message_id": m.MessageID,
+			"status":     middleware.SORBusinessObjectStatusError,
+			"type":       *m.Type,
+		})
+		return false
 	}
 
-	if baselineRecord == nil {
-		var workflow *WorkflowInstance
-		var err error
+	// for _, workstep := range workflow.Worksteps {
+	// 	prover := workstep.Prover
+	// 	workstep.Prover = &privacy.Prover{
+	// 		Artifacts:     prover.Artifacts,
+	// 		Name:          prover.Name,
+	// 		Description:   prover.Description,
+	// 		Identifier:    prover.Identifier,
+	// 		Provider:      prover.Provider,
+	// 		ProvingScheme: prover.ProvingScheme,
+	// 		Curve:         prover.Curve,
+	// 	}
+	// }
 
-		if m.BaselineID != nil {
-			workflow = LookupBaselineWorkflowByBaselineID(m.BaselineID.String())
-			if workflow == nil {
-				err = fmt.Errorf("failed to lookup workflow for given baseline id: %s", m.BaselineID.String())
-			}
+	for _, recipient := range workflow.Participants {
+		msg := &ProtocolMessage{
+			BaselineID: baselineRecord.BaselineID,
+			Opcode:     common.StringOrNil(baseline.ProtocolMessageOpcodeSync),
+			Identifier: baselineRecord.Context.WorkflowID,
+			Payload: &ProtocolMessagePayload{
+				Object: map[string]interface{}{
+					"id":           workflow.ID,
+					"participants": workflow.Participants,
+					"shield":       workflow.Shield,
+					"worksteps":    workflow.Worksteps,
+				},
+				Type: common.StringOrNil(protomsgPayloadTypeWorkflow),
+			},
+			Recipient: recipient.Address,
+			Sender:    nil, // FIXME
+			Type:      m.Type,
+		}
 
-			baselineContext = lookupBaselineContext(m.BaselineID.String())
-			if baselineContext == nil {
-				err = fmt.Errorf("failed to lookup baseline context for given baseline id: %s", m.BaselineID.String())
+		if recipient.Address != nil {
+			err := msg.broadcast(*recipient.Address)
+			if err != nil {
+				_msg := fmt.Sprintf("failed to dispatch protocol message to recipient: %s; %s", *recipient.Address, err.Error())
+				common.Log.Warning(_msg)
+				m.Errors = append(m.Errors, &provide.Error{
+					Message: common.StringOrNil(_msg),
+				})
 			}
 		} else {
-			workflow, err = baselineWorkflowFactory(m.subjectAccount, *m.Type, nil)
-
-			if baselineContext == nil {
-				common.Log.Debugf("initializing new baseline context with baseline id: %s", m.BaselineID)
-
-				baselineContextID, _ := uuid.NewV4()
-				baselineContext = &BaselineContext{
-					ID:         &baselineContextID,
-					BaselineID: m.BaselineID,
-					Records:    make([]*BaselineRecord, 0),
-				}
-
-				if workflow != nil {
-					baselineContext.Workflow = workflow
-					baselineContext.WorkflowID = &workflow.ID
-				}
-			}
-		}
-
-		if err != nil {
-			common.Log.Warning(err.Error())
-			m.Errors = append(m.Errors, &provide.Error{
-				Message: common.StringOrNil(err.Error()),
-			})
-			sor.UpdateObjectStatus(*m.ID, map[string]interface{}{
-				"errors":     m.Errors,
-				"message_id": m.MessageID,
-				"status":     middleware.SORBusinessObjectStatusError,
-				"type":       *m.Type,
-			})
-			return false
-		}
-
-		// map internal record id -> baseline record id
-		baselineRecord = &BaselineRecord{
-			ID:        m.ID,
-			ContextID: baselineContext.ID,
-			Type:      m.Type,
-			Context:   baselineContext,
-		}
-
-		err = baselineRecord.cache()
-		if err != nil {
-			common.Log.Warning(err.Error())
-			m.Errors = append(m.Errors, &provide.Error{
-				Message: common.StringOrNil(err.Error()),
-			})
-			sor.UpdateObjectStatus(*m.ID, map[string]interface{}{
-				"errors":     m.Errors,
-				"message_id": m.MessageID,
-				"status":     middleware.SORBusinessObjectStatusError,
-				"type":       *m.Type,
-			})
-			return false
-		}
-
-		for _, workstep := range workflow.Worksteps {
-			prover := workstep.Prover
-			workstep.Prover = &privacy.Prover{
-				Artifacts:     prover.Artifacts,
-				Name:          prover.Name,
-				Description:   prover.Description,
-				Identifier:    prover.Identifier,
-				Provider:      prover.Provider,
-				ProvingScheme: prover.ProvingScheme,
-				Curve:         prover.Curve,
-			}
-		}
-
-		for _, recipient := range workflow.Participants {
-			msg := &ProtocolMessage{
-				BaselineID: baselineRecord.BaselineID,
-				Opcode:     common.StringOrNil(baseline.ProtocolMessageOpcodeSync),
-				Identifier: baselineRecord.Context.WorkflowID,
-				Payload: &ProtocolMessagePayload{
-					Object: map[string]interface{}{
-						"id":           workflow.ID,
-						"participants": workflow.Participants,
-						"shield":       workflow.Shield,
-						"worksteps":    workflow.Worksteps,
-					},
-					Type: common.StringOrNil(protomsgPayloadTypeWorkflow),
-				},
-				Recipient: recipient.Address,
-				Sender:    nil, // FIXME
-				Type:      m.Type,
-			}
-
-			if recipient.Address != nil {
-				err := msg.broadcast(*recipient.Address)
-				if err != nil {
-					msg := fmt.Sprintf("failed to dispatch protocol message to recipient: %s; %s", *recipient.Address, err.Error())
-					common.Log.Warning(msg)
-					m.Errors = append(m.Errors, &provide.Error{
-						Message: common.StringOrNil(msg),
-					})
-				}
-			} else {
-				common.Log.Warning("failed to dispatch protocol message to recipient; no recipient address")
-			}
+			common.Log.Warning("failed to dispatch protocol message to recipient; no recipient address")
 		}
 	}
 
 	m.BaselineID = baselineRecord.BaselineID
-
 	rawPayload, _ := json.Marshal(m.Payload)
 
+	// FIXME-- the following is prover-specific and needs to be extracted into an interface
 	var i big.Int
 	hFunc := mimc.NewMiMC("seed")
 	hFunc.Write(rawPayload)
@@ -364,7 +392,7 @@ func (m *Message) baselineOutbound() bool {
 		m.Errors = append(m.Errors, &provide.Error{
 			Message: common.StringOrNil(msg),
 		})
-		sor.UpdateObjectStatus(*m.ID, map[string]interface{}{
+		system.UpdateObjectStatus(*m.ID, map[string]interface{}{
 			"baseline_id": m.BaselineID.String(),
 			"errors":      m.Errors,
 			"message_id":  m.MessageID,
@@ -399,7 +427,7 @@ func (m *Message) baselineOutbound() bool {
 		}
 	}
 
-	err = sor.UpdateObjectStatus(*m.ID, map[string]interface{}{
+	err = system.UpdateObjectStatus(*m.ID, map[string]interface{}{
 		"baseline_id": m.BaselineID.String(),
 		"message_id":  m.MessageID,
 		"status":      middleware.SORBusinessObjectStatusSuccess,

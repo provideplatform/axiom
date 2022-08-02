@@ -98,6 +98,7 @@ type Message struct {
 	Recipients      []*Participant   `sql:"-" json:"recipients"`
 	Status          *string          `sql:"-" json:"status,omitempty"`
 	Type            *string          `sql:"-" json:"type,omitempty"`
+	WorkgroupID     *uuid.UUID       `sql:"-" json:"workgroup_id,omitempty"`
 
 	// HACK -- convenience ptr ... for access during baselineOutbound()
 	subjectAccount *SubjectAccount `sql:"-" json:"-"`
