@@ -478,7 +478,7 @@ func (m *Message) prove() error {
 		common.Log.Debugf("no baseline record resolved for internal identifier: %s", *m.ID)
 	}
 
-	token, err := vendOrganizationAccessToken()
+	token, err := vendOrganizationAccessToken(m.subjectAccount)
 	if err != nil {
 		return nil
 	}
@@ -508,7 +508,7 @@ func (m *ProtocolMessage) verify(store bool) error {
 		common.Log.Debugf("no baseline record cached for baseline record id: %s", m.BaselineID.String())
 	}
 
-	token, err := vendOrganizationAccessToken()
+	token, err := vendOrganizationAccessToken(m.subjectAccount)
 	if err != nil {
 		return nil
 	}

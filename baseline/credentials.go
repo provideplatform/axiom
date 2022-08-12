@@ -38,9 +38,9 @@ const defaultCredentialExperationTimeout = time.Hour * 1
 // IssueVC vends a verifiable credential for the given third-party; it assumes authorization
 // has already been completed successfully for the counterparty
 func IssueVC(address string, params map[string]interface{}) (*string, error) {
-	var subjectAccount *SubjectAccount
+	var subjectAccount *SubjectAccount // FIXME-- resolve subject account
 
-	token, err := vendOrganizationAccessToken()
+	token, err := vendOrganizationAccessToken(subjectAccount)
 	if err != nil {
 		common.Log.Warningf("failed to request verifiable credential for baseline organization: %s; %s", address, err.Error())
 		return nil, err

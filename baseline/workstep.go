@@ -173,7 +173,7 @@ func LookupBaselineWorkstep(identifier string) *WorkstepInstance {
 // FIXME -- this presence of this as a dependency here should cause
 // a check to happen during boot that ensures `which solc` resolves...
 func DeployContract(name, raw []byte) (*nchain.Contract, error) {
-	var subjectAccount *SubjectAccount
+	var subjectAccount *SubjectAccount // FIXME!! subject account not resolved here...
 
 	rawSoliditySource := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(string(raw), "^0.5.0", "^0.7.3"), "view", ""), "gas,", "gas(),"), "uint256[0]", "uint256[]") // HACK...
 	artifact, err := compiler.CompileSolidityString("solc", rawSoliditySource)                                                                                                                    // FIXME... parse pragma?
@@ -182,7 +182,7 @@ func DeployContract(name, raw []byte) (*nchain.Contract, error) {
 		return nil, err
 	}
 
-	token, err := vendOrganizationAccessToken()
+	token, err := vendOrganizationAccessToken(subjectAccount)
 	if err != nil {
 		common.Log.Warningf("failed to vend organization access token; %s", err.Error())
 		return nil, err

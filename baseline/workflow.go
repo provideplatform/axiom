@@ -166,7 +166,7 @@ func baselineWorkflowFactory(subjectAccount *SubjectAccount, objectType string, 
 		})
 	}
 
-	token, err := vendOrganizationAccessToken()
+	token, err := vendOrganizationAccessToken(subjectAccount)
 	if err != nil {
 		return nil, err
 	}

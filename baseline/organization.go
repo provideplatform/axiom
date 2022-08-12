@@ -48,7 +48,7 @@ func lookupBaselineOrganization(address string) *Participant {
 }
 
 func lookupBaselineOrganizationIssuedVC(address string) *string {
-	var subjectAccount *SubjectAccount
+	var subjectAccount *SubjectAccount // FIXME-- resolve subject account
 
 	key := fmt.Sprintf("baseline.organization.%s.credential", address)
 	secretID, err := redisutil.Get(key)
@@ -57,7 +57,7 @@ func lookupBaselineOrganizationIssuedVC(address string) *string {
 		return nil
 	}
 
-	token, err := vendOrganizationAccessToken()
+	token, err := vendOrganizationAccessToken(subjectAccount)
 	if err != nil {
 		common.Log.Warningf("failed to retrieve cached verifiable credential for baseline organization: %s; %s", key, err.Error())
 		return nil
@@ -73,9 +73,9 @@ func lookupBaselineOrganizationIssuedVC(address string) *string {
 }
 
 func CacheBaselineOrganizationIssuedVC(address, vc string) error {
-	var subjectAccount *SubjectAccount
+	var subjectAccount *SubjectAccount // FIXME-- resolve subject account
 
-	token, err := vendOrganizationAccessToken()
+	token, err := vendOrganizationAccessToken(subjectAccount)
 	if err != nil {
 		common.Log.Warningf("failed to cache verifiable credential for baseline organization: %s; %s", address, err.Error())
 		return err
@@ -109,9 +109,9 @@ func CacheBaselineOrganizationIssuedVC(address, vc string) error {
 
 // request a signed VC from the named counterparty
 func requestBaselineOrganizationIssuedVC(address string) (*string, error) {
-	var subjectAccount *SubjectAccount
+	var subjectAccount *SubjectAccount // FIXME-- resolve subject account
 
-	token, err := vendOrganizationAccessToken()
+	token, err := vendOrganizationAccessToken(subjectAccount)
 	if err != nil {
 		common.Log.Warningf("failed to request verifiable credential from baseline organization: %s; %s", address, err.Error())
 		return nil, err
@@ -216,7 +216,7 @@ func lookupBaselineOrganizationAPIEndpoint(recipient string) *string {
 }
 
 func lookupBaselineOrganizationMessagingEndpoint(recipient string) *string {
-	var subjectAccount *SubjectAccount
+	var subjectAccount *SubjectAccount // FIXME-- resolve subject account
 
 	org := lookupBaselineOrganization(recipient)
 	if org == nil {
@@ -225,7 +225,7 @@ func lookupBaselineOrganizationMessagingEndpoint(recipient string) *string {
 	}
 
 	if org.MessagingEndpoint == nil {
-		token, err := vendOrganizationAccessToken()
+		token, err := vendOrganizationAccessToken(subjectAccount)
 		if err != nil {
 			common.Log.Warningf("failed to retrieve messaging endpoint for baseline organization: %s", recipient)
 			return nil
@@ -273,9 +273,7 @@ func lookupBaselineOrganizationMessagingEndpoint(recipient string) *string {
 	return org.MessagingEndpoint
 }
 
-func vendOrganizationAccessToken() (*string, error) {
-	var subjectAccount *SubjectAccount
-
+func vendOrganizationAccessToken(subjectAccount *SubjectAccount) (*string, error) {
 	token, err := ident.CreateToken(*subjectAccount.Metadata.OrganizationRefreshToken, map[string]interface{}{
 		"grant_type":      "refresh_token",
 		"organization_id": *subjectAccount.Metadata.OrganizationID,

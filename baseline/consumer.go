@@ -372,7 +372,7 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *nats.Msg) {
 		// });
 
 	case baseline.ProtocolMessageOpcodeSync:
-		token, err := vendOrganizationAccessToken()
+		token, err := vendOrganizationAccessToken(protomsg.subjectAccount)
 		if err != nil {
 			common.Log.Warningf("failed to handle inbound sync protocol message; %s", err.Error())
 			return
