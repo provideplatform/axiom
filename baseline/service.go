@@ -52,7 +52,8 @@ func (m *Message) resolveContext() (middleware.SOR, *BaselineContext, *BaselineR
 
 	system, err = m.subjectAccount.resolveSystem(*m.Type)
 	if err != nil {
-		return nil, nil, nil, nil, nil, fmt.Errorf("failed to resolve system for subject account for mapping type: %s", *m.Type)
+		common.Log.Debugf("failed to resolve system for subject account for mapping type: %s", *m.Type)
+		// return nil, nil, nil, nil, nil, fmt.Errorf("failed to resolve system for subject account for mapping type: %s", *m.Type)
 	}
 
 	baselineRecord = lookupBaselineRecordByInternalID(*m.ID)
@@ -93,22 +94,25 @@ func (m *Message) resolveContext() (middleware.SOR, *BaselineContext, *BaselineR
 			m.Errors = append(m.Errors, &provide.Error{
 				Message: common.StringOrNil(err.Error()),
 			})
-			system.UpdateObjectStatus(*m.ID, map[string]interface{}{
-				"errors":     m.Errors,
-				"message_id": m.MessageID,
-				"status":     middleware.SORBusinessObjectStatusError,
-				"type":       *m.Type,
-			})
-			return nil, nil, nil, nil, nil, fmt.Errorf("failed to resolve system for subject account for mapping type: %s; %s", *m.Type, err.Error())
+
+			if system != nil {
+				system.UpdateObjectStatus(*m.ID, map[string]interface{}{
+					"errors":     m.Errors,
+					"message_id": m.MessageID,
+					"status":     middleware.SORBusinessObjectStatusError,
+					"type":       *m.Type,
+				})
+			}
+
+			return nil, nil, nil, nil, nil, fmt.Errorf("failed to resolve context; %s", err.Error())
 		}
 	} else {
-		// map internal record id -> baseline record id
-		baselineRecord = &BaselineRecord{
-			ID:        m.ID,
-			Context:   baselineContext,
-			ContextID: baselineContext.ID,
-			Type:      m.Type,
+		baselineContext = baselineRecord.Context
+		if baselineContext == nil {
+			err = fmt.Errorf("failed to lookup baseline context for given baseline id: %s", m.BaselineID.String())
 		}
+
+		workflow = baselineRecord.Context.Workflow
 	}
 
 	worksteps := FindWorkstepsByWorkflowID(workflow.ID)
