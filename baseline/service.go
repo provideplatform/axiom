@@ -73,6 +73,10 @@ func (m *Message) resolveContext() (middleware.SOR, *BaselineContext, *BaselineR
 			m.BaselineID = &baselineContextID
 
 			workflow, err = baselineWorkflowFactory(m.subjectAccount, *m.Type, nil)
+			if err != nil {
+				return nil, nil, nil, nil, nil, fmt.Errorf("failed to resolve workflow context; %s", err.Error())
+			}
+			common.Log.Debugf("resolved workflow context: %s", workflow.ID)
 
 			if baselineContext == nil {
 				common.Log.Debugf("initializing new baseline context with baseline id: %s", m.BaselineID)
