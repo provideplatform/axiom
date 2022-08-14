@@ -449,9 +449,8 @@ func (s *SubjectAccount) create(tx *gorm.DB) bool {
 	}
 
 	if !s.resolveCredentials() {
-		msg := fmt.Sprintf("failed to resolve credentials for BPI subject account; %s", err.Error())
 		s.Errors = append(s.Errors, &provide.Error{
-			Message: common.StringOrNil(msg),
+			Message: common.StringOrNil("failed to resolve credentials for BPI subject account"),
 		})
 		return false
 	}
