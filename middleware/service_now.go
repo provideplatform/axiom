@@ -17,14 +17,16 @@
 package middleware
 
 import (
+	"encoding/json"
 	"fmt"
-	"net"
+	"net/url"
 	"os"
 	"sync"
 	"time"
 
 	"github.com/provideplatform/provide-go/api"
 	"github.com/provideplatform/provide-go/common"
+	provide "github.com/provideplatform/provide-go/common"
 )
 
 const defaultServiceNowHost = "base2demo.service-now.com"
@@ -42,8 +44,33 @@ type ServiceNowService struct {
 
 // ServiceNowFactory initializes a ServiceNow instance
 func ServiceNowFactory(params *SystemMetadata) *ServiceNowService {
-	common.Log.Warningf("ServiceNowFactory not implemented")
-	return nil
+	var endpoint *url.URL
+	var err error
+
+	if params.EndpointURL != nil {
+		endpoint, err = url.Parse(*params.EndpointURL)
+		if err != nil {
+			common.Log.Warningf("failed to parse endpoint url: %s", *params.EndpointURL)
+			return nil
+		}
+	}
+
+	if params.Auth == nil {
+		// HACK
+		params.Auth = &SystemAuth{}
+	}
+
+	return &ServiceNowService{
+		api.Client{
+			Host:     endpoint.Host,
+			Path:     endpoint.Path,
+			Scheme:   endpoint.Scheme,
+			Token:    params.Auth.Token,
+			Username: provide.StringOrNil(*params.Auth.Username),
+			Password: provide.StringOrNil(*params.Auth.Password),
+		},
+		sync.Mutex{},
+	}
 }
 
 // InitServiceNowService convenience method to initialize a ServiceNow instance
@@ -86,11 +113,6 @@ func InitServiceNowService(token *string) *ServiceNowService {
 	}
 }
 
-// Authenticate a user by email address and password, returning a newly-authorized X-CSRF-Token token
-func (s *ServiceNowService) Authenticate() error {
-	return nil
-}
-
 // ConfigureTenant configures a new proxy instance in ServiceNow for a given organization
 func (s *ServiceNowService) ConfigureTenant(params map[string]interface{}) error {
 	return nil
@@ -101,7 +123,39 @@ func (s *ServiceNowService) ListSchemas(params map[string]interface{}) (interfac
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	return nil, fmt.Errorf("not implemented")
+	uri := "api/x_ncurr_providenow/setup_configuration/ListSchemas"
+	status, resp, err := s.Get(uri, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch business object model; status: %v; %s", status, err.Error())
+	}
+
+	if status != 200 {
+		return nil, fmt.Errorf("failed to fetch business object model; status: %v", status)
+	}
+
+	if arr, ok := resp.([]interface{}); ok {
+		schemas := make([]interface{}, 0)
+
+		for _, item := range arr {
+			var systemSchema map[string]interface{}
+			raw, _ := json.Marshal(item)
+
+			err = json.Unmarshal(raw, &systemSchema)
+			if err != nil {
+				return nil, fmt.Errorf("failed to unmarshal; status: %v; %s", status, err.Error())
+			}
+
+			schemas = append(schemas, map[string]interface{}{
+				"description": systemSchema["table"],
+				"name":        systemSchema["table"],
+				"type":        systemSchema["id"],
+			})
+		}
+
+		return schemas, nil
+	}
+
+	return nil, fmt.Errorf("failed to fetch business object model; failed to parse response")
 }
 
 // GetSchema retrieves a business object model by type
@@ -109,18 +163,58 @@ func (s *ServiceNowService) GetSchema(recordType string, params map[string]inter
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	return nil, fmt.Errorf("not implemented")
+	uri := fmt.Sprintf("api/x_ncurr_providenow/setup_configuration/GetSchemaDetails?table=%s", recordType)
+	status, resp, err := s.Get(uri, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch business object model; status: %v; %s", status, err.Error())
+	}
+
+	if status != 200 {
+		return nil, fmt.Errorf("failed to fetch business object model; status: %v", status)
+	}
+
+	var _resp map[string]interface{}
+	raw, _ := json.Marshal(resp)
+
+	err = json.Unmarshal(raw, &_resp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch business object model; %s", err.Error())
+	}
+
+	if arr, ok := _resp["fields"].([]interface{}); ok {
+		fields := make([]interface{}, 0)
+
+		for _, item := range arr {
+			var _item map[string]interface{}
+			raw, _ := json.Marshal(item)
+
+			err = json.Unmarshal(raw, &_item)
+			if err != nil {
+				return nil, fmt.Errorf("failed to fetch business object model; %s", err.Error())
+			}
+
+			fields = append(fields, map[string]interface{}{
+				"name":        _item["display_value"],
+				"description": _item["internal_type"],
+				"type":        _item["internal_value"],
+			})
+		}
+
+		return map[string]interface{}{
+			"description": _resp["table"],
+			"fields":      fields,
+			"name":        _resp["table"],
+			"type":        _resp["table"],
+		}, nil
+	}
+
+	return nil, fmt.Errorf("failed to fetch business object model; failed to parse response")
 }
 
 // CreateObject is a generic way to create a business object in the ServiceNow environment
 func (s *ServiceNowService) CreateObject(params map[string]interface{}) (interface{}, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-
-	err := s.Authenticate()
-	if err != nil {
-		return nil, err
-	}
 
 	_params := params
 	if payload, payloadOk := params["payload"].(map[string]interface{}); payloadOk {
@@ -193,13 +287,16 @@ func (s *ServiceNowService) HealthCheck() error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	conn, err := net.DialTimeout("tcp", s.Host, defaultServiceNowReachabilityTimeout)
-	if err == nil {
-		defer conn.Close()
-		return nil
+	status, _, err := s.Get("api/x_ncurr_providenow/setup_configuration/ListSchemas", map[string]interface{}{})
+	if err != nil {
+		return fmt.Errorf("failed to complete health check; status: %v; %s", status, err.Error())
 	}
 
-	return err
+	if status != 200 {
+		return fmt.Errorf("failed to complete health check; status: %v", status)
+	}
+
+	return nil
 }
 
 // TenantHealthCheck

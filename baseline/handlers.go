@@ -1315,9 +1315,12 @@ func listSchemasHandler(c *gin.Context) {
 			continue
 		}
 
-		schemas, err := sor.ListSchemas(map[string]interface{}{
-			"q": c.Query("q"),
-		})
+		schemaParams := map[string]interface{}{}
+		if len(c.Query("q")) > 0 {
+			schemaParams["q"] = c.Query("q")
+		}
+
+		schemas, err := sor.ListSchemas(schemaParams)
 		if err != nil {
 			provide.RenderError(err.Error(), 500, c)
 			return
