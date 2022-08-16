@@ -36,6 +36,9 @@ const defaultServiceNowUsername = "admin"
 const defaultServiceNowPassword = "providenow"
 const defaultServiceNowReachabilityTimeout = time.Second * 5
 
+const defaultServiceNowSchemaListPath = "api/x_ncurr_providenow/setup_configuration/ListSchemas"
+const defaultServiceNowSchemaDetailsPath = "api/x_ncurr_providenow/setup_configuration/GetSchemaDetails"
+
 // ServiceNowService for the SAP API
 type ServiceNowService struct {
 	api.Client
@@ -123,7 +126,11 @@ func (s *ServiceNowService) ListSchemas(params map[string]interface{}) (interfac
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	uri := "api/x_ncurr_providenow/setup_configuration/ListSchemas"
+	uri := defaultServiceNowSchemaListPath
+	if os.Getenv("SERVICENOW_SCHEMA_LIST_API_PATH") != "" {
+		uri = os.Getenv("SERVICENOW_SCHEMA_LIST_API_PATH")
+	}
+
 	status, resp, err := s.Get(uri, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch business object model; status: %v; %s", status, err.Error())
@@ -163,7 +170,12 @@ func (s *ServiceNowService) GetSchema(recordType string, params map[string]inter
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	uri := fmt.Sprintf("api/x_ncurr_providenow/setup_configuration/GetSchemaDetails?table=%s", recordType)
+	schemaDetailsPath := defaultServiceNowSchemaDetailsPath
+	if os.Getenv("SERVICENOW_SCHEMA_DETAILS_API_PATH") != "" {
+		schemaDetailsPath = os.Getenv("SERVICENOW_SCHEMA_DETAILS_API_PATH")
+	}
+
+	uri := fmt.Sprintf("%s?table=%s", schemaDetailsPath, recordType)
 	status, resp, err := s.Get(uri, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch business object model; status: %v; %s", status, err.Error())
