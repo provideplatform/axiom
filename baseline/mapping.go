@@ -302,31 +302,31 @@ func (m *MappingModel) Create(tx *gorm.DB) bool {
 	common.Log.Tracef("attempting to create mapping model for mapping: %s", m.MappingID)
 
 	success := false
-	if tx.NewRecord(m) {
-		result := tx.Create(&m)
-		rowsAffected := result.RowsAffected
-		errors := result.GetErrors()
-		if len(errors) > 0 {
-			for _, err := range errors {
-				m.Errors = append(m.Errors, &provide.Error{
-					Message: common.StringOrNil(err.Error()),
-				})
-			}
+	// if tx.NewRecord(m) {
+	result := tx.Create(&m)
+	rowsAffected := result.RowsAffected
+	errors := result.GetErrors()
+	if len(errors) > 0 {
+		for _, err := range errors {
+			m.Errors = append(m.Errors, &provide.Error{
+				Message: common.StringOrNil(err.Error()),
+			})
 		}
-		if !tx.NewRecord(m) {
-			success = rowsAffected > 0
-			if success {
-				for _, field := range m.Fields {
-					field.MappingModelID = m.ID
-					if !field.Create(tx) {
-						common.Log.Warningf("failed to create mapping model field; transaction will be rolled back")
-						m.Errors = append(m.Errors, field.Errors...)
-						return false
-					}
+	}
+	if !tx.NewRecord(m) {
+		success = rowsAffected > 0
+		if success {
+			for _, field := range m.Fields {
+				field.MappingModelID = m.ID
+				if !field.Create(tx) {
+					common.Log.Warningf("failed to create mapping model field; transaction will be rolled back")
+					m.Errors = append(m.Errors, field.Errors...)
+					return false
 				}
 			}
 		}
 	}
+	// }
 
 	return success
 }
@@ -343,21 +343,21 @@ func (f *MappingField) Create(tx *gorm.DB) bool {
 	common.Log.Tracef("attempting to create mapping model field for model: %s", f.MappingModelID)
 
 	success := false
-	if tx.NewRecord(f) {
-		result := tx.Create(&f)
-		rowsAffected := result.RowsAffected
-		errors := result.GetErrors()
-		if len(errors) > 0 {
-			for _, err := range errors {
-				f.Errors = append(f.Errors, &provide.Error{
-					Message: common.StringOrNil(err.Error()),
-				})
-			}
-		}
-		if !tx.NewRecord(f) {
-			success = rowsAffected > 0
+	// if tx.NewRecord(f) {
+	result := tx.Create(&f)
+	rowsAffected := result.RowsAffected
+	errors := result.GetErrors()
+	if len(errors) > 0 {
+		for _, err := range errors {
+			f.Errors = append(f.Errors, &provide.Error{
+				Message: common.StringOrNil(err.Error()),
+			})
 		}
 	}
+	if !tx.NewRecord(f) {
+		success = rowsAffected > 0
+	}
+	// }
 
 	return success
 }

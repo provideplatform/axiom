@@ -536,7 +536,7 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 		// give new organization access to all workgroup domain models
 		var mappings []*Mapping
 		tx.Where("workgroup_id = ?", *claims.Baseline.WorkgroupID).Find(&mappings)
-		
+
 		for _, m := range mappings {
 			result := db.Exec("INSERT INTO mappings_organizations (mapping_id, organization_id, permissions) VALUES (?, ?, ?)", m.ID, *subjectAccount.Metadata.OrganizationID, 0) // TODO-- default permission level ??
 			rowsAffected := result.RowsAffected
@@ -830,7 +830,7 @@ func listMappingsHandler(c *gin.Context) {
 	var mappings []*Mapping
 
 	query := FindMappingsByOrganizationID(*organizationID)
-	
+
 	if c.Query("workgroup_id") != "" {
 		workgroupID, err := uuid.FromString(c.Query("workgroup_id"))
 		if err != nil {
@@ -924,10 +924,10 @@ func updateMappingHandler(c *gin.Context) {
 		return
 	}
 
-	if *mapping.OrganizationID != *organizationID {
-		provide.RenderError("forbidden", 403, c)
-		return
-	}
+	// if *mapping.OrganizationID != *organizationID {
+	// 	provide.RenderError("forbidden", 403, c)
+	// 	return
+	// }
 
 	_mapping := &Mapping{}
 	err = json.Unmarshal(buf, _mapping)
