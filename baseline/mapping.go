@@ -133,34 +133,12 @@ func (m *Mapping) enrich() {
 	}
 }
 
-func (m *Mapping) enrichRef() bool {
-	if m.OrganizationID == nil {
-		m.Errors = append(m.Errors, &provide.Error{
-			Message: common.StringOrNil("cannot enrich ref with nil mapping organization id"),
-		})
-	}
-	if m.Type == nil {
-		m.Errors = append(m.Errors, &provide.Error{
-			Message: common.StringOrNil("cannot enrich ref with nil mapping type"),
-		})
-	}
-
-	if len(m.Errors) > 0 {
-		return false
-	}
-
-	m.Ref = common.StringOrNil(mappingRefFactory(*m.OrganizationID, *m.Type))
-	return true
-}
-
 func (m *Mapping) Create(token string) bool {
 	if !m.Validate() {
 		return false
 	}
 
-	if !m.enrichRef() {
-		return false
-	}
+	m.Ref = common.StringOrNil(mappingRefFactory(*m.OrganizationID, *m.Type))
 
 	wg_orgs, err := ident.ListApplicationOrganizations(token, m.WorkgroupID.String(), map[string]interface{}{})
 	if err != nil {
@@ -238,7 +216,7 @@ func (m *Mapping) Delete() bool {
 // this method uses a db transaction to wipe the old models and fields to
 // perform a wholesale update of the entire mapping...
 func (m *Mapping) Update(mapping *Mapping) bool {
-	if !mapping.Validate() {
+	if !m.Validate() {
 		return false
 	}
 
@@ -256,9 +234,8 @@ func (m *Mapping) Update(mapping *Mapping) bool {
 		m.Type = mapping.Type
 	}
 
-	if !m.enrichRef() {
-		return false
-	}
+	// FIXME-- if you updated the type of a mapping that was created from a schema then go and try to use that schema again, it will create a new mapping and the initial connection of schema and mapping is broken
+	m.Ref = common.StringOrNil(mappingRefFactory(*m.OrganizationID, *m.Type))
 
 	for _, model := range m.Models {
 		tx.Delete(&model) // this should also wipe the constrained fields...
@@ -293,15 +270,21 @@ func (m *Mapping) Update(mapping *Mapping) bool {
 }
 
 func (m *Mapping) Validate() bool {
+	if m.OrganizationID == nil {
+		m.Errors = append(m.Errors, &provide.Error{
+			Message: common.StringOrNil("organization_id is required"),
+		})
+	}
+
 	if m.WorkgroupID == nil {
 		m.Errors = append(m.Errors, &provide.Error{
 			Message: common.StringOrNil("workgroup_id is required"),
 		})
 	}
 
-	if m.Ref != nil {
+	if m.Type == nil {
 		m.Errors = append(m.Errors, &provide.Error{
-			Message: common.StringOrNil("mapping ref must not be provided"),
+			Message: common.StringOrNil("type is required"),
 		})
 	}
 	return len(m.Errors) == 0

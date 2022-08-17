@@ -878,6 +878,11 @@ func createMappingHandler(c *gin.Context) {
 		return
 	}
 
+	if mapping.Ref != nil {
+		provide.RenderError("cannot specify ref", 400, c)
+		return
+	}
+
 	mapping.OrganizationID = organizationID
 
 	token, _ := util.ParseBearerAuthorizationHeader(c, nil)
