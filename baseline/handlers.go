@@ -538,7 +538,7 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 		tx.Where("workgroup_id = ?", *claims.Baseline.WorkgroupID).Find(&mappings)
 
 		for _, m := range mappings {
-			result := db.Exec("INSERT INTO mappings_organizations (mapping_id, organization_id, permissions) VALUES (?, ?, ?)", m.ID, *subjectAccount.Metadata.OrganizationID, 0) // TODO-- default permission level ??
+			result := db.Exec("INSERT INTO organizations_mappings (organization_id, mapping_id, permissions) VALUES (?, ?, ?)", *subjectAccount.Metadata.OrganizationID, m.ID, 0) // TODO-- default permission level ??
 			rowsAffected := result.RowsAffected
 			errors := result.GetErrors()
 			if len(errors) > 0 {

@@ -71,8 +71,8 @@ type MappingField struct {
 // MappingsByOrganizationID returns a query to a list of mappings which are associated with the given organization id
 func FindMappingsByOrganizationID(organizationID uuid.UUID) *gorm.DB {
 	db := dbconf.DatabaseConnection()
-	query := db.Where("mo.organization_id = ?", organizationID.String())
-	return query.Joins("JOIN mappings_organizations as mo ON mo.mapping_id = mappings.id")
+	query := db.Where("om.organization_id = ?", organizationID.String())
+	return query.Joins("JOIN organizations_mappings as om ON om.mapping_id = mappings.id")
 }
 
 func mappingRefFactory(organizationID uuid.UUID, mappingType string) string {
@@ -166,7 +166,7 @@ func (m *Mapping) Create(token string) bool {
 		}
 
 		for _, wg_org := range wg_orgs {
-			result = db.Exec("INSERT INTO mappings_organizations (mapping_id, organization_id, permissions) VALUES (?, ?, ?)", m.ID, *wg_org.ID, 0)
+			result = db.Exec("INSERT INTO organizations_mappings (organization_id, mapping_id, permissions) VALUES (?, ?, ?)", *wg_org.ID, m.ID, 0)
 			rowsAffected = result.RowsAffected
 			errors = result.GetErrors()
 			if len(errors) > 0 {

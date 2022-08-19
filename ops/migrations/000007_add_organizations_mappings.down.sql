@@ -1,7 +1,7 @@
--- ALTER TABLE ONLY mappings_organizations DROP CONSTRAINT mappings_mapping_id_mappings_id_foreign;
--- ALTER TABLE ONLY mappings_organizations DROP CONSTRAINT organizations_organization_id_organizations_id_foreign;
+-- ALTER TABLE ONLY organizations_mappings DROP CONSTRAINT mappings_mapping_id_mappings_id_foreign;
+-- ALTER TABLE ONLY organizations_mappings DROP CONSTRAINT organizations_organization_id_organizations_id_foreign;
 
-DROP TABLE mappings_organizations;
+DROP TABLE organizations_mappings;
 
 -- DROP INDEX idx_mappings_workgroup_id;
 
