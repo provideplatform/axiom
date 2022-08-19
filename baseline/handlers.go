@@ -518,27 +518,12 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 			return
 		}
 
-		// give other workgroup participants access to new organization domain models wip -- currently solved by creating mappings after invitation has been accepted
-
-		// token, _ := util.ParseBearerAuthorizationHeader(c, nil)
-		// wg_orgs, err := ident.ListApplicationOrganizations(token.Raw, *claims.Baseline.WorkgroupID, map[string]interface{}{})
-		// if err != nil {
-		// 	subjectAccount.Errors = append(subjectAccount.Errors, &api.Error{
-		// 		Message: common.StringOrNil(err.Error()),
-		// 	})
-
-		// 	obj := map[string]interface{}{}
-		// 	obj["errors"] = subjectAccount.Errors
-		// 	provide.Render(obj, 422, c)
-		// 	return
-		// }
-
 		// give new organization access to all workgroup domain models
 		var mappings []*Mapping
 		tx.Where("workgroup_id = ?", *claims.Baseline.WorkgroupID).Find(&mappings)
 
 		for _, m := range mappings {
-			result := db.Exec("INSERT INTO organizations_mappings (organization_id, mapping_id, permissions) VALUES (?, ?, ?)", *subjectAccount.Metadata.OrganizationID, m.ID, 0) // TODO-- default permission level ??
+			result := db.Exec("INSERT INTO organizations_mappings (organization_id, mapping_id, permissions) VALUES (?, ?, ?)", *subjectAccount.Metadata.OrganizationID, m.ID, DefaultOrganizationMappingPermission)
 			rowsAffected := result.RowsAffected
 			errors := result.GetErrors()
 			if len(errors) > 0 {
@@ -924,6 +909,7 @@ func updateMappingHandler(c *gin.Context) {
 		return
 	}
 
+	// TODO-- make update mapping permissions more fine-grained so that participants can only update certain fields of operator mappings
 	// if *mapping.OrganizationID != *organizationID {
 	// 	provide.RenderError("forbidden", 403, c)
 	// 	return

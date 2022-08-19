@@ -68,6 +68,8 @@ type MappingField struct {
 	RefFieldID     *uuid.UUID `json:"ref_field_id"`
 }
 
+const DefaultOrganizationMappingPermission = 510
+
 // MappingsByOrganizationID returns a query to a list of mappings which are associated with the given organization id
 func FindMappingsByOrganizationID(organizationID uuid.UUID) *gorm.DB {
 	db := dbconf.DatabaseConnection()
@@ -166,7 +168,7 @@ func (m *Mapping) Create(token string) bool {
 		}
 
 		for _, wg_org := range wg_orgs {
-			result = db.Exec("INSERT INTO organizations_mappings (organization_id, mapping_id, permissions) VALUES (?, ?, ?)", *wg_org.ID, m.ID, 0)
+			result = db.Exec("INSERT INTO organizations_mappings (organization_id, mapping_id, permissions) VALUES (?, ?, ?)", *wg_org.ID, m.ID, DefaultOrganizationMappingPermission)
 			rowsAffected = result.RowsAffected
 			errors = result.GetErrors()
 			if len(errors) > 0 {
@@ -302,7 +304,7 @@ func (m *MappingModel) Create(tx *gorm.DB) bool {
 	common.Log.Tracef("attempting to create mapping model for mapping: %s", m.MappingID)
 
 	success := false
-	// if tx.NewRecord(m) {
+
 	result := tx.Create(&m)
 	rowsAffected := result.RowsAffected
 	errors := result.GetErrors()
@@ -313,6 +315,7 @@ func (m *MappingModel) Create(tx *gorm.DB) bool {
 			})
 		}
 	}
+
 	if !tx.NewRecord(m) {
 		success = rowsAffected > 0
 		if success {
@@ -326,7 +329,6 @@ func (m *MappingModel) Create(tx *gorm.DB) bool {
 			}
 		}
 	}
-	// }
 
 	return success
 }
@@ -343,7 +345,7 @@ func (f *MappingField) Create(tx *gorm.DB) bool {
 	common.Log.Tracef("attempting to create mapping model field for model: %s", f.MappingModelID)
 
 	success := false
-	// if tx.NewRecord(f) {
+
 	result := tx.Create(&f)
 	rowsAffected := result.RowsAffected
 	errors := result.GetErrors()
@@ -354,10 +356,10 @@ func (f *MappingField) Create(tx *gorm.DB) bool {
 			})
 		}
 	}
+
 	if !tx.NewRecord(f) {
 		success = rowsAffected > 0
 	}
-	// }
 
 	return success
 }
