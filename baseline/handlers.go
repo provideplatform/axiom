@@ -494,9 +494,9 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 		return
 	}
 
-	if isValid, errors := validateSubjectAccountParams(subjectAccount); !isValid {
+	if !subjectAccount.validate() {
 		obj := map[string]interface{}{}
-		obj["errors"] = errors
+		obj["errors"] = subjectAccount.Errors
 		provide.Render(obj, 422, c)
 		return
 	}
@@ -509,6 +509,13 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 
 	subjectAccount.ID = &subjectAccountID
 	subjectAccount.SubjectID = common.StringOrNil(organizationID.String())
+	
+	if err := subjectAccount.setDefaultItems(); err != nil {
+		obj := map[string]interface{}{}
+		obj["errors"] = subjectAccount.Errors
+		provide.Render(obj, 422, c)
+		return
+	}
 
 	db := dbconf.DatabaseConnection()
 	tx := db.Begin()
@@ -2054,9 +2061,9 @@ func createSubjectAccountHandler(c *gin.Context) {
 		return
 	}
 
-	if isValid, errors := validateSubjectAccountParams(subjectAccount); !isValid {
+	if !subjectAccount.validate() {
 		obj := map[string]interface{}{}
-		obj["errors"] = errors
+		obj["errors"] = subjectAccount.Errors
 		provide.Render(obj, 422, c)
 		return
 	}
@@ -2069,6 +2076,13 @@ func createSubjectAccountHandler(c *gin.Context) {
 
 	subjectAccount.ID = &subjectAccountID
 	subjectAccount.SubjectID = common.StringOrNil(organizationID.String())
+
+	if err := subjectAccount.setDefaultItems(); err != nil {
+		obj := map[string]interface{}{}
+		obj["errors"] = subjectAccount.Errors
+		provide.Render(obj, 422, c)
+		return
+	}
 
 	db := dbconf.DatabaseConnection()
 	tx := db.Begin()

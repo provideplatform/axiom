@@ -143,15 +143,6 @@ func (s *SubjectAccount) TableName() string {
 }
 
 func (s *SubjectAccount) validate() bool {
-	if s.Type == nil {
-		s.Type = common.StringOrNil(prvdSubjectAccountType)
-	}
-
-	if s.refreshTokenRaw == nil && s.Metadata != nil && s.Metadata.OrganizationRefreshToken != nil {
-		s.refreshTokenRaw = s.Metadata.OrganizationRefreshToken
-	}
-
-	// FIXME-- repeat code with handlers - validateSubjectAccountParams
 	if s.Metadata == nil {
 		s.Errors = append(s.Errors, &provide.Error{
 			Message: common.StringOrNil("metadata is required"),
@@ -194,11 +185,7 @@ func (s *SubjectAccount) validate() bool {
 		})
 	}
 
-	if len(s.Errors) > 0 {
-		return false
-	}
-
-	return true
+	return len(s.Errors) == 0 
 }
 
 func (s *SubjectAccount) listSystems() ([]*middleware.System, error) {
@@ -490,6 +477,26 @@ func (s *SubjectAccount) create(tx *gorm.DB) bool {
 	}
 
 	return success
+}
+
+func (s *SubjectAccount) setDefaultItems() error {
+	if s.Type == nil {
+		s.Type = common.StringOrNil(prvdSubjectAccountType)
+	}
+
+	if s.refreshTokenRaw == nil && s.Metadata != nil && s.Metadata.OrganizationRefreshToken != nil {
+		s.refreshTokenRaw = s.Metadata.OrganizationRefreshToken
+	}
+
+	if os.Getenv("BASELINE_ORGANIZATION_PROXY_ENDPOINT") != "" {
+		s.Metadata.OrganizationProxyEndpoint = common.StringOrNil(os.Getenv("BASELINE_ORGANIZATION_PROXY_ENDPOINT"))
+	}
+
+	if os.Getenv("BASELINE_ORGANIZATION_MESSAGING_ENDPOINT") != "" {
+		s.Metadata.OrganizationMessagingEndpoint = common.StringOrNil(os.Getenv("BASELINE_ORGANIZATION_MESSAGING_ENDPOINT"))
+	}
+
+	return nil
 }
 
 func (s *SubjectAccount) enrich() error {
