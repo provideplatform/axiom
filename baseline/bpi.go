@@ -110,11 +110,11 @@ type SubjectAccountMetadata struct {
 	// OrganizationID is the id of the org
 	OrganizationID *string `json:"organization_id,omitempty"`
 
+	// OrganizationAPIEndpoint is the configured endpoint for the BPI REST API
+	OrganizationAPIEndpoint *string `json:"organization_api_endpoint,omitempty"`
+
 	// OrganizationMessagingEndpoint is the public organziation messaging endpoint
 	OrganizationMessagingEndpoint *string `json:"organization_messaging_endpoint,omitempty"`
-
-	// OrganizationProxyEndpoint is the configured endpoint for the baseline proxy REST API
-	OrganizationProxyEndpoint *string `json:"organization_proxy_endpoint,omitempty"`
 
 	// OrganizationRefreshToken is the refresh token for the org
 	OrganizationRefreshToken *string `json:"organization_refresh_token,omitempty"`
@@ -185,7 +185,7 @@ func (s *SubjectAccount) validate() bool {
 		})
 	}
 
-	return len(s.Errors) == 0 
+	return len(s.Errors) == 0
 }
 
 func (s *SubjectAccount) listSystems() ([]*middleware.System, error) {
