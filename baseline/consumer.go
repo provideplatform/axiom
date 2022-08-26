@@ -85,7 +85,6 @@ const organizationUpdateRegistrationMethod = "updateOrg"
 // const organizationSetInterfaceImplementerMethod = "setInterfaceImplementer"
 // const contractTypeRegistry = "registry"
 const contractTypeOrgRegistry = "organization-registry"
-const contractTypeERC1820Registry = "erc1820-registry"
 
 // Message is a proxy-internal wrapper for protocol message handling
 type Message struct {
@@ -113,14 +112,16 @@ type ProtocolMessage struct {
 	Sender     *string                 `sql:"-" json:"sender,omitempty"`
 	Recipient  *string                 `sql:"-" json:"recipient,omitempty"`
 	Shield     *string                 `sql:"-" json:"shield,omitempty"`
-	Identifier *uuid.UUID              `sql:"-" json:"identifier,omitempty"`
 	Signature  *string                 `sql:"-" json:"signature,omitempty"`
 	Type       *string                 `sql:"-" json:"type,omitempty"`
 	Payload    *ProtocolMessagePayload `sql:"-" json:"payload,omitempty"`
 
+	WorkgroupID *uuid.UUID `sql:"-" json:"workgroup_id,omitempty"`
+	WorkflowID  *uuid.UUID `sql:"-" json:"workflow_id,omitempty"`
+	WorkstepID  *uuid.UUID `sql:"-" json:"workstep_id,omitempty"`
+
 	// HACK -- convenience ptr ... for access during baselineInbound()
 	subjectAccount *SubjectAccount `sql:"-" json:"-"`
-	token          *string         `sql:"-" json:"-"`
 }
 
 // ProtocolMessagePayload is a baseline protocol message payload
@@ -301,7 +302,13 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *nats.Msg) {
 
 	switch *protomsg.Opcode {
 	case baseline.ProtocolMessageOpcodeBaseline:
-		if protomsg.Identifier == nil {
+		if protomsg.WorkgroupID == nil {
+			common.Log.Warningf("inbound protocol message specified invalid workgroup identifier; %s", err.Error())
+			msg.Term()
+			return
+		}
+
+		if protomsg.WorkflowID == nil {
 			common.Log.Warningf("inbound protocol message specified invalid workflow identifier; %s", err.Error())
 			msg.Term()
 			return
@@ -319,9 +326,9 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *nats.Msg) {
 			return
 		}
 
-		workflow := FindWorkflowByID(*protomsg.Identifier)
+		workflow := FindWorkflowByID(*protomsg.WorkflowID)
 		if workflow == nil {
-			common.Log.Warningf("inbound protocol message failed to resolve workflow: %s", protomsg.Identifier.String())
+			common.Log.Warningf("inbound protocol message failed to resolve workflow: %s", protomsg.WorkflowID.String())
 			msg.Term() // FIXME-- should this just return and allow for redelivery in case of temporary latency issues?
 			return
 		}
@@ -330,10 +337,14 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *nats.Msg) {
 		if orgID, ok := org.Metadata["organization_id"].(string); ok {
 			subjectAccountID := subjectAccountIDFactory(orgID, workflow.WorkgroupID.String())
 			protomsg.subjectAccount, err = resolveSubjectAccount(subjectAccountID)
+			if err != nil {
+				common.Log.Warningf("failed to resolve subject account %s during processing of inbound protocol message to recipient: %s", subjectAccountID, *protomsg.Recipient)
+				return
+			}
 		}
 
 		if protomsg.subjectAccount == nil {
-			common.Log.Warningf("inbound protocol message failed to resolve subject account for recipient: %s; workflow id: %s", *protomsg.Recipient, *protomsg.Identifier)
+			common.Log.Warningf("inbound protocol message failed to resolve subject account for recipient: %s; workflow id: %s", *protomsg.Recipient, *protomsg.WorkflowID)
 			msg.Term() // FIXME-- should this just return and allow for redelivery in case of temporary latency issues?
 			return
 		}
@@ -348,11 +359,11 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *nats.Msg) {
 		common.Log.Warningf("JOIN opcode not yet implemented")
 		// const payload = JSON.parse(msg.payload.toString());
 		// const messagingEndpoint = await this.resolveMessagingEndpoint(payload.address);
-		// if (!messagingEndpoint || !payload.address || !payload.authorized_bearer_token) {
+		// if (!messagingEndpoint || !payload.address || !payload.verifiable_credential) {
 		//   return Promise.reject('failed to handle baseline JOIN protocol message');
 		// }
 		// this.workgroupCounterparties.push(payload.address);
-		// this.natsBearerTokens[messagingEndpoint] = payload.authorized_bearer_token;
+		// this.natsBearerTokens[messagingEndpoint] = payload.verifiable_credential;
 
 		// const prover = JSON.parse(JSON.stringify(this.baselineCircuit));
 		// prover.proving_scheme = prover.provingScheme;
@@ -666,13 +677,7 @@ func consumeDispatchProtocolMessageSubscriptionsMsg(msg *nats.Msg) {
 	}
 
 	if protomsg.Recipient == nil {
-		common.Log.Warning("no participant specified in protocol message")
-		msg.Term()
-		return
-	}
-
-	if protomsg.Identifier == nil {
-		common.Log.Warningf("no workflow identifier specified in protocol message; %s", err.Error())
+		common.Log.Warning("no recipient specified in protocol message")
 		msg.Term()
 		return
 	}
@@ -684,11 +689,25 @@ func consumeDispatchProtocolMessageSubscriptionsMsg(msg *nats.Msg) {
 		return
 	}
 
-	workflow := FindWorkflowByID(*protomsg.Identifier)
-	if workflow == nil {
-		common.Log.Warningf("failed to resolve baseline workflow: %s", protomsg.Identifier)
-		msg.Nak()
-		return
+	var workgroup *Workgroup
+	var workflow *Workflow
+
+	if protomsg.WorkgroupID != nil {
+		workgroup = FindWorkgroupByID(*protomsg.WorkgroupID)
+		if workgroup == nil {
+			common.Log.Warningf("failed to resolve baseline workgroup: %s", protomsg.WorkgroupID)
+			msg.Nak()
+			return
+		}
+	}
+
+	if protomsg.WorkflowID != nil {
+		workflow = FindWorkflowByID(*protomsg.WorkflowID)
+		if workflow == nil {
+			common.Log.Warningf("failed to resolve baseline workflow: %s", protomsg.WorkflowID)
+			msg.Nak()
+			return
+		}
 	}
 
 	url := lookupBaselineOrganizationMessagingEndpoint(*protomsg.Recipient)
@@ -698,10 +717,23 @@ func consumeDispatchProtocolMessageSubscriptionsMsg(msg *nats.Msg) {
 		return
 	}
 
-	subjectAccountID := subjectAccountIDFactory(organizationID.String(), workflow.WorkgroupID.String())
+	var workgroupID *string
+	if protomsg.WorkgroupID != nil {
+		workgroupID = common.StringOrNil(protomsg.WorkgroupID.String())
+	} else if workflow != nil {
+		workgroupID = common.StringOrNil(workflow.WorkgroupID.String())
+	}
+
+	if workgroupID == nil {
+		common.Log.Warningf("failed to resolve workgroup for %d-byte protocol message", len(msg.Data))
+		msg.Term()
+		return
+	}
+
+	subjectAccountID := subjectAccountIDFactory(organizationID.String(), *workgroupID)
 	subjectAccount, err := resolveSubjectAccount(subjectAccountID)
 	if err != nil {
-		common.Log.Errorf("failed to resolve BPI subject account for workflow: %s; %s", *protomsg.Identifier, err.Error())
+		common.Log.Errorf("failed to resolve BPI subject account for workflow: %s; %s", *protomsg.WorkflowID, err.Error())
 		msg.Nak()
 		return
 	}
@@ -870,14 +902,20 @@ func consumeSubjectAccountRegistrationMsg(msg *nats.Msg) {
 	// 	updateOrgMetadata = true
 	// }
 
+	if subjectAccount.Metadata.OrganizationAddress == nil {
+		common.Log.Warningf("failed to resolve organization public address for storage in the public org registry; BPI subject account id: %s", subjectAccountID)
+		msg.Nak()
+		return
+	}
+
 	if subjectAccount.Metadata.OrganizationDomain == nil {
 		common.Log.Warningf("failed to resolve organization domain for storage in the public org registry; BPI subject account id: %s", subjectAccountID)
 		msg.Nak()
 		return
 	}
 
-	if subjectAccount.Metadata.OrganizationAddress == nil {
-		common.Log.Warningf("failed to resolve organization public address for storage in the public org registry; BPI subject account id: %s", subjectAccountID)
+	if subjectAccount.Metadata.OrganizationAPIEndpoint == nil {
+		common.Log.Warningf("failed to resolve organization API endpoint for storage in the public org registry; BPI subject account id: %s", subjectAccountID)
 		msg.Nak()
 		return
 	}
@@ -933,21 +971,12 @@ func consumeSubjectAccountRegistrationMsg(msg *nats.Msg) {
 
 		if resp.Type != nil {
 			switch *resp.Type {
-			// case contractTypeERC1820Registry:
-			// 	erc1820RegistryContractID = common.StringOrNil(resp.ID.String())
-			// 	erc1820RegistryContractAddress = resp.Address
 			case contractTypeOrgRegistry:
 				orgRegistryContractID = common.StringOrNil(resp.ID.String())
 				orgRegistryContractAddress = resp.Address
 			}
 		}
 	}
-
-	// if erc1820RegistryContractID == nil || erc1820RegistryContractAddress == nil {
-	// 	common.Log.Warningf("failed to resolve ERC1820 registry contract; BPI subject account id: %s", subjectAccountID)
-	// 	msg.Nak()
-	// 	return
-	// }
 
 	if orgRegistryContractID == nil || orgRegistryContractAddress == nil {
 		common.Log.Warningf("failed to resolve organization registry contract; BPI subject account id: %s", subjectAccountID)

@@ -375,9 +375,9 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 		return
 	}
 
-	identifierUUID, err := uuid.FromString(*claims.Baseline.WorkgroupID)
+	workgroupID, err := uuid.FromString(*claims.Baseline.WorkgroupID)
 	if err != nil {
-		msg := fmt.Sprintf("failed to accept workgroup invitation; invalid identifier; %s", err.Error())
+		msg := fmt.Sprintf("failed to accept workgroup invitation; invalid workgroup identifier; %s", err.Error())
 		common.Log.Warningf(msg)
 		provide.RenderError(msg, 422, c)
 		return

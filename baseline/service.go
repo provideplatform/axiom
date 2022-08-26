@@ -201,7 +201,7 @@ func (m *ProtocolMessage) baselineInbound() bool {
 			return false
 		}
 
-		common.Log.Debugf("inbound baseline protocol message initialized baseline record; baseline id: %s; workflow id: %s; type: %s", m.BaselineID.String(), m.Identifier.String(), *m.Type)
+		common.Log.Debugf("inbound baseline protocol message initialized baseline record; baseline id: %s; workflow id: %s; type: %s", m.BaselineID.String(), m.WorkflowID.String(), *m.Type)
 	}
 
 	err := m.verify(true)
@@ -330,7 +330,6 @@ func (m *Message) baselineOutbound() bool {
 		msg := &ProtocolMessage{
 			BaselineID: baselineRecord.BaselineID,
 			Opcode:     common.StringOrNil(baseline.ProtocolMessageOpcodeSync),
-			Identifier: baselineRecord.Context.WorkflowID,
 			Payload: &ProtocolMessagePayload{
 				Object: map[string]interface{}{
 					"id":           workflow.ID,
@@ -340,9 +339,10 @@ func (m *Message) baselineOutbound() bool {
 				},
 				Type: common.StringOrNil(protomsgPayloadTypeWorkflow),
 			},
-			Recipient: recipient.Address,
-			Sender:    nil, // FIXME
-			Type:      m.Type,
+			Recipient:  recipient.Address,
+			Sender:     m.subjectAccount.Metadata.OrganizationAddress,
+			Type:       m.Type,
+			WorkflowID: baselineRecord.Context.WorkflowID,
 		}
 
 		if recipient.Address != nil {
@@ -380,7 +380,6 @@ func (m *Message) baselineOutbound() bool {
 	m.ProtocolMessage = &ProtocolMessage{
 		BaselineID: baselineRecord.BaselineID,
 		Opcode:     common.StringOrNil(baseline.ProtocolMessageOpcodeBaseline),
-		Identifier: baselineRecord.Context.WorkflowID,
 		Payload: &ProtocolMessagePayload{
 			Object: m.Payload.(map[string]interface{}),
 			Type:   m.Type,
@@ -389,8 +388,9 @@ func (m *Message) baselineOutbound() bool {
 				"Document.Preimage": preImageString,
 			},
 		},
-		Shield: shieldAddress,
-		Type:   m.Type,
+		Shield:     shieldAddress,
+		Type:       m.Type,
+		WorkflowID: baselineRecord.Context.WorkflowID,
 	}
 
 	err = m.prove()
@@ -449,21 +449,23 @@ func (m *Message) baselineOutbound() bool {
 }
 
 func (m *ProtocolMessage) broadcast(recipient string) error {
-	if strings.ToLower(recipient) == strings.ToLower(*m.subjectAccount.Metadata.OrganizationAddress) {
+	if strings.EqualFold(recipient, strings.ToLower(*m.subjectAccount.Metadata.OrganizationAddress)) {
 		common.Log.Debugf("skipping no-op protocol message broadcast to self: %s", recipient)
 		return nil
 	}
 
 	payload, err := json.Marshal(&ProtocolMessage{
-		BaselineID: m.BaselineID,
-		Opcode:     m.Opcode,
-		Sender:     m.Sender,
-		Recipient:  common.StringOrNil(recipient),
-		Shield:     m.Shield,
-		Identifier: m.Identifier,
-		Signature:  m.Signature,
-		Type:       m.Type,
-		Payload:    m.Payload,
+		BaselineID:  m.BaselineID,
+		Opcode:      m.Opcode,
+		Sender:      m.Sender,
+		Recipient:   common.StringOrNil(recipient),
+		Shield:      m.Shield,
+		Signature:   m.Signature,
+		Type:        m.Type,
+		Payload:     m.Payload,
+		WorkflowID:  m.WorkflowID,
+		WorkgroupID: m.WorkgroupID,
+		WorkstepID:  m.WorkstepID,
 	})
 
 	if err != nil {
