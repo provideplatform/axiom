@@ -720,7 +720,6 @@ func consumeDispatchProtocolMessageSubscriptionsMsg(msg *nats.Msg) {
 	url := lookupBaselineOrganizationMessagingEndpoint(*protomsg.Recipient)
 	if url == nil {
 		common.Log.Warningf("failed to lookup recipient messaging endpoint: %s", *protomsg.Recipient)
-		msg.Nak()
 		return
 	}
 
