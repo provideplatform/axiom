@@ -116,6 +116,8 @@ type ProtocolMessage struct {
 	Type       *string                 `sql:"-" json:"type,omitempty"`
 	Payload    *ProtocolMessagePayload `sql:"-" json:"payload,omitempty"`
 
+	SubjectAccountID *string `sql:"-" json:"subject_account_id,omitempty"`
+
 	WorkgroupID *uuid.UUID `sql:"-" json:"workgroup_id,omitempty"`
 	WorkflowID  *uuid.UUID `sql:"-" json:"workflow_id,omitempty"`
 	WorkstepID  *uuid.UUID `sql:"-" json:"workstep_id,omitempty"`
@@ -682,10 +684,15 @@ func consumeDispatchProtocolMessageSubscriptionsMsg(msg *nats.Msg) {
 		return
 	}
 
-	organizationID, err := uuid.FromString(params["organization_id"].(string))
-	if err != nil {
-		common.Log.Warningf("failed to parse organization id; %s", err.Error())
-		msg.Nak()
+	if protomsg.Sender == nil {
+		common.Log.Warning("no sender specified in protocol message")
+		msg.Term()
+		return
+	}
+
+	if protomsg.SubjectAccountID == nil {
+		common.Log.Warning("no subject account id specified in protocol message")
+		msg.Term()
 		return
 	}
 
@@ -717,21 +724,21 @@ func consumeDispatchProtocolMessageSubscriptionsMsg(msg *nats.Msg) {
 		return
 	}
 
-	var workgroupID *string
-	if protomsg.WorkgroupID != nil {
-		workgroupID = common.StringOrNil(protomsg.WorkgroupID.String())
-	} else if workflow != nil {
-		workgroupID = common.StringOrNil(workflow.WorkgroupID.String())
-	}
+	// var workgroupID *string
+	// if protomsg.WorkgroupID != nil {
+	// 	workgroupID = common.StringOrNil(protomsg.WorkgroupID.String())
+	// } else if workflow != nil {
+	// 	workgroupID = common.StringOrNil(workflow.WorkgroupID.String())
+	// }
 
-	if workgroupID == nil {
-		common.Log.Warningf("failed to resolve workgroup for %d-byte protocol message", len(msg.Data))
-		msg.Term()
-		return
-	}
+	// if workgroupID == nil {
+	// 	common.Log.Warningf("failed to resolve workgroup for %d-byte protocol message", len(msg.Data))
+	// 	msg.Term()
+	// 	return
+	// }
 
-	subjectAccountID := subjectAccountIDFactory(organizationID.String(), *workgroupID)
-	subjectAccount, err := resolveSubjectAccount(subjectAccountID)
+	// subjectAccountID := subjectAccountIDFactory(organizationID.String(), *workgroupID)
+	subjectAccount, err := resolveSubjectAccount(*protomsg.SubjectAccountID) // FIXME... audit this to verify it is sufficiently secure...
 	if err != nil {
 		common.Log.Errorf("failed to resolve BPI subject account for workflow: %s; %s", *protomsg.WorkflowID, err.Error())
 		msg.Nak()

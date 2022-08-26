@@ -557,9 +557,10 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 		Payload: &ProtocolMessagePayload{
 			Object: obj,
 		},
-		Recipient:   invitor.Address,
-		Sender:      subjectAccount.Metadata.OrganizationAddress,
-		WorkgroupID: &workgroupID,
+		Recipient:        invitor.Address,
+		Sender:           subjectAccount.Metadata.OrganizationAddress,
+		SubjectAccountID: subjectAccount.ID,
+		WorkgroupID:      &workgroupID,
 	}
 	payload, _ := json.Marshal(msg)
 
