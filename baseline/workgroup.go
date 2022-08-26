@@ -195,7 +195,7 @@ func (w *Workgroup) addParticipant(participant string, tx *gorm.DB) bool {
 	if success {
 		common.Log.Debugf("added participant %s from workgroup: %s", participant, w.ID)
 	} else {
-		common.Log.Warningf("failed to add participant %s from workgroup: %s", participant, w.ID)
+		common.Log.Tracef("participant %s not added to workgroup: %s", participant, w.ID)
 		errors := result.GetErrors()
 		if len(errors) > 0 {
 			for _, err := range errors {
@@ -216,7 +216,7 @@ func (w *Workgroup) removeParticipant(participant string, tx *gorm.DB) bool {
 	if success {
 		common.Log.Debugf("removed participant %s from workgroup: %s", participant, w.ID)
 	} else {
-		common.Log.Warningf("failed to remove participant %s from workgroup: %s", participant, w.ID)
+		common.Log.Tracef("participant %s not removed from workgroup: %s", participant, w.ID)
 		errors := result.GetErrors()
 		if len(errors) > 0 {
 			for _, err := range errors {
