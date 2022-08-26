@@ -666,7 +666,7 @@ func consumeDispatchProtocolMessageSubscriptionsMsg(msg *nats.Msg) {
 	}
 
 	if protomsg.Recipient == nil {
-		common.Log.Warningf("no participant specified in protocol message; %s", err.Error())
+		common.Log.Warning("no participant specified in protocol message")
 		msg.Term()
 		return
 	}
@@ -901,10 +901,10 @@ func consumeSubjectAccountRegistrationMsg(msg *nats.Msg) {
 		return
 	}
 
-	var erc1820RegistryContractID *string
+	// var erc1820RegistryContractID *string
 	var orgRegistryContractID *string
 
-	var erc1820RegistryContractAddress *string
+	// var erc1820RegistryContractAddress *string
 	var orgRegistryContractAddress *string
 
 	var orgWalletID *string
@@ -933,9 +933,9 @@ func consumeSubjectAccountRegistrationMsg(msg *nats.Msg) {
 
 		if resp.Type != nil {
 			switch *resp.Type {
-			case contractTypeERC1820Registry:
-				erc1820RegistryContractID = common.StringOrNil(resp.ID.String())
-				erc1820RegistryContractAddress = resp.Address
+			// case contractTypeERC1820Registry:
+			// 	erc1820RegistryContractID = common.StringOrNil(resp.ID.String())
+			// 	erc1820RegistryContractAddress = resp.Address
 			case contractTypeOrgRegistry:
 				orgRegistryContractID = common.StringOrNil(resp.ID.String())
 				orgRegistryContractAddress = resp.Address
@@ -943,11 +943,11 @@ func consumeSubjectAccountRegistrationMsg(msg *nats.Msg) {
 		}
 	}
 
-	if erc1820RegistryContractID == nil || erc1820RegistryContractAddress == nil {
-		common.Log.Warningf("failed to resolve ERC1820 registry contract; BPI subject account id: %s", subjectAccountID)
-		msg.Nak()
-		return
-	}
+	// if erc1820RegistryContractID == nil || erc1820RegistryContractAddress == nil {
+	// 	common.Log.Warningf("failed to resolve ERC1820 registry contract; BPI subject account id: %s", subjectAccountID)
+	// 	msg.Nak()
+	// 	return
+	// }
 
 	if orgRegistryContractID == nil || orgRegistryContractAddress == nil {
 		common.Log.Warningf("failed to resolve organization registry contract; BPI subject account id: %s", subjectAccountID)
