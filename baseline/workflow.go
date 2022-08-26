@@ -361,7 +361,7 @@ func (w *Workflow) addParticipant(participant string, tx *gorm.DB) bool {
 	if success {
 		common.Log.Debugf("added participant %s to workflow: %s", participant, w.ID)
 	} else {
-		common.Log.Warningf("failed to add participant %s to workflow: %s", participant, w.ID)
+		common.Log.Tracef("participant %s not added to workflow: %s", participant, w.ID)
 		errors := result.GetErrors()
 		if len(errors) > 0 {
 			for _, err := range errors {
@@ -382,7 +382,7 @@ func (w *Workflow) removeParticipant(participant string, tx *gorm.DB) bool {
 	if success {
 		common.Log.Debugf("removed participant %s from workflow: %s", participant, w.ID)
 	} else {
-		common.Log.Warningf("failed to remove participant %s from workflow: %s", participant, w.ID)
+		common.Log.Tracef("participant %s not remove to workflow: %s", participant, w.ID)
 		errors := result.GetErrors()
 		if len(errors) > 0 {
 			for _, err := range errors {
