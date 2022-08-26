@@ -455,17 +455,18 @@ func (m *ProtocolMessage) broadcast(recipient string) error {
 	}
 
 	payload, err := json.Marshal(&ProtocolMessage{
-		BaselineID:  m.BaselineID,
-		Opcode:      m.Opcode,
-		Sender:      m.Sender,
-		Recipient:   common.StringOrNil(recipient),
-		Shield:      m.Shield,
-		Signature:   m.Signature,
-		Type:        m.Type,
-		Payload:     m.Payload,
-		WorkflowID:  m.WorkflowID,
-		WorkgroupID: m.WorkgroupID,
-		WorkstepID:  m.WorkstepID,
+		BaselineID:       m.BaselineID,
+		Opcode:           m.Opcode,
+		Sender:           m.Sender,
+		Recipient:        common.StringOrNil(recipient),
+		Shield:           m.Shield,
+		Signature:        m.Signature,
+		Type:             m.Type,
+		Payload:          m.Payload,
+		SubjectAccountID: m.SubjectAccountID,
+		WorkflowID:       m.WorkflowID,
+		WorkgroupID:      m.WorkgroupID,
+		WorkstepID:       m.WorkstepID,
 	})
 
 	if err != nil {
