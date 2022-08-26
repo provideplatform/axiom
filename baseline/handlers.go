@@ -455,8 +455,8 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 	// }
 
 	var vc *string
-	if bearerToken, bearerTokenOk := params["authorized_bearer_token"].(string); bearerTokenOk {
-		vc = common.StringOrNil(bearerToken)
+	if verifiableCredential, verifiableCredentialOk := params["verifiable_credential"].(string); verifiableCredentialOk {
+		vc = common.StringOrNil(verifiableCredential)
 	}
 
 	invitor := &Participant{
@@ -467,9 +467,6 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 	}
 	invitor.Cache()
 
-	participants := make([]*Participant, 0)
-	participants = append(participants, invitor) // FIXME!! this should be used to dispatch join opcode to the L3
-
 	if vc != nil {
 		err = CacheBaselineOrganizationIssuedVC(*claims.Baseline.InvitorOrganizationAddress, *vc)
 		if err != nil {
@@ -479,10 +476,6 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 			return
 		}
 	}
-
-	// FIXME -- audit use of `authorized_bearer_token` and `jwt`
-	// var authorizedVC *string // TODO: vend NATS bearer token
-	// common.Log.Warningf("TODO-- vent counterparty VC...")
 
 	subjectAccountParams := params["subject_account_params"]
 	raw, _ := json.Marshal(subjectAccountParams)
@@ -509,7 +502,7 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 
 	subjectAccount.ID = &subjectAccountID
 	subjectAccount.SubjectID = common.StringOrNil(organizationID.String())
-	
+
 	if err := subjectAccount.setDefaultItems(); err != nil {
 		obj := map[string]interface{}{}
 		obj["errors"] = subjectAccount.Errors
@@ -541,8 +534,14 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 		return
 	}
 
+	authorizedVC, err := IssueVC(*invitor.Address, map[string]interface{}{})
+	if err != nil {
+		common.Log.Warningf("failed to issue verifiable credential for counterparty: %s; %s", *invitor.Address, err.Error())
+		// FIXME?? probably need to rollback the subject accoutn tx and render the err...
+	}
+
 	obj := map[string]interface{}{
-		// 	"authorized_bearer_token": authorizedVC,
+		"verifiable_credential": authorizedVC,
 	}
 
 	if subjectAccount != nil && subjectAccount.Metadata != nil && subjectAccount.Metadata.OrganizationAddress != nil {
@@ -554,11 +553,13 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 	}
 
 	msg := &ProtocolMessage{
-		Opcode:     common.StringOrNil(baseline.ProtocolMessageOpcodeJoin),
-		Identifier: &identifierUUID,
+		Opcode: common.StringOrNil(baseline.ProtocolMessageOpcodeJoin),
 		Payload: &ProtocolMessagePayload{
 			Object: obj,
 		},
+		Recipient:   invitor.Address,
+		Sender:      subjectAccount.Metadata.OrganizationAddress,
+		WorkgroupID: &workgroupID,
 	}
 	payload, _ := json.Marshal(msg)
 
@@ -573,7 +574,7 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 		provide.Render(nil, 204, c)
 	} else {
 		obj := map[string]interface{}{}
-		obj["errors"] = []interface{}{} // FIXME
+		obj["errors"] = []interface{}{}
 		provide.Render(obj, 422, c)
 	}
 }
