@@ -209,9 +209,7 @@ func lookupBaselineOrganizationAPIEndpoint(recipient string) *string {
 	return org.APIEndpoint
 }
 
-func lookupBaselineOrganizationMessagingEndpoint(recipient string) *string {
-	var subjectAccount *SubjectAccount // FIXME-- resolve subject account
-
+func (s *SubjectAccount) lookupBaselineOrganizationMessagingEndpoint(recipient string) *string {
 	org := lookupBaselineOrganization(recipient)
 	if org == nil {
 		common.Log.Warningf("failed to retrieve cached messaging endpoint for baseline organization: %s", recipient)
@@ -219,7 +217,7 @@ func lookupBaselineOrganizationMessagingEndpoint(recipient string) *string {
 	}
 
 	if org.MessagingEndpoint == nil {
-		token, err := vendOrganizationAccessToken(subjectAccount)
+		token, err := vendOrganizationAccessToken(s)
 		if err != nil {
 			common.Log.Warningf("failed to retrieve messaging endpoint for baseline organization: %s", recipient)
 			return nil
@@ -227,10 +225,10 @@ func lookupBaselineOrganizationMessagingEndpoint(recipient string) *string {
 
 		// HACK! this account creation will go away with new nchain...
 		account, _ := nchain.CreateAccount(*token, map[string]interface{}{
-			"network_id": *subjectAccount.Metadata.NetworkID,
+			"network_id": *s.Metadata.NetworkID,
 		})
 
-		resp, err := nchain.ExecuteContract(*token, *subjectAccount.Metadata.RegistryContractAddress, map[string]interface{}{
+		resp, err := nchain.ExecuteContract(*token, *s.Metadata.RegistryContractAddress, map[string]interface{}{
 			"account_id": account.ID.String(),
 			"method":     "getOrg",
 			"params":     []string{recipient},

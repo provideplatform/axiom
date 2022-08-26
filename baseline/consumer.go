@@ -717,12 +717,6 @@ func consumeDispatchProtocolMessageSubscriptionsMsg(msg *nats.Msg) {
 		}
 	}
 
-	url := lookupBaselineOrganizationMessagingEndpoint(*protomsg.Recipient)
-	if url == nil {
-		common.Log.Warningf("failed to lookup recipient messaging endpoint: %s", *protomsg.Recipient)
-		return
-	}
-
 	// var workgroupID *string
 	// if protomsg.WorkgroupID != nil {
 	// 	workgroupID = common.StringOrNil(protomsg.WorkgroupID.String())
@@ -747,6 +741,12 @@ func consumeDispatchProtocolMessageSubscriptionsMsg(msg *nats.Msg) {
 	if subjectAccount.Metadata.OrganizationID == nil {
 		common.Log.Error("failed to resolve BPI subject account; organization id required")
 		msg.Nak()
+		return
+	}
+
+	url := subjectAccount.lookupBaselineOrganizationMessagingEndpoint(*protomsg.Recipient)
+	if url == nil {
+		common.Log.Warningf("failed to lookup recipient messaging endpoint: %s", *protomsg.Recipient)
 		return
 	}
 
