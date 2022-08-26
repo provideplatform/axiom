@@ -1788,7 +1788,7 @@ func issueVerifiableCredentialHandler(c *gin.Context) {
 		return
 	}
 
-	credential, err := IssueVC(*issueVCRequest.Address, map[string]interface{}{})
+	credential, err := IssueVC(*issueVCRequest.Address, "", "", "", "", map[string]interface{}{}) // FIXME!!!
 
 	if err == nil {
 		provide.Render(&baseline.IssueVerifiableCredentialResponse{
