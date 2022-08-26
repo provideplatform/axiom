@@ -37,16 +37,20 @@ const defaultCredentialExperationTimeout = time.Hour * 1
 
 // IssueVC vends a verifiable credential for the given third-party; it assumes authorization
 // has already been completed successfully for the counterparty
-func IssueVC(address string, params map[string]interface{}) (*string, error) {
-	var subjectAccount *SubjectAccount // FIXME-- resolve subject account
-
-	token, err := vendOrganizationAccessToken(subjectAccount)
+func (s *SubjectAccount) IssueVC(address string, params map[string]interface{}) (*string, error) {
+	token, err := vendOrganizationAccessToken(s)
 	if err != nil {
 		common.Log.Warningf("failed to request verifiable credential for baseline organization: %s; %s", address, err.Error())
 		return nil, err
 	}
 
-	keys, err := vault.ListKeys(*token, subjectAccount.Metadata.Vault.ID.String(), map[string]interface{}{
+	return IssueVC(*token, *s.Metadata.OrganizationID, s.Metadata.Vault.ID.String(), *s.Metadata.OrganizationMessagingEndpoint, address, params)
+}
+
+// IssueVC vends a verifiable credential for the given third-party; it assumes authorization
+// has already been completed successfully for the counterparty
+func IssueVC(token, organizationID, vaultID, messagingEndpoint, address string, params map[string]interface{}) (*string, error) {
+	keys, err := vault.ListKeys(token, vaultID, map[string]interface{}{
 		"spec": "RSA-4096",
 	})
 	if err != nil {
@@ -62,10 +66,10 @@ func IssueVC(address string, params map[string]interface{}) (*string, error) {
 	issuedAt := time.Now()
 
 	claims := map[string]interface{}{
-		"aud":      subjectAccount.Metadata.OrganizationMessagingEndpoint,
+		"aud":      messagingEndpoint,
 		"exp":      issuedAt.Add(defaultCredentialExperationTimeout).Unix(),
 		"iat":      issuedAt.Unix(),
-		"iss":      fmt.Sprintf("organization:%s", *subjectAccount.Metadata.OrganizationID),
+		"iss":      fmt.Sprintf("organization:%s", organizationID),
 		"sub":      address,
 		"baseline": params,
 	}
@@ -107,7 +111,7 @@ func IssueVC(address string, params map[string]interface{}) (*string, error) {
 	}
 
 	resp, err := vault.SignMessage(
-		*token,
+		token,
 		key.VaultID.String(),
 		key.ID.String(),
 		hex.EncodeToString([]byte(strToSign)),

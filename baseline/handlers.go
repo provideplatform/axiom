@@ -534,7 +534,7 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 		return
 	}
 
-	authorizedVC, err := IssueVC(*invitor.Address, map[string]interface{}{})
+	authorizedVC, err := subjectAccount.IssueVC(*invitor.Address, map[string]interface{}{})
 	if err != nil {
 		common.Log.Warningf("failed to issue verifiable credential for counterparty: %s; %s", *invitor.Address, err.Error())
 		// FIXME?? probably need to rollback the subject accoutn tx and render the err...
