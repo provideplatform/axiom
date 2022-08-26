@@ -454,11 +454,6 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 	// 	return
 	// }
 
-	var vc *string
-	if verifiableCredential, verifiableCredentialOk := params["verifiable_credential"].(string); verifiableCredentialOk {
-		vc = common.StringOrNil(verifiableCredential)
-	}
-
 	invitor := &Participant{
 		Address:    claims.Baseline.InvitorOrganizationAddress,
 		Workgroups: make([]*Workgroup, 0),
@@ -466,16 +461,6 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 		Worksteps:  make([]*Workstep, 0),
 	}
 	invitor.Cache()
-
-	if vc != nil {
-		err = CacheBaselineOrganizationIssuedVC(*claims.Baseline.InvitorOrganizationAddress, *vc)
-		if err != nil {
-			msg := fmt.Sprintf("failed to cache organization-issued vc; %s", err.Error())
-			common.Log.Warningf(msg)
-			provide.RenderError(msg, 422, c)
-			return
-		}
-	}
 
 	subjectAccountParams := params["subject_account_params"]
 	raw, _ := json.Marshal(subjectAccountParams)
@@ -525,8 +510,22 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 		}
 
 		tx.Commit()
-
 		common.Log.Debugf("BPI subject account intiailized: %s", *subjectAccount.ID)
+
+		// cache the provided verifiable credential issued by the inviting counterparty
+		var vc *string
+		if verifiableCredential, verifiableCredentialOk := params["verifiable_credential"].(string); verifiableCredentialOk {
+			vc = common.StringOrNil(verifiableCredential)
+		}
+		if vc != nil {
+			err = subjectAccount.CacheBaselineOrganizationIssuedVC(*claims.Baseline.InvitorOrganizationAddress, *vc)
+			if err != nil {
+				msg := fmt.Sprintf("failed to cache organization-issued vc; %s", err.Error())
+				common.Log.Warningf(msg)
+				provide.RenderError(msg, 422, c)
+				return
+			}
+		}
 	} else {
 		obj := map[string]interface{}{}
 		obj["errors"] = subjectAccount.Errors

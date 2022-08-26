@@ -47,9 +47,7 @@ func lookupBaselineOrganization(address string) *Participant {
 	return org
 }
 
-func lookupBaselineOrganizationIssuedVC(address string) *string {
-	var subjectAccount *SubjectAccount // FIXME-- resolve subject account
-
+func (s *SubjectAccount) lookupBaselineOrganizationIssuedVC(address string) *string {
 	key := fmt.Sprintf("baseline.organization.%s.credential", address)
 	secretID, err := redisutil.Get(key)
 	if err != nil {
@@ -57,13 +55,13 @@ func lookupBaselineOrganizationIssuedVC(address string) *string {
 		return nil
 	}
 
-	token, err := vendOrganizationAccessToken(subjectAccount)
+	token, err := vendOrganizationAccessToken(s)
 	if err != nil {
 		common.Log.Warningf("failed to retrieve cached verifiable credential for baseline organization: %s; %s", key, err.Error())
 		return nil
 	}
 
-	resp, err := vault.FetchSecret(*token, subjectAccount.Metadata.Vault.ID.String(), *secretID, map[string]interface{}{})
+	resp, err := vault.FetchSecret(*token, s.Metadata.Vault.ID.String(), *secretID, map[string]interface{}{})
 	if err != nil {
 		common.Log.Warningf("failed to retrieve cached verifiable credential for baseline organization: %s; %s", key, err.Error())
 		return nil
@@ -72,10 +70,8 @@ func lookupBaselineOrganizationIssuedVC(address string) *string {
 	return resp.Value
 }
 
-func CacheBaselineOrganizationIssuedVC(address, vc string) error {
-	var subjectAccount *SubjectAccount // FIXME-- resolve subject account
-
-	token, err := vendOrganizationAccessToken(subjectAccount)
+func (s *SubjectAccount) CacheBaselineOrganizationIssuedVC(address, vc string) error {
+	token, err := vendOrganizationAccessToken(s)
 	if err != nil {
 		common.Log.Warningf("failed to cache verifiable credential for baseline organization: %s; %s", address, err.Error())
 		return err
@@ -84,7 +80,7 @@ func CacheBaselineOrganizationIssuedVC(address, vc string) error {
 	secretName := fmt.Sprintf("verifiable credential for %s", address)
 	resp, err := vault.CreateSecret(
 		*token,
-		subjectAccount.Metadata.Vault.ID.String(),
+		s.Metadata.Vault.ID.String(),
 		map[string]interface{}{
 			"description": secretName,
 			"name":        secretName,
@@ -108,10 +104,8 @@ func CacheBaselineOrganizationIssuedVC(address, vc string) error {
 }
 
 // request a signed VC from the named counterparty
-func requestBaselineOrganizationIssuedVC(address string) (*string, error) {
-	var subjectAccount *SubjectAccount // FIXME-- resolve subject account
-
-	token, err := vendOrganizationAccessToken(subjectAccount)
+func (s *SubjectAccount) requestBaselineOrganizationIssuedVC(address string) (*string, error) {
+	token, err := vendOrganizationAccessToken(s)
 	if err != nil {
 		common.Log.Warningf("failed to request verifiable credential from baseline organization: %s; %s", address, err.Error())
 		return nil, err
@@ -129,7 +123,7 @@ func requestBaselineOrganizationIssuedVC(address string) (*string, error) {
 		return nil, err
 	}
 
-	keys, err := vault.ListKeys(*token, subjectAccount.Metadata.Vault.ID.String(), map[string]interface{}{
+	keys, err := vault.ListKeys(*token, s.Metadata.Vault.ID.String(), map[string]interface{}{
 		"spec": "secp256k1", // FIXME-- make general
 	})
 	if err != nil {
@@ -144,7 +138,7 @@ func requestBaselineOrganizationIssuedVC(address string) (*string, error) {
 	}
 
 	for _, k := range keys {
-		if k.Address != nil && strings.ToLower(*k.Address) == strings.ToLower(*subjectAccount.Metadata.OrganizationAddress) {
+		if k.Address != nil && strings.ToLower(*k.Address) == strings.ToLower(*s.Metadata.OrganizationAddress) {
 			key = k
 			break
 		}
@@ -157,9 +151,9 @@ func requestBaselineOrganizationIssuedVC(address string) (*string, error) {
 
 	signresp, err := vault.SignMessage(
 		*token,
-		subjectAccount.Metadata.Vault.ID.String(),
+		s.Metadata.Vault.ID.String(),
 		key.ID.String(),
-		crypto.Keccak256Hash([]byte(*subjectAccount.Metadata.OrganizationAddress)).Hex()[2:],
+		crypto.Keccak256Hash([]byte(*s.Metadata.OrganizationAddress)).Hex()[2:],
 		map[string]interface{}{},
 	)
 	if err != nil {
@@ -174,7 +168,7 @@ func requestBaselineOrganizationIssuedVC(address string) (*string, error) {
 	}
 
 	status, resp, err := client.Post("credentials", map[string]interface{}{
-		"address":    *subjectAccount.Metadata.OrganizationAddress,
+		"address":    *s.Metadata.OrganizationAddress,
 		"public_key": key.PublicKey,
 		"signature":  signresp.Signature,
 	})
@@ -189,7 +183,7 @@ func requestBaselineOrganizationIssuedVC(address string) (*string, error) {
 
 	var credential *string
 	if vc, ok := resp.(map[string]interface{})["credential"].(string); ok {
-		err = CacheBaselineOrganizationIssuedVC(address, vc)
+		err = s.CacheBaselineOrganizationIssuedVC(address, vc)
 		if err != nil {
 			common.Log.Warningf("failed to request verifiable credential from baseline organization: %s; failed to cache issued credential; %s", address, err.Error())
 			return nil, fmt.Errorf("failed to request verifiable credential from baseline organization: %s; failed to cache issued credential; %s", address, err.Error())

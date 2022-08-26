@@ -750,10 +750,10 @@ func consumeDispatchProtocolMessageSubscriptionsMsg(msg *nats.Msg) {
 		return
 	}
 
-	jwt := lookupBaselineOrganizationIssuedVC(*protomsg.Recipient)
+	jwt := subjectAccount.lookupBaselineOrganizationIssuedVC(*protomsg.Recipient)
 	if jwt == nil {
 		// request a VC from the counterparty
-		jwt, err = requestBaselineOrganizationIssuedVC(*protomsg.Recipient)
+		jwt, err = subjectAccount.requestBaselineOrganizationIssuedVC(*protomsg.Recipient)
 		if err != nil {
 			subjectAccount.resolveWorkgroupParticipants() // HACK-- this should not re-resolve all counterparties...
 
