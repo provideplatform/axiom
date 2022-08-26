@@ -16,6 +16,7 @@ require (
 	github.com/jinzhu/gorm v1.9.16
 	github.com/klauspost/compress v1.13.1 // indirect
 	github.com/kthomas/go-db-config v0.0.0-20200612131637-ec0436a9685e
+	github.com/kthomas/go-elasticsearchutil v0.0.0-20220816182027-10e06978571a
 	github.com/kthomas/go-logger v0.0.0-20210526080020-a63672d0724c
 	github.com/kthomas/go-natsutil v0.0.0-20210911093321-41b91674d612
 	github.com/kthomas/go-pgputil v0.0.0-20200602073402-784e96083943
@@ -26,7 +27,7 @@ require (
 	github.com/onsi/ginkgo v1.15.1
 	github.com/onsi/gomega v1.11.0
 	github.com/provideplatform/ident v0.9.10-0.20210903195520-28bcb83ac5d6
-	github.com/provideplatform/provide-go v0.0.0-20220726064522-0c1103477d1b
+	github.com/provideplatform/provide-go v0.0.0-20220826053550-2ecfc647d3e3
 	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97
 	nhooyr.io/websocket v1.8.7 // indirect
 )

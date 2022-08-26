@@ -376,6 +376,8 @@ github.com/kthomas/go-auth0 v0.0.0-20210417042937-27d1d2dadf19 h1:anZ2QxZWRUGU2M
 github.com/kthomas/go-auth0 v0.0.0-20210417042937-27d1d2dadf19/go.mod h1:5o9CD0v7+NFL4+2diOZIqQ0gZIFZepkl5XRXHQt0zN8=
 github.com/kthomas/go-db-config v0.0.0-20200612131637-ec0436a9685e h1:9sDghLvO/k5/DIigEEoH14v4aT1JhbTdzQ3s6RrrKQs=
 github.com/kthomas/go-db-config v0.0.0-20200612131637-ec0436a9685e/go.mod h1:oApzEAKQeLYMWVUCv09olaXsxUac+bSJCOLTOgw3Ekc=
+github.com/kthomas/go-elasticsearchutil v0.0.0-20220816182027-10e06978571a h1:Lk/mIZrlJ66/hWqv38kk/Gczm5Nb+ArUPCtHeHJ6SXg=
+github.com/kthomas/go-elasticsearchutil v0.0.0-20220816182027-10e06978571a/go.mod h1:pxkny9lN0DVBPvQL1WluoSEGsdUh9Du7SdQ7DIIP6Oo=
 github.com/kthomas/go-logger v0.0.0-20200602041232-5c46e0cab608/go.mod h1:sXRQB767yNz+melLbxSNF+yu0H7kxguvoJHqa47Mxh4=
 github.com/kthomas/go-logger v0.0.0-20200602072946-d7d72dfc2531/go.mod h1:sXRQB767yNz+melLbxSNF+yu0H7kxguvoJHqa47Mxh4=
 github.com/kthomas/go-logger v0.0.0-20210526080020-a63672d0724c h1:RY4Ei3MRDKfjWqaSG9OA2R/xz4GGmRQx/wcgGosYilI=
@@ -405,6 +407,8 @@ github.com/lib/pq v1.1.1/go.mod h1:5WUZQaWbwv1U+lTReE5YruASi9Al49XbQIvNi/34Woo=
 github.com/lib/pq v1.2.0 h1:LXpIM/LZ5xGFhOpXAQUIMM1HdyqzVYM13zNdjCEEcA0=
 github.com/lib/pq v1.2.0/go.mod h1:5WUZQaWbwv1U+lTReE5YruASi9Al49XbQIvNi/34Woo=
 github.com/magiconair/properties v1.8.1/go.mod h1:PppfXfuXeibc/6YijjN8zIbojt8czPbwD3XqdrwzmxQ=
+github.com/mailru/easyjson v0.7.0 h1:aizVhC/NAAcKWb+5QsU1iNOZb4Yws5UO2I+aIprQITM=
+github.com/mailru/easyjson v0.7.0/go.mod h1:KAzv3t3aY1NaHWoQz1+4F1ccyAH66Jk7yos7ldAVICs=
 github.com/mattn/go-colorable v0.0.9/go.mod h1:9vuHe8Xs5qXnSaW/c/ABM9alt+Vo+STaOChaDxuIBZU=
 github.com/mattn/go-colorable v0.1.0/go.mod h1:9vuHe8Xs5qXnSaW/c/ABM9alt+Vo+STaOChaDxuIBZU=
 github.com/mattn/go-ieproxy v0.0.0-20190610004146-91bb50d98149/go.mod h1:31jz6HNzdxOmlERGGEc4v/dMssOfmp2p5bT/okiKFFc=
@@ -473,6 +477,8 @@ github.com/oklog/ulid v1.3.1/go.mod h1:CirwcVhetQ6Lv90oh/F+FBtV6XMibvdAFo93nm5qn
 github.com/olekukonko/tablewriter v0.0.1/go.mod h1:vsDQFd/mU46D+Z4whnwzcISnGGzXWMclvtLoiIKAKIo=
 github.com/olekukonko/tablewriter v0.0.2-0.20190409134802-7e037d187b0c/go.mod h1:vsDQFd/mU46D+Z4whnwzcISnGGzXWMclvtLoiIKAKIo=
 github.com/olekukonko/tablewriter v0.0.4/go.mod h1:zq6QwlOf5SlnkVbMSr5EoBv3636FWnp+qbPhuoO21uA=
+github.com/olivere/elastic v6.2.26+incompatible h1:3PjUHKyt8xKwbFQpRC5cgtEY7Qz6ejopBkukhI7UWvE=
+github.com/olivere/elastic v6.2.26+incompatible/go.mod h1:J+q1zQJTgAz9woqsbVRqGeB5G1iqDKVBWLNSYW8yfJ8=
 github.com/onsi/ginkgo v1.6.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
 github.com/onsi/ginkgo v1.7.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
 github.com/onsi/ginkgo v1.10.1/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
@@ -535,8 +541,8 @@ github.com/prometheus/tsdb v0.10.0/go.mod h1:oi49uRhEe9dPUTlS3JRZOwJuVi6tmh10QSg
 github.com/provideplatform/ident v0.9.10-0.20210903195520-28bcb83ac5d6 h1:/yGxRvW9G36tk+DDCdmMDcrCfc5YfLJxUCZc84J8QQU=
 github.com/provideplatform/ident v0.9.10-0.20210903195520-28bcb83ac5d6/go.mod h1:s+hRD5W4u66saaYadkmL9hGyirrtmcwojL5XhZ7imHk=
 github.com/provideplatform/provide-go v0.0.0-20210624064849-d7328258f0d8/go.mod h1:q0/Q8KaZxYg84rdwBIIE7ZwHluzM5zw7zJJoJOqAbzg=
-github.com/provideplatform/provide-go v0.0.0-20220726064522-0c1103477d1b h1:egSDADKX+yc11RHp9ypo71CiDRYNsf/ZSw9vqikjN/0=
-github.com/provideplatform/provide-go v0.0.0-20220726064522-0c1103477d1b/go.mod h1:3XKCmsPvXOLfHQhMwmJGwK7CD/OqW2Y4HMJVfvkBIys=
+github.com/provideplatform/provide-go v0.0.0-20220826053550-2ecfc647d3e3 h1:Rdo5pDA304jxkicW7vFL7zOjpg+1sNVG2kmZxqidDzg=
+github.com/provideplatform/provide-go v0.0.0-20220826053550-2ecfc647d3e3/go.mod h1:3XKCmsPvXOLfHQhMwmJGwK7CD/OqW2Y4HMJVfvkBIys=
 github.com/rcrowley/go-metrics v0.0.0-20190826022208-cac0b30c2563/go.mod h1:bCqnVzQkZxMG4s8nGwiZ5l3QUCyqpo9Y+/ZMZ9VjZe4=
 github.com/rivo/uniseg v0.1.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
 github.com/rivo/uniseg v0.2.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
@@ -854,6 +860,8 @@ gopkg.in/jcmturner/gokrb5.v7 v7.5.0/go.mod h1:l8VISx+WGYp+Fp7KRbsiUuXTTOnxIc3Tuv
 gopkg.in/jcmturner/rpc.v1 v1.1.0/go.mod h1:YIdkC4XfD6GXbzje11McwsDuOlZQSb9W4vfLvuNnlv8=
 gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce/go.mod h1:5AcXVHNjg+BDxry382+8OKon8SEWiKktQR07RKPsv1c=
 gopkg.in/olebedev/go-duktape.v3 v3.0.0-20200619000410-60c24ae608a6/go.mod h1:uAJfkITjFhyEEuUfm7bsmCZRbW5WRq8s9EY8HZ6hCns=
+gopkg.in/olivere/elastic.v6 v6.2.26 h1:Ruw0CKBdAKyWmWdRWW4EnZ11IlBx+PArW1HHNUgIKtw=
+gopkg.in/olivere/elastic.v6 v6.2.26/go.mod h1:2cTT8Z+/LcArSWpCgvZqBgt3VOqXiy7v00w12Lz8bd4=
 gopkg.in/redis.v4 v4.2.4/go.mod h1:8KREHdypkCEojGKQcjMqAODMICIVwZAONWq8RowTITA=
 gopkg.in/resty.v1 v1.12.0/go.mod h1:mDo4pnntr5jdWRML875a/NmxYqAlA73dVijT2AXvQQo=
 gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 h1:uRGJdciOHaEIrze2W8Q3AKkepLTh2hOroT7a+7czfdQ=
