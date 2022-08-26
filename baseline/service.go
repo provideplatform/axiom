@@ -145,8 +145,8 @@ func (m *ProtocolMessage) baselineInbound() bool {
 		var workflow *WorkflowInstance
 		var err error
 
-		if m.Identifier != nil {
-			workflow = LookupBaselineWorkflow(m.Identifier.String())
+		if m.WorkflowID != nil {
+			workflow = LookupBaselineWorkflow(m.WorkflowID.String())
 		}
 
 		if m.BaselineID != nil {
@@ -161,11 +161,11 @@ func (m *ProtocolMessage) baselineInbound() bool {
 		}
 
 		if workflow == nil {
-			common.Log.Debugf("initializing baseline workflow: %s", *m.Identifier)
+			common.Log.Debugf("initializing baseline workflow: %s", *m.WorkflowID)
 
-			workflow, err = baselineWorkflowFactory(m.subjectAccount, *m.Type, common.StringOrNil(m.Identifier.String()))
+			workflow, err = baselineWorkflowFactory(m.subjectAccount, *m.Type, common.StringOrNil(m.WorkflowID.String()))
 			if err != nil {
-				common.Log.Warningf("failed to initialize baseline workflow: %s", *m.Identifier)
+				common.Log.Warningf("failed to initialize baseline workflow: %s", *m.WorkflowID)
 				return false
 			}
 
