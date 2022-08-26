@@ -489,7 +489,7 @@ func (s *SubjectAccount) setDefaultItems() error {
 	}
 
 	if os.Getenv("BASELINE_ORGANIZATION_PROXY_ENDPOINT") != "" {
-		s.Metadata.OrganizationProxyEndpoint = common.StringOrNil(os.Getenv("BASELINE_ORGANIZATION_PROXY_ENDPOINT"))
+		s.Metadata.OrganizationAPIEndpoint = common.StringOrNil(os.Getenv("BASELINE_ORGANIZATION_PROXY_ENDPOINT"))
 	}
 
 	if os.Getenv("BASELINE_ORGANIZATION_MESSAGING_ENDPOINT") != "" {
@@ -703,7 +703,7 @@ func (s *SubjectAccount) configureSystem() error {
 	}
 
 	sorConfiguration := map[string]interface{}{
-		"bpi_endpoint":    s.Metadata.OrganizationProxyEndpoint,
+		"bpi_endpoint":    s.Metadata.OrganizationAPIEndpoint,
 		"ident_endpoint":  fmt.Sprintf("%s://%s", os.Getenv("IDENT_API_SCHEME"), os.Getenv("IDENT_API_HOST")),
 		"organization_id": s.Metadata.OrganizationID,
 		"refresh_token":   s.Metadata.OrganizationRefreshToken,
