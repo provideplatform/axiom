@@ -35,7 +35,7 @@ import (
 	"gopkg.in/olivere/elastic.v6"
 )
 
-const indexerDocumentTypeInvertedIndexContext = "interted_index_context"
+const indexerDocumentTypeInvertedIndexContext = "inverted_index_context"
 const indexerDocumentIndexBaseline = "baseline"
 
 type InvertedIndexMessagePayload struct {
