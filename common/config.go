@@ -70,16 +70,19 @@ func init() {
 func requireElastic() {
 	esutil.RequireElasticsearch()
 
-	Indexer = esutil.NewIndexer()
-	err := Indexer.Run()
-	if err != nil {
-		Log.Panicf("failed to run indexer; %s", err.Error())
-	}
-
+	var err error
 	ElasticClient, err = elasticsearchutil.GetClient()
 	if err != nil {
 		Log.Panicf("failed to require elasticsearch client; %s", err.Error())
 	}
+
+	Indexer = esutil.NewIndexer()
+	go func() {
+		err := Indexer.Run()
+		if err != nil {
+			Log.Panicf("failed to run indexer; %s", err.Error())
+		}
+	}()
 }
 
 func requireLogger() {

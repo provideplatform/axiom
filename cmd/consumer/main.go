@@ -79,6 +79,7 @@ func main() {
 func shutdown() {
 	if atomic.AddUint32(&closing, 1) == 1 {
 		common.Log.Debug("shutting down dedicated NATS streaming subscription consumer")
+		common.Indexer.Stop()
 		cancelF()
 	}
 }

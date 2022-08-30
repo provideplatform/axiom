@@ -376,8 +376,8 @@ github.com/kthomas/go-auth0 v0.0.0-20210417042937-27d1d2dadf19 h1:anZ2QxZWRUGU2M
 github.com/kthomas/go-auth0 v0.0.0-20210417042937-27d1d2dadf19/go.mod h1:5o9CD0v7+NFL4+2diOZIqQ0gZIFZepkl5XRXHQt0zN8=
 github.com/kthomas/go-db-config v0.0.0-20200612131637-ec0436a9685e h1:9sDghLvO/k5/DIigEEoH14v4aT1JhbTdzQ3s6RrrKQs=
 github.com/kthomas/go-db-config v0.0.0-20200612131637-ec0436a9685e/go.mod h1:oApzEAKQeLYMWVUCv09olaXsxUac+bSJCOLTOgw3Ekc=
-github.com/kthomas/go-elasticsearchutil v0.0.0-20220829033712-98ae4647c0d2 h1:kBUmQdfZU7TjcTjs16NEXIY4Mu5GrVFKT1UxSWUABVY=
-github.com/kthomas/go-elasticsearchutil v0.0.0-20220829033712-98ae4647c0d2/go.mod h1:zBoNPl8f3kVtcfCLTSwYKsEbRu1LHEHbGv5DvYbP4sI=
+github.com/kthomas/go-elasticsearchutil v0.0.0-20220830124510-7aa98c642322 h1:KyPLiTx7iBas8EGwOOffNB41vSfBSLe6IYbcntabOTM=
+github.com/kthomas/go-elasticsearchutil v0.0.0-20220830124510-7aa98c642322/go.mod h1:zBoNPl8f3kVtcfCLTSwYKsEbRu1LHEHbGv5DvYbP4sI=
 github.com/kthomas/go-logger v0.0.0-20200602041232-5c46e0cab608/go.mod h1:sXRQB767yNz+melLbxSNF+yu0H7kxguvoJHqa47Mxh4=
 github.com/kthomas/go-logger v0.0.0-20200602072946-d7d72dfc2531/go.mod h1:sXRQB767yNz+melLbxSNF+yu0H7kxguvoJHqa47Mxh4=
 github.com/kthomas/go-logger v0.0.0-20210526080020-a63672d0724c h1:RY4Ei3MRDKfjWqaSG9OA2R/xz4GGmRQx/wcgGosYilI=

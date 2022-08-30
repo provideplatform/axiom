@@ -93,13 +93,14 @@ func main() {
 func installSignalHandlers() {
 	common.Log.Debug("installing signal handlers for baseline API")
 	sigs = make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	shutdownCtx, cancelF = context.WithCancel(context.Background())
 }
 
 func shutdown() {
 	if atomic.AddUint32(&closing, 1) == 1 {
 		common.Log.Debug("shutting down baseline API")
+		common.Indexer.Stop()
 		cancelF()
 	}
 }
