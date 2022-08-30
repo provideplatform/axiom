@@ -63,8 +63,7 @@ func (m *ProtocolMessage) index() error {
 	common.Indexer.Q(&esutil.Message{
 		Header: &esutil.MessageHeader{
 			DocType: common.StringOrNil(indexerDocumentTypeInvertedIndexContext),
-			// ID:
-			Index: common.StringOrNil(indexerDocumentIndexBaseline),
+			Index:   common.StringOrNil(indexerDocumentIndexBaseline),
 		},
 		Payload: payload,
 	})
@@ -81,6 +80,7 @@ func (m *Message) query() (*BaselineContext, error) {
 			}
 		}
 	}
+	values = append(values, *m.ID)
 
 	tq := elastic.NewTermsQuery("values", values) // terms query over the indexed `values` field
 	result, err := common.ElasticClient.Search().Index(indexerDocumentIndexBaseline).Type(indexerDocumentTypeInvertedIndexContext).Query(tq).Do(context.TODO())
