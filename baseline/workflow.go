@@ -168,7 +168,7 @@ func baselineWorkflowFactory(subjectAccount *SubjectAccount, objectType string, 
 			return nil, err
 		}
 
-		common.Log.Debugf("found %d indexed workflow prototype candidates for object type %s; subject account: %s", objectType, *subjectAccount.ID)
+		common.Log.Debugf("found %d indexed workflow prototype candidates for object type %s; subject account: %s", len(candidates), objectType, *subjectAccount.ID)
 
 		if len(candidates) == 1 {
 			workflow = candidates[0]
