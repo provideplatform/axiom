@@ -130,6 +130,7 @@ func (m *Message) resolveContext() (middleware.SOR, *BaselineContext, *BaselineR
 	system, err = m.subjectAccount.resolveSystem(*m.Type)
 	if err != nil {
 		common.Log.Debugf("no system resolved for subject account for mapping type: %s", *m.Type)
+		err = nil
 		// return nil, nil, nil, nil, nil, fmt.Errorf("failed to resolve system for subject account for mapping type: %s", *m.Type)
 	}
 

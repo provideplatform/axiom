@@ -162,13 +162,27 @@ func sendProtocolMessageHandler(c *gin.Context) {
 		return
 	}
 
-	if message.WorkgroupID == nil {
-		provide.RenderError("workgroup_id is required", 422, c)
+	var subjectAccountID *string
+
+	if message.WorkgroupID != nil {
+		subjectAccountID = common.StringOrNil(subjectAccountIDFactory(organizationID.String(), message.WorkgroupID.String()))
+	} else {
+		// attempt to resolve a subject account for the authorized organization...
+		subjectAccounts := ListSubjectAccountsBySubjectID(organizationID.String())
+		if len(subjectAccounts) == 1 {
+			subjectAccountID = subjectAccounts[0].ID
+		} else if len(subjectAccounts) > 1 {
+			provide.RenderError("subject account context is ambiguous; workgroup_id is required", 422, c)
+			return
+		}
+	}
+
+	if subjectAccountID == nil {
+		provide.RenderError("no subject account resolved", 422, c)
 		return
 	}
 
-	subjectAccountID := subjectAccountIDFactory(organizationID.String(), message.WorkgroupID.String())
-	message.subjectAccount, err = resolveSubjectAccount(subjectAccountID)
+	message.subjectAccount, err = resolveSubjectAccount(*subjectAccountID)
 	if err != nil {
 		provide.RenderError("failed to resolve BPI subject account", 403, c)
 		return

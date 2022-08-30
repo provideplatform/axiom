@@ -684,6 +684,14 @@ func FindSubjectAccountByID(id string) *SubjectAccount {
 	return subjectAccount
 }
 
+// ListSubjectAccountsBySubjectID finds the BPI subject accounts for the given subject id
+func ListSubjectAccountsBySubjectID(subjectID string) []*SubjectAccount {
+	subjectAccounts := make([]*SubjectAccount, 0)
+	db := dbconf.DatabaseConnection()
+	db.Where("subject_id = ?", subjectID).Find(&subjectAccounts)
+	return subjectAccounts
+}
+
 func (s *SubjectAccount) configureSystem() error {
 	sor := middleware.SORFactory(s.Metadata.SOR, nil)
 	if sor == nil {
