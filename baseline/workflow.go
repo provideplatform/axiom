@@ -174,7 +174,7 @@ func baselineWorkflowFactory(subjectAccount *SubjectAccount, objectType string, 
 			workflow = candidates[0]
 			common.Log.Debugf("resolved workflow prototype for object type %s; subject account: %s", objectType, *subjectAccount.ID)
 		} else if len(candidates) > 1 {
-			err = fmt.Errorf("currently undefined behavior encountered; support for atomically dispatching multiple workflow prototype candidates will be implemented in a future release", objectType, *subjectAccount.ID)
+			err = fmt.Errorf("currently undefined behavior encountered; support for atomically dispatching multiple workflow prototype candidates will be implemented in a future release; object type: %s; subject account: %s", objectType, *subjectAccount.ID)
 			common.Log.Warning(err.Error())
 			return nil, err
 		}
