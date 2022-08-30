@@ -34,7 +34,10 @@ import (
 )
 
 const IndexerDocumentTypeInvertedIndexContext = "inverted_index_context"
-const IndexerDocumentIndexBaseline = "baseline"
+const IndexerDocumentTypeWorkflowPrototype = "workflow_prototype"
+
+const IndexerDocumentIndexBaselineContextInverted = "baseline.context.inverted"
+const IndexerDocumentIndexBaselineWorkflowPrototypes = "baseline.workflow.prototypes"
 
 var (
 	// BaselinePublicWorkgroupID is the configured public workgroup id, if any
@@ -80,11 +83,19 @@ func requireElastic() {
 		Log.Panicf("failed to require elasticsearch client; %s", err.Error())
 	}
 
-	exists, _ := ElasticClient.IndexExists(IndexerDocumentIndexBaseline).Do(context.Background())
+	exists, _ := ElasticClient.IndexExists(IndexerDocumentIndexBaselineContextInverted).Do(context.Background())
 	if !exists {
-		_, err := ElasticClient.CreateIndex(IndexerDocumentIndexBaseline).Do(context.Background())
+		_, err := ElasticClient.CreateIndex(IndexerDocumentIndexBaselineContextInverted).Do(context.Background())
 		if err != nil {
-			Log.Panicf("failed to require elasticsearch client; %s", err.Error())
+			Log.Panicf("failed to create elasticsearch index %s; %s", IndexerDocumentIndexBaselineContextInverted, err.Error())
+		}
+	}
+
+	exists, _ = ElasticClient.IndexExists(IndexerDocumentIndexBaselineWorkflowPrototypes).Do(context.Background())
+	if !exists {
+		_, err := ElasticClient.CreateIndex(IndexerDocumentIndexBaselineWorkflowPrototypes).Do(context.Background())
+		if err != nil {
+			Log.Panicf("failed to create elasticsearch index %s; %s", IndexerDocumentIndexBaselineWorkflowPrototypes, err.Error())
 		}
 
 	}

@@ -145,25 +145,60 @@ func (w *WorkflowInstance) CacheByBaselineID(baselineID string) error {
 	})
 }
 
-func baselineWorkflowFactory(subjectAccount *SubjectAccount, objectType string, identifier *string) (*WorkflowInstance, error) {
-	var identifierUUID uuid.UUID
-	if identifier != nil {
-		identifierUUID, _ = uuid.FromString(*identifier)
-	} else {
-		identifierUUID, _ = uuid.NewV4()
+// baselineWorkflowFactory initializes a workflow instance
+func baselineWorkflowFactory(subjectAccount *SubjectAccount, objectType string, workflowID *string) (*WorkflowInstance, error) {
+	var workflowUUID uuid.UUID
+	var err error
+
+	if workflowID != nil {
+		workflowUUID, err = uuid.FromString(*workflowID)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	workflow := &WorkflowInstance{
-		Worksteps: make([]*WorkstepInstance, 0),
+	var workflow *Workflow
+
+	if workflowUUID != uuid.Nil {
+		workflow = FindWorkflowByID(workflowUUID)
+	} else {
+		candidates, err := subjectAccount.findWorkflowPrototypeCandidatesByObjectType(objectType)
+		if err != nil {
+			common.Log.Warningf("failed to query workflow prototype candidates by object type %s; %s", objectType, err.Error())
+			return nil, err
+		}
+
+		common.Log.Debugf("found %d indexed workflow prototype candidates for object type %s; subject account: %s", objectType, *subjectAccount.ID)
+
+		if len(candidates) == 1 {
+			workflow = candidates[0]
+			common.Log.Debugf("resolved workflow prototype for object type %s; subject account: %s", objectType, *subjectAccount.ID)
+		} else if len(candidates) > 1 {
+			err = fmt.Errorf("currently undefined behavior encountered; support for atomically dispatching multiple workflow prototype candidates will be implemented in a future release", objectType, *subjectAccount.ID)
+			common.Log.Warning(err.Error())
+			return nil, err
+		}
 	}
-	workflow.ID = identifierUUID
+
+	if workflow == nil {
+		return nil, fmt.Errorf("failed to resolve workflow: %s", workflowUUID)
+	}
+
+	instance := &WorkflowInstance{
+		WorkflowID: &workflow.ID,
+		Worksteps:  make([]*WorkstepInstance, 0),
+	}
 
 	for _, party := range subjectAccount.Metadata.Counterparties {
-		workflow.Participants = append(workflow.Participants, &Participant{
+		instance.Participants = append(instance.Participants, &Participant{
 			Address:           party.Address,
 			MessagingEndpoint: party.MessagingEndpoint,
 			WebsocketEndpoint: party.WebsocketEndpoint,
 		})
+	}
+
+	if !instance.Create(dbconf.DatabaseConnection()) {
+		return nil, fmt.Errorf("failed to initialize workflow instance for workflow: %s", workflow.ID)
 	}
 
 	token, err := vendOrganizationAccessToken(subjectAccount)
@@ -177,14 +212,14 @@ func baselineWorkflowFactory(subjectAccount *SubjectAccount, objectType string, 
 		return nil, err
 	}
 	for _, org := range orgs {
-		workflow.Participants = append(workflow.Participants, &Participant{
+		instance.Participants = append(instance.Participants, &Participant{
 			Address:           common.StringFromInterface(org.Metadata["address"]),
 			APIEndpoint:       common.StringFromInterface(org.Metadata["api_endpoint"]),
 			MessagingEndpoint: common.StringFromInterface(org.Metadata["messaging_endpoint"]),
 		})
 	}
 
-	return workflow, nil
+	return instance, nil
 }
 
 func LookupBaselineWorkflow(identifier string) *WorkflowInstance {
@@ -201,7 +236,7 @@ func LookupBaselineWorkflow(identifier string) *WorkflowInstance {
 	return workflow
 }
 
-func LookupBaselineWorkflowByBaselineID(baselineID string) *WorkflowInstance {
+func lookupBaselineWorkflowByBaselineID(baselineID string) *WorkflowInstance {
 	key := fmt.Sprintf("baseline.id.%s.workflow.identifier", baselineID)
 	identifier, err := redisutil.Get(key)
 	if err != nil {

@@ -17,6 +17,7 @@
 package baseline
 
 import (
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -31,6 +32,7 @@ import (
 	natsutil "github.com/kthomas/go-natsutil"
 	"github.com/kthomas/go-pgputil"
 	uuid "github.com/kthomas/go.uuid"
+	"github.com/olivere/elastic/v7"
 	"github.com/provideplatform/baseline/common"
 	"github.com/provideplatform/baseline/middleware"
 	provide "github.com/provideplatform/provide-go/api"
@@ -634,6 +636,49 @@ func (s *SubjectAccount) encryptRefreshToken() bool {
 
 	s.RefreshToken = &resp.Data
 	return s.RefreshToken != nil
+}
+
+// findWorkflowPrototypeCandidatesByObjectType attempts to resolve the appropriate workflow prototype candidates
+// which are appropriate for initialization (i.e., of a new workflow instance and the associated workstep instances)
+// based on the subject account context and a given object type; this is intended to support arbitrary as well as
+// standard domain models/mappings
+func (s *SubjectAccount) findWorkflowPrototypeCandidatesByObjectType(objectType string) ([]*Workflow, error) {
+	if s.Metadata == nil || s.Metadata.WorkgroupID == nil {
+		return nil, fmt.Errorf("failed to query workflow prototype candidates by object type %s; subject account: %s", objectType, *s.ID)
+	}
+
+	typeQuery := elastic.NewTermQuery("initial_workstep_object_type", objectType)  // terms query over the indexed `initial` field
+	workgroupQuery := elastic.NewTermQuery("workgroup_id", s.Metadata.WorkgroupID) // terms query over the indexed `initial` field
+
+	bc := elastic.NewBoolQuery().Must(typeQuery).Must(workgroupQuery)
+	result, err := common.ElasticClient.Search().Index(common.IndexerDocumentIndexBaselineWorkflowPrototypes).Type(common.IndexerDocumentTypeWorkflowPrototype).Query(bc).Do(context.TODO())
+	if err != nil {
+		return nil, err
+	}
+
+	results := make([]*WorkflowPrototypeMessagePayload, 0)
+	for _, hit := range result.Hits.Hits {
+		var msg *WorkflowPrototypeMessagePayload
+		err := json.Unmarshal(hit.Source, &msg)
+		if err != nil {
+			return nil, err
+		}
+
+		results = append(results, msg)
+	}
+
+	candidates := make([]*Workflow, 0)
+	for _, proto := range results {
+		if proto.WorkflowID == nil {
+			common.Log.Warningf("malformed workflow prototype exists in %s index", common.IndexerDocumentIndexBaselineWorkflowPrototypes)
+			continue
+		}
+
+		candidates = append(candidates, FindWorkflowByID(*proto.WorkflowID))
+
+	}
+
+	return candidates, fmt.Errorf("failed to resolve workflow prototype candidates for type: %s; subject account id: %s", objectType, *s.ID)
 }
 
 func (s *SubjectAccount) parseJWKs() (map[string]*ident.JSONWebKey, error) {

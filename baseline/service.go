@@ -35,9 +35,21 @@ import (
 	"github.com/provideplatform/provide-go/api/privacy"
 )
 
+// InvertedIndexMessagePayload document type for indexing an arbitrary
+// `baseline_id` against one or more arbitrary values
 type InvertedIndexMessagePayload struct {
 	BaselineID *uuid.UUID    `json:"baseline_id"`
 	Values     []interface{} `json:"values"`
+}
+
+// WorkflowPrototypeMessagePayload document type for indexing the initial
+// workstep object type and a list of the ordered workstep object types
+// against a given `workflow_id` which references a valid workflow prototype
+type WorkflowPrototypeMessagePayload struct {
+	InitialWorkstepObjectType string     `json:"initial_workstep_object_type,omitempty"`
+	WorkgroupID               *uuid.UUID `json:"workgroup_id"`
+	WorkflowID                *uuid.UUID `json:"workflow_id"`
+	WorkstepObjectTypes       []string   `json:"workstep_object_types,omitempty"`
 }
 
 func (m *ProtocolMessage) index() error {
@@ -60,7 +72,7 @@ func (m *ProtocolMessage) index() error {
 	common.Indexer.Q(&esutil.Message{
 		Header: &esutil.MessageHeader{
 			DocType: common.StringOrNil(common.IndexerDocumentTypeInvertedIndexContext),
-			Index:   common.StringOrNil(common.IndexerDocumentIndexBaseline),
+			Index:   common.StringOrNil(common.IndexerDocumentIndexBaselineContextInverted),
 		},
 		Payload: payload,
 	})
@@ -80,7 +92,7 @@ func (m *Message) query() (*BaselineContext, error) {
 	values = append(values, *m.ID)
 
 	tq := elastic.NewTermsQuery("values", values...) // terms query over the indexed `values` field
-	result, err := common.ElasticClient.Search().Index(common.IndexerDocumentIndexBaseline).Type(common.IndexerDocumentTypeInvertedIndexContext).Query(tq).Do(context.TODO())
+	result, err := common.ElasticClient.Search().Index(common.IndexerDocumentIndexBaselineContextInverted).Type(common.IndexerDocumentTypeInvertedIndexContext).Query(tq).Do(context.TODO())
 	if err != nil {
 		return nil, err
 	}
@@ -187,7 +199,7 @@ func (m *Message) resolveContext() (middleware.SOR, *BaselineContext, *BaselineR
 				err = fmt.Errorf("failed to lookup baseline context for given baseline id: %s", m.BaselineID.String())
 			}
 
-			workflow = LookupBaselineWorkflowByBaselineID(m.BaselineID.String())
+			workflow = lookupBaselineWorkflowByBaselineID(m.BaselineID.String())
 			if workflow == nil {
 				err = fmt.Errorf("failed to lookup workflow for given baseline id: %s", m.BaselineID.String())
 			}
@@ -257,7 +269,7 @@ func (m *ProtocolMessage) baselineInbound() bool {
 			baselineContext = lookupBaselineContext(m.BaselineID.String())
 
 			if workflow == nil {
-				workflow = LookupBaselineWorkflowByBaselineID(m.BaselineID.String())
+				workflow = lookupBaselineWorkflowByBaselineID(m.BaselineID.String())
 				if workflow == nil && baselineContext != nil {
 					workflow = baselineContext.Workflow
 				}
@@ -267,7 +279,12 @@ func (m *ProtocolMessage) baselineInbound() bool {
 		if workflow == nil {
 			common.Log.Debugf("initializing baseline workflow: %s", *m.WorkflowID)
 
-			workflow, err = baselineWorkflowFactory(m.subjectAccount, *m.Type, common.StringOrNil(m.WorkflowID.String()))
+			var workflowID *string
+			if m.WorkflowID != nil {
+				workflowID = common.StringOrNil(m.WorkflowID.String())
+			}
+
+			workflow, err = baselineWorkflowFactory(m.subjectAccount, *m.Type, workflowID)
 			if err != nil {
 				common.Log.Warningf("failed to initialize baseline workflow: %s", *m.WorkflowID)
 				return false
