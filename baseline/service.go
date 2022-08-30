@@ -35,9 +35,6 @@ import (
 	"gopkg.in/olivere/elastic.v6"
 )
 
-const indexerDocumentTypeInvertedIndexContext = "inverted_index_context"
-const indexerDocumentIndexBaseline = "baseline"
-
 type InvertedIndexMessagePayload struct {
 	BaselineID *uuid.UUID    `json:"baseline_id"`
 	Values     []interface{} `json:"values"`
@@ -62,8 +59,8 @@ func (m *ProtocolMessage) index() error {
 
 	common.Indexer.Q(&esutil.Message{
 		Header: &esutil.MessageHeader{
-			DocType: common.StringOrNil(indexerDocumentTypeInvertedIndexContext),
-			Index:   common.StringOrNil(indexerDocumentIndexBaseline),
+			DocType: common.StringOrNil(common.IndexerDocumentTypeInvertedIndexContext),
+			Index:   common.StringOrNil(common.IndexerDocumentIndexBaseline),
 		},
 		Payload: payload,
 	})
@@ -82,8 +79,8 @@ func (m *Message) query() (*BaselineContext, error) {
 	}
 	values = append(values, *m.ID)
 
-	tq := elastic.NewTermsQuery("values", values) // terms query over the indexed `values` field
-	result, err := common.ElasticClient.Search().Index(indexerDocumentIndexBaseline).Type(indexerDocumentTypeInvertedIndexContext).Query(tq).Do(context.TODO())
+	tq := elastic.NewTermsQuery("values", values...) // terms query over the indexed `values` field
+	result, err := common.ElasticClient.Search().Index(common.IndexerDocumentIndexBaseline).Type(common.IndexerDocumentTypeInvertedIndexContext).Query(tq).Do(context.TODO())
 	if err != nil {
 		return nil, err
 	}

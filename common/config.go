@@ -17,6 +17,7 @@
 package common
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -31,6 +32,9 @@ import (
 	"github.com/provideplatform/provide-go/common/util"
 	"gopkg.in/olivere/elastic.v6"
 )
+
+const IndexerDocumentTypeInvertedIndexContext = "inverted_index_context"
+const IndexerDocumentIndexBaseline = "baseline"
 
 var (
 	// BaselinePublicWorkgroupID is the configured public workgroup id, if any
@@ -74,6 +78,15 @@ func requireElastic() {
 	ElasticClient, err = elasticsearchutil.GetClient()
 	if err != nil {
 		Log.Panicf("failed to require elasticsearch client; %s", err.Error())
+	}
+
+	exists, _ := ElasticClient.IndexExists(IndexerDocumentIndexBaseline).Do(context.Background())
+	if !exists {
+		_, err := ElasticClient.CreateIndex(IndexerDocumentIndexBaseline).Do(context.Background())
+		if err != nil {
+			Log.Panicf("failed to require elasticsearch client; %s", err.Error())
+		}
+
 	}
 
 	Indexer = esutil.NewIndexer()
