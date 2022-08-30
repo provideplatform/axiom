@@ -17,12 +17,14 @@
 package baseline
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math/big"
 	"strings"
 
 	mimc "github.com/consensys/gnark/crypto/hash/mimc/bn256"
+	esutil "github.com/kthomas/go-elasticsearchutil"
 	natsutil "github.com/kthomas/go-natsutil"
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideplatform/baseline/common"
@@ -30,7 +32,85 @@ import (
 	provide "github.com/provideplatform/provide-go/api"
 	"github.com/provideplatform/provide-go/api/baseline"
 	"github.com/provideplatform/provide-go/api/privacy"
+	"gopkg.in/olivere/elastic.v6"
 )
+
+const indexerDocumentTypeInvertedIndexContext = "interted_index_context"
+const indexerDocumentIndexBaseline = "baseline"
+
+type InvertedIndexMessagePayload struct {
+	BaselineID *uuid.UUID    `json:"baseline_id"`
+	Values     []interface{} `json:"values"`
+}
+
+func (m *ProtocolMessage) index() error {
+	common.Log.Debugf("attempting to index protocol message payload with baseline id: %s", m.BaselineID)
+
+	msg := &InvertedIndexMessagePayload{
+		BaselineID: m.BaselineID,
+		Values:     make([]interface{}, 0),
+	}
+
+	// FIXME-- extract the following into a utility function
+	for k, v := range m.Payload.Object {
+		if strings.Contains(strings.ToLower(k), "id") { // FIXME
+			msg.Values = append(msg.Values, v)
+		}
+	}
+
+	payload, _ := json.Marshal(msg)
+
+	common.Indexer.Q(&esutil.Message{
+		Header: &esutil.MessageHeader{
+			DocType: common.StringOrNil(indexerDocumentTypeInvertedIndexContext),
+			// ID:
+			Index: common.StringOrNil(indexerDocumentIndexBaseline),
+		},
+		Payload: payload,
+	})
+	return nil
+}
+
+func (m *Message) query() (*BaselineContext, error) {
+	// FIXME-- extract the following into a utility function
+	values := make([]interface{}, 0)
+	if payload, payloadOk := m.Payload.(map[string]interface{}); payloadOk {
+		for k, v := range payload {
+			if strings.Contains(strings.ToLower(k), "id") { // FIXME
+				values = append(values, v)
+			}
+		}
+	}
+
+	tq := elastic.NewTermsQuery("values", values) // terms query over the indexed `values` field
+	result, err := common.ElasticClient.Search().Index(indexerDocumentIndexBaseline).Type(indexerDocumentTypeInvertedIndexContext).Query(tq).Do(context.TODO())
+	if err != nil {
+		return nil, err
+	}
+
+	var ctx *BaselineContext
+	results := make([]*InvertedIndexMessagePayload, 0)
+
+	for _, hit := range result.Hits.Hits {
+		var msg *InvertedIndexMessagePayload
+		err := json.Unmarshal(*hit.Source, &msg)
+		if err != nil {
+			return nil, err
+		}
+
+		results = append(results, msg)
+	}
+
+	if len(results) > 0 {
+		ctx = lookupBaselineContext(m.BaselineID.String())
+		if ctx == nil {
+			err = fmt.Errorf("failed to lookup baseline context for given baseline id: %s", m.BaselineID.String())
+			return nil, err
+		}
+	}
+
+	return ctx, nil
+}
 
 // resolveWorkstepContext is a convenience method to resolve the workstep context
 // alongside other relevant items... TODO-- memoize this so it can be reused nicely
@@ -52,44 +132,66 @@ func (m *Message) resolveContext() (middleware.SOR, *BaselineContext, *BaselineR
 
 	system, err = m.subjectAccount.resolveSystem(*m.Type)
 	if err != nil {
-		common.Log.Debugf("failed to resolve system for subject account for mapping type: %s", *m.Type)
+		common.Log.Debugf("no system resolved for subject account for mapping type: %s", *m.Type)
 		// return nil, nil, nil, nil, nil, fmt.Errorf("failed to resolve system for subject account for mapping type: %s", *m.Type)
 	}
 
 	baselineRecord = lookupBaselineRecordByInternalID(*m.ID)
 	if baselineRecord == nil {
-		if m.BaselineID != nil {
-			workflow = LookupBaselineWorkflowByBaselineID(m.BaselineID.String())
-			if workflow == nil {
-				err = fmt.Errorf("failed to lookup workflow for given baseline id: %s", m.BaselineID.String())
+		// this is a record we have not seen before...
+		// if certain criteria are met, a new workflow instance will be created.
+		// note that it is also possible that the `id` provided in the message is
+		// associated with an existing workflow instance...
+
+		if m.BaselineID == nil {
+			// no baseline id is provided... attempt to resolve the workflow context using the inverted index
+			ctx, err := m.query()
+			if err != nil {
+				return nil, nil, nil, nil, nil, fmt.Errorf("failed to resolve workflow context; %s", err.Error())
 			}
 
+			if ctx == nil {
+				// we were unable to resolve a lineage for this document linked to any related workflow instances
+				// we will now initialize a new context and workflow instance...
+				baselineContextID, _ := uuid.NewV4()
+				m.BaselineID = &baselineContextID
+
+				workflow, err = baselineWorkflowFactory(m.subjectAccount, *m.Type, nil)
+				if err != nil {
+					return nil, nil, nil, nil, nil, fmt.Errorf("failed to resolve workflow context; %s", err.Error())
+				}
+				common.Log.Debugf("resolved workflow context: %s", workflow.ID)
+
+				if baselineContext == nil {
+					common.Log.Debugf("initializing new baseline context with baseline id: %s", m.BaselineID)
+					baselineContext = &BaselineContext{
+						ID:         m.BaselineID,
+						BaselineID: m.BaselineID,
+						Records:    make([]*BaselineRecord, 0),
+					}
+
+					if workflow != nil {
+						baselineContext.Workflow = workflow
+						baselineContext.WorkflowID = &workflow.ID
+					}
+				}
+			} else {
+				// any sufficiently advanced technology is indistinguishable from magic ;)
+				workflow = ctx.Workflow
+			}
+		} else {
+			// this supports custom applications which are "workflow-aware" and
+			// pass a `baseline_id` as part of the message; most of our supported
+			// system middleware implementations will never send this in order
+			// to keep those implementations light clients...
 			baselineContext = lookupBaselineContext(m.BaselineID.String())
 			if baselineContext == nil {
 				err = fmt.Errorf("failed to lookup baseline context for given baseline id: %s", m.BaselineID.String())
 			}
-		} else {
-			baselineContextID, _ := uuid.NewV4()
-			m.BaselineID = &baselineContextID
 
-			workflow, err = baselineWorkflowFactory(m.subjectAccount, *m.Type, nil)
-			if err != nil {
-				return nil, nil, nil, nil, nil, fmt.Errorf("failed to resolve workflow context; %s", err.Error())
-			}
-			common.Log.Debugf("resolved workflow context: %s", workflow.ID)
-
-			if baselineContext == nil {
-				common.Log.Debugf("initializing new baseline context with baseline id: %s", m.BaselineID)
-				baselineContext = &BaselineContext{
-					ID:         m.BaselineID,
-					BaselineID: m.BaselineID,
-					Records:    make([]*BaselineRecord, 0),
-				}
-
-				if workflow != nil {
-					baselineContext.Workflow = workflow
-					baselineContext.WorkflowID = &workflow.ID
-				}
+			workflow = LookupBaselineWorkflowByBaselineID(m.BaselineID.String())
+			if workflow == nil {
+				err = fmt.Errorf("failed to lookup workflow for given baseline id: %s", m.BaselineID.String())
 			}
 		}
 
@@ -111,6 +213,7 @@ func (m *Message) resolveContext() (middleware.SOR, *BaselineContext, *BaselineR
 			return nil, nil, nil, nil, nil, fmt.Errorf("failed to resolve context; %s", err.Error())
 		}
 	} else {
+		// we have seen this record before and looked up the context...
 		baselineContext = baselineRecord.Context
 		if baselineContext == nil {
 			err = fmt.Errorf("failed to lookup baseline context for given baseline id: %s", m.BaselineID.String())
@@ -118,6 +221,9 @@ func (m *Message) resolveContext() (middleware.SOR, *BaselineContext, *BaselineR
 
 		workflow = baselineRecord.Context.Workflow
 	}
+
+	// we need only the workflow to be non-nil at this point!
+	// we can now proceed to resolve the workstep context...
 
 	worksteps := FindWorkstepsByWorkflowID(workflow.ID)
 	for _, wrkstp := range worksteps {
@@ -245,6 +351,8 @@ func (m *ProtocolMessage) baselineInbound() bool {
 			return false
 		}
 	}
+
+	go m.index()
 
 	return true
 }
@@ -444,6 +552,8 @@ func (m *Message) baselineOutbound() bool {
 	if err != nil {
 		common.Log.Warningf("failed to update business logic status; %s", err.Error())
 	}
+
+	go m.ProtocolMessage.index()
 
 	return true
 }

@@ -23,10 +23,13 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
+	"github.com/kthomas/go-elasticsearchutil"
+	esutil "github.com/kthomas/go-elasticsearchutil"
 	logger "github.com/kthomas/go-logger"
 	"github.com/provideplatform/ident/common"
 	"github.com/provideplatform/provide-go/api/vault"
 	"github.com/provideplatform/provide-go/common/util"
+	"gopkg.in/olivere/elastic.v6"
 )
 
 var (
@@ -38,6 +41,12 @@ var (
 
 	// ConsumeNATSStreamingSubscriptions is a flag the indicates if the ident instance is running in API or consumer mode
 	ConsumeNATSStreamingSubscriptions bool
+
+	// elasticClient is the elasticsearch client
+	ElasticClient *elastic.Client
+
+	// Indexer instance is a handle to the elasticsearch
+	Indexer *esutil.Indexer
 
 	// Log is the configured logger
 	Log *logger.Logger
@@ -52,9 +61,25 @@ var (
 func init() {
 	requireLogger()
 	requireBaselinePublicWorkgroup()
+	requireElastic()
 	requireVault()
 
 	ConsumeNATSStreamingSubscriptions = strings.ToLower(os.Getenv("CONSUME_NATS_STREAMING_SUBSCRIPTIONS")) == "true"
+}
+
+func requireElastic() {
+	esutil.RequireElasticsearch()
+
+	Indexer = esutil.NewIndexer()
+	err := Indexer.Run()
+	if err != nil {
+		Log.Panicf("failed to run indexer; %s", err.Error())
+	}
+
+	ElasticClient, err = elasticsearchutil.GetClient()
+	if err != nil {
+		Log.Panicf("failed to require elasticsearch client; %s", err.Error())
+	}
 }
 
 func requireLogger() {
