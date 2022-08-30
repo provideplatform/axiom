@@ -96,14 +96,14 @@ func FindWorkstepByID(id uuid.UUID) *Workstep {
 }
 
 // FindWorkstepsByWorkflowID retrieves a list of worksteps for the given workflow id
-func FindWorkstepsByWorkflowID(id uuid.UUID) []*Workstep {
+func FindWorkstepsByWorkflowID(workflowID uuid.UUID) []*Workstep {
 	worksteps := make([]*Workstep, 0)
 	db := dbconf.DatabaseConnection()
-	db.Where("workflow_id = ?", id.String()).Order("cardinality ASC").Find(&worksteps)
+	db.Where("workflow_id = ?", workflowID.String()).Order("cardinality ASC").Find(&worksteps)
 	return worksteps
 }
 
-// FindWorkstepInstanceByID retrieves a workflow instance for the given id
+// FindWorkstepInstanceByID retrieves a workstep instance for the given id
 func FindWorkstepInstanceByID(id uuid.UUID) *WorkstepInstance {
 	db := dbconf.DatabaseConnection()
 	instance := &WorkstepInstance{}
@@ -112,6 +112,14 @@ func FindWorkstepInstanceByID(id uuid.UUID) *WorkstepInstance {
 		return nil
 	}
 	return instance
+}
+
+// FindWorkstepInstancesByWorkflowID retrieves a list of workstep instances for the given workflow instance id
+func FindWorkstepInstancesByWorkflowID(workflowID uuid.UUID) []*WorkstepInstance {
+	db := dbconf.DatabaseConnection()
+	worksteps := make([]*WorkstepInstance, 0)
+	db.Where("workflow_id = ?", workflowID.String()).Find(&worksteps)
+	return worksteps
 }
 
 // Cache a workstep instance

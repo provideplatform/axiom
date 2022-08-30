@@ -223,10 +223,10 @@ func (m *Message) resolveContext() (middleware.SOR, *BaselineContext, *BaselineR
 	// we need only the workflow to be non-nil at this point!
 	// we can now proceed to resolve the workstep context...
 
-	worksteps := FindWorkstepsByWorkflowID(workflow.ID)
+	worksteps := FindWorkstepInstancesByWorkflowID(workflow.ID)
 	for _, wrkstp := range worksteps {
 		if wrkstp.Status != nil && *wrkstp.Status == workstepStatusInit {
-			workstep = FindWorkstepInstanceByID(wrkstp.ID)
+			workstep = wrkstp
 			break
 		}
 	}

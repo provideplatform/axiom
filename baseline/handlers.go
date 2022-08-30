@@ -194,6 +194,11 @@ func sendProtocolMessageHandler(c *gin.Context) {
 		return
 	}
 
+	if workstep == nil {
+		provide.RenderError("failed to resolve workstep context", 404, c)
+		return
+	}
+
 	authorizedSender := false
 	for _, participant := range workstep.Participants {
 		if participant.Address != nil && *participant.Address == *message.subjectAccount.Metadata.OrganizationAddress {
