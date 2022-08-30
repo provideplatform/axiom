@@ -27,10 +27,10 @@ import (
 	"github.com/kthomas/go-elasticsearchutil"
 	esutil "github.com/kthomas/go-elasticsearchutil"
 	logger "github.com/kthomas/go-logger"
+	"github.com/olivere/elastic/v7"
 	"github.com/provideplatform/ident/common"
 	"github.com/provideplatform/provide-go/api/vault"
 	"github.com/provideplatform/provide-go/common/util"
-	"gopkg.in/olivere/elastic.v6"
 )
 
 const IndexerDocumentTypeInvertedIndexContext = "inverted_index_context"

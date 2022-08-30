@@ -27,12 +27,12 @@ import (
 	esutil "github.com/kthomas/go-elasticsearchutil"
 	natsutil "github.com/kthomas/go-natsutil"
 	uuid "github.com/kthomas/go.uuid"
+	"github.com/olivere/elastic/v7"
 	"github.com/provideplatform/baseline/common"
 	"github.com/provideplatform/baseline/middleware"
 	provide "github.com/provideplatform/provide-go/api"
 	"github.com/provideplatform/provide-go/api/baseline"
 	"github.com/provideplatform/provide-go/api/privacy"
-	"gopkg.in/olivere/elastic.v6"
 )
 
 type InvertedIndexMessagePayload struct {
@@ -90,7 +90,7 @@ func (m *Message) query() (*BaselineContext, error) {
 
 	for _, hit := range result.Hits.Hits {
 		var msg *InvertedIndexMessagePayload
-		err := json.Unmarshal(*hit.Source, &msg)
+		err := json.Unmarshal(hit.Source, &msg)
 		if err != nil {
 			return nil, err
 		}
