@@ -24,6 +24,7 @@ import (
 
 	"github.com/jinzhu/gorm"
 	dbconf "github.com/kthomas/go-db-config"
+	esutil "github.com/kthomas/go-elasticsearchutil"
 	"github.com/kthomas/go-natsutil"
 	"github.com/kthomas/go-redisutil"
 	uuid "github.com/kthomas/go.uuid"
@@ -343,6 +344,63 @@ func (w *Workflow) deploy() bool {
 	}
 
 	return true
+}
+
+// index a workflow prototype's initial workstep object type and a
+// list of its ordered workstep object types against the associated
+// `workflow_id` which references the prototype
+func (w *Workflow) index() error {
+	if !w.isPrototype() {
+		err := fmt.Errorf("attempted to index workflow instance: %s; only prototypes can be indexed", w.ID)
+		common.Log.Warningf(err.Error())
+		return err
+	}
+
+	common.Log.Debugf("attempting to index prototype message payload for workflow: %s", w.ID)
+
+	workstepObjectTypes := make([]string, 0)
+	if len(w.Worksteps) == 0 {
+		w.Worksteps = FindWorkstepsByWorkflowID(w.ID)
+	}
+
+	for _, workstep := range w.Worksteps {
+		metadata := workstep.ParseMetadata()
+		if mappingModelID, mappingModelIDOk := metadata["mapping_model_id"].(string); mappingModelIDOk {
+			mappingModelUUID, err := uuid.FromString(mappingModelID)
+			if err != nil {
+				err = fmt.Errorf("failed to resolve mapping model: %s", mappingModelID)
+				common.Log.Warningf(err.Error())
+				return err
+			}
+
+			mappingModel := FindMappingModelByID(mappingModelUUID)
+			if mappingModel != nil && mappingModel.Type != nil {
+				workstepObjectTypes = append(workstepObjectTypes, *mappingModel.Type)
+			} else {
+				err = fmt.Errorf("failed to resolve mapping model: %s", mappingModelID)
+				common.Log.Warningf(err.Error())
+				return err
+			}
+		}
+	}
+
+	msg := &WorkflowPrototypeMessagePayload{
+		InitialWorkstepObjectType: workstepObjectTypes[0],
+		WorkgroupID:               w.WorkgroupID,
+		WorkflowID:                &w.ID,
+		WorkstepObjectTypes:       workstepObjectTypes,
+	}
+
+	payload, _ := json.Marshal(msg)
+
+	common.Indexer.Q(&esutil.Message{
+		Header: &esutil.MessageHeader{
+			DocType: common.StringOrNil(common.IndexerDocumentTypeWorkflowPrototype),
+			Index:   common.StringOrNil(common.IndexerDocumentIndexBaselineWorkflowPrototypes),
+		},
+		Payload: payload,
+	})
+	return nil
 }
 
 func (w *Workflow) isPrototype() bool {

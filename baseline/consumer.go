@@ -481,6 +481,12 @@ func consumeBaselineWorkflowFinalizeDeploySubscriptionsMsg(msg *nats.Msg) {
 	}
 
 	if success {
+		err := workflow.index()
+		if err != nil {
+			common.Log.Warningf("failed to index workflow prototype; %s", err.Error())
+			return
+		}
+
 		db := dbconf.DatabaseConnection()
 
 		deployedAt := time.Now()

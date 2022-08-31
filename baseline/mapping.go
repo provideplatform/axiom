@@ -118,6 +118,14 @@ func FindMappingFieldsByMappingModelID(mappingModelID uuid.UUID) []*MappingField
 	return fields
 }
 
+// FindMappingModelByID finds the mapping model for the given id
+func FindMappingModelByID(id uuid.UUID) *MappingModel {
+	db := dbconf.DatabaseConnection()
+	model := &MappingModel{}
+	db.Where("id = ?", id.String()).Find(&model)
+	return model
+}
+
 func (m *Mapping) enrich() {
 	m.Models = FindMappingModelsByMappingID(m.ID)
 	for _, model := range m.Models {
