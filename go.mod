@@ -16,7 +16,7 @@ require (
 	github.com/jinzhu/gorm v1.9.16
 	github.com/klauspost/compress v1.13.1 // indirect
 	github.com/kthomas/go-db-config v0.0.0-20200612131637-ec0436a9685e
-	github.com/kthomas/go-elasticsearchutil v0.0.0-20220831052004-989b9d377262
+	github.com/kthomas/go-elasticsearchutil v0.0.0-20220831153250-d84c119254ae
 	github.com/kthomas/go-logger v0.0.0-20210526080020-a63672d0724c
 	github.com/kthomas/go-natsutil v0.0.0-20210911093321-41b91674d612
 	github.com/kthomas/go-pgputil v0.0.0-20200602073402-784e96083943
