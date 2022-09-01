@@ -647,11 +647,19 @@ func (s *SubjectAccount) findWorkflowPrototypeCandidatesByObjectType(objectType 
 		return nil, fmt.Errorf("failed to query workflow prototype candidates by object type %s; subject account: %s", objectType, *s.ID)
 	}
 
-	typeQuery := elastic.NewTermQuery("initial_workstep_object_type", objectType)  // terms query over the indexed `initial` field
-	workgroupQuery := elastic.NewTermQuery("workgroup_id", s.Metadata.WorkgroupID) // terms query over the indexed `initial` field
+	query := fmt.Sprintf(`
+{
+  "query": {
+	  "match": {
+		"initial_workstep_object_type": "%s",
+		"workgroup_id": "%s"
+	  }
+	}
+}
+`, objectType, *s.Metadata.WorkgroupID)
 
-	bc := elastic.NewBoolQuery().Must(typeQuery).Must(workgroupQuery)
-	result, err := common.ElasticClient.Search().Index(common.IndexerDocumentIndexBaselineWorkflowPrototypes).Type(common.IndexerDocumentTypeWorkflowPrototype).Query(bc).Do(context.TODO())
+	sq := elastic.NewRawStringQuery(query)
+	result, err := common.ElasticClient.Search().Index(common.IndexerDocumentIndexBaselineWorkflowPrototypes).Type(common.IndexerDocumentTypeWorkflowPrototype).Query(sq).Do(context.TODO())
 	if err != nil {
 		return nil, err
 	}
