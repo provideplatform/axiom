@@ -668,14 +668,14 @@ func (s *SubjectAccount) findWorkflowPrototypeCandidatesByObjectType(objectType 
 
 	results := make([]*WorkflowPrototypeMessagePayload, 0)
 	for _, hit := range result.Hits.Hits {
-		var msg WorkflowPrototypeMessagePayload
+		var msg *WorkflowPrototypeMessagePayload
 		err := json.Unmarshal(hit.Source, &msg)
 		if err != nil {
 			return nil, err
 		}
 
 		common.Log.Debugf("marshaled workflow prototype search result with initial workstep object type %s; workgroup id: %s", msg.InitialWorkstepObjectType, msg.WorkgroupID.String())
-		results = append(results, &msg)
+		results = append(results, msg)
 	}
 
 	candidates := make([]*Workflow, 0)
@@ -689,7 +689,11 @@ func (s *SubjectAccount) findWorkflowPrototypeCandidatesByObjectType(objectType 
 
 	}
 
-	return candidates, fmt.Errorf("failed to resolve workflow prototype candidates for type: %s; subject account id: %s", objectType, *s.ID)
+	if len(candidates) == 0 {
+		return nil, fmt.Errorf("failed to resolve workflow prototype candidates for type: %s; subject account id: %s", objectType, *s.ID)
+	}
+
+	return candidates, nil
 }
 
 func (s *SubjectAccount) parseJWKs() (map[string]*ident.JSONWebKey, error) {
