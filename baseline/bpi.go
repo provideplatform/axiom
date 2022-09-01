@@ -668,13 +668,14 @@ func (s *SubjectAccount) findWorkflowPrototypeCandidatesByObjectType(objectType 
 
 	results := make([]*WorkflowPrototypeMessagePayload, 0)
 	for _, hit := range result.Hits.Hits {
-		var msg *WorkflowPrototypeMessagePayload
+		var msg WorkflowPrototypeMessagePayload
 		err := json.Unmarshal(hit.Source, &msg)
 		if err != nil {
 			return nil, err
 		}
 
-		results = append(results, msg)
+		common.Log.Debugf("marshaled workflow prototype search result with initial workstep object type %s; workgroup id: %s", msg.InitialWorkstepObjectType, msg.WorkgroupID.String())
+		results = append(results, &msg)
 	}
 
 	candidates := make([]*Workflow, 0)
