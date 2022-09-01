@@ -649,12 +649,10 @@ func (s *SubjectAccount) findWorkflowPrototypeCandidatesByObjectType(objectType 
 
 	query := fmt.Sprintf(`
 {
-  "query": {
-	  "match": {
-		"initial_workstep_object_type": "%s",
-		"workgroup_id": "%s"
-	  }
-	}
+  "match": {
+	"initial_workstep_object_type": "%s",
+	"workgroup_id": "%s"
+  }
 }
 `, objectType, *s.Metadata.WorkgroupID)
 
