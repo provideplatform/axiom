@@ -218,11 +218,8 @@ func baselineWorkflowFactory(subjectAccount *SubjectAccount, objectType string, 
 		}
 	} else {
 		for _, party := range workflow.listParticipants(db) {
-			org := lookupBaselineOrganization(*party.Participant)
 			instance.Participants = append(instance.Participants, &Participant{
-				Address:           org.Address,
-				MessagingEndpoint: org.MessagingEndpoint,
-				WebsocketEndpoint: org.WebsocketEndpoint,
+				Address: party.Participant,
 			})
 		}
 	}
