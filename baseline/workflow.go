@@ -186,20 +186,15 @@ func baselineWorkflowFactory(subjectAccount *SubjectAccount, objectType string, 
 	}
 
 	instance := &WorkflowInstance{
+		Workflow: Workflow{
+			Name:           workflow.Name,
+			Description:    workflow.Description,
+			OrganizationID: workflow.OrganizationID,
+			Participants:   make([]*Participant, 0),
+			WorkgroupID:    workflow.WorkgroupID,
+		},
 		WorkflowID: &workflow.ID,
 		Worksteps:  make([]*WorkstepInstance, 0),
-	}
-
-	for _, party := range subjectAccount.Metadata.Counterparties {
-		instance.Participants = append(instance.Participants, &Participant{
-			Address:           party.Address,
-			MessagingEndpoint: party.MessagingEndpoint,
-			WebsocketEndpoint: party.WebsocketEndpoint,
-		})
-	}
-
-	if !instance.Create(dbconf.DatabaseConnection()) {
-		return nil, fmt.Errorf("failed to initialize workflow instance for workflow: %s", workflow.ID)
 	}
 
 	token, err := vendOrganizationAccessToken(subjectAccount)
@@ -207,17 +202,33 @@ func baselineWorkflowFactory(subjectAccount *SubjectAccount, objectType string, 
 		return nil, err
 	}
 
-	// FIXME -- read all workgroup participants from cache
-	orgs, err := ident.ListApplicationOrganizations(*token, *subjectAccount.Metadata.WorkgroupID, map[string]interface{}{})
-	if err != nil {
-		return nil, err
+	db := dbconf.DatabaseConnection()
+
+	if workflow.participantsCount(db) == 0 {
+		orgs, err := ident.ListApplicationOrganizations(*token, *subjectAccount.Metadata.WorkgroupID, map[string]interface{}{})
+		if err != nil {
+			return nil, err
+		}
+		for _, org := range orgs {
+			instance.Participants = append(instance.Participants, &Participant{
+				Address:           common.StringFromInterface(org.Metadata["address"]),
+				APIEndpoint:       common.StringFromInterface(org.Metadata["api_endpoint"]),
+				MessagingEndpoint: common.StringFromInterface(org.Metadata["messaging_endpoint"]),
+			})
+		}
+	} else {
+		for _, party := range workflow.listParticipants(db) {
+			org := lookupBaselineOrganization(*party.Participant)
+			instance.Participants = append(instance.Participants, &Participant{
+				Address:           org.Address,
+				MessagingEndpoint: org.MessagingEndpoint,
+				WebsocketEndpoint: org.WebsocketEndpoint,
+			})
+		}
 	}
-	for _, org := range orgs {
-		instance.Participants = append(instance.Participants, &Participant{
-			Address:           common.StringFromInterface(org.Metadata["address"]),
-			APIEndpoint:       common.StringFromInterface(org.Metadata["api_endpoint"]),
-			MessagingEndpoint: common.StringFromInterface(org.Metadata["messaging_endpoint"]),
-		})
+
+	if !instance.Create(db) {
+		return nil, fmt.Errorf("failed to initialize workflow instance for workflow: %s", workflow.ID)
 	}
 
 	return instance, nil
