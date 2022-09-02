@@ -185,21 +185,23 @@ func baselineWorkflowFactory(subjectAccount *SubjectAccount, objectType string, 
 		return nil, fmt.Errorf("failed to resolve workflow: %s", workflowUUID)
 	}
 
+	token, err := vendOrganizationAccessToken(subjectAccount)
+	if err != nil {
+		return nil, err
+	}
+
 	instance := &WorkflowInstance{
 		Workflow: Workflow{
 			Name:           workflow.Name,
 			Description:    workflow.Description,
+			DeployedAt:     workflow.DeployedAt,
 			OrganizationID: workflow.OrganizationID,
 			Participants:   make([]*Participant, 0),
 			WorkgroupID:    workflow.WorkgroupID,
+			Version:        workflow.Version,
 		},
 		WorkflowID: &workflow.ID,
 		Worksteps:  make([]*WorkstepInstance, 0),
-	}
-
-	token, err := vendOrganizationAccessToken(subjectAccount)
-	if err != nil {
-		return nil, err
 	}
 
 	db := dbconf.DatabaseConnection()
@@ -207,6 +209,7 @@ func baselineWorkflowFactory(subjectAccount *SubjectAccount, objectType string, 
 	if workflow.participantsCount(db) == 0 {
 		orgs, err := ident.ListApplicationOrganizations(*token, *subjectAccount.Metadata.WorkgroupID, map[string]interface{}{})
 		if err != nil {
+			common.Log.Warningf("failed to list workgroup organizations using ident for workgroup: %s; %s", err.Error(), *subjectAccount.Metadata.WorkgroupID)
 			return nil, err
 		}
 		for _, org := range orgs {
@@ -224,6 +227,7 @@ func baselineWorkflowFactory(subjectAccount *SubjectAccount, objectType string, 
 		}
 	}
 
+	common.Log.Debugf("attempting to create workflow instance '%s' for prototype: %s", *instance.Name, instance.WorkflowID.String())
 	if !instance.Create(db) {
 		return nil, fmt.Errorf("failed to initialize workflow instance for workflow: %s", workflow.ID)
 	}
