@@ -509,8 +509,10 @@ func (w *Workflow) Create(tx *gorm.DB) bool {
 	_tx := tx
 	if _tx == nil {
 		db := dbconf.DatabaseConnection()
-		_tx = db.Begin()
+		_tx = db
 	}
+
+	_tx = _tx.Begin()
 	defer _tx.RollbackUnlessCommitted()
 
 	success := false
@@ -529,6 +531,8 @@ func (w *Workflow) Create(tx *gorm.DB) bool {
 			success = rowsAffected > 0
 
 			if success {
+				common.Log.Debugf("successfully created workflow with id: %s", w.ID)
+
 				if w.Participants == nil || len(w.Participants) == 0 {
 					workgroup := FindWorkgroupByID(*w.WorkgroupID)
 					participants := workgroup.listParticipants(_tx)
@@ -540,8 +544,11 @@ func (w *Workflow) Create(tx *gorm.DB) bool {
 			}
 
 			if success && !w.isPrototype() {
+				common.Log.Debugf("attempting to resolve prototype worksteps using workflow prototype: %s; workflow instance: %s", w.WorkflowID.String(), w.ID.String())
 				worksteps := FindWorkstepsByWorkflowID(*w.WorkflowID)
 				w.WorkstepsCount = len(worksteps)
+
+				common.Log.Debugf("resolved %d prototype worksteps using workflow prototype: %s; workflow instance: %s", w.WorkstepsCount, w.WorkflowID.String(), w.ID.String())
 				_tx.Save(&w)
 
 				for _, workstep := range worksteps {
@@ -552,7 +559,9 @@ func (w *Workflow) Create(tx *gorm.DB) bool {
 					instance.Status = common.StringOrNil(workstepStatusInit)
 					instance.WorkflowID = &w.ID
 					instance.WorkstepID = &workstep.ID
+
 					_tx.Create(&instance)
+					common.Log.Debugf("attached prototype workstep %s to workflow instance: %s", workstep.ID.String(), w.ID.String())
 
 					if len(instance.Errors) == 0 {
 						common.Log.Debugf("spawned workstep instance %s for workflow: %s; cardinality: %d; workstep prototype: %s", instance.ID, instance.WorkflowID, instance.Cardinality, instance.WorkstepID)
