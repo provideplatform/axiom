@@ -212,13 +212,22 @@ func sendProtocolMessageHandler(c *gin.Context) {
 		return
 	}
 
-	// HACK!!
 	token, _ := util.ParseBearerAuthorizationHeader(c, nil)
-	message.token = common.StringOrNil(token.Raw)
+	proof, err := workstep.execute(message.subjectAccount, token.Raw, message.ProtocolMessage.Payload)
+	if err != nil {
+		provide.RenderError(fmt.Sprintf("cannot execute workstep; %s", err.Error()), 422, c)
+		return
+	}
 
-	if message.baselineOutbound() {
-		message.ProtocolMessage.Payload.Object = nil
-		provide.Render(message.ProtocolMessage, 202, c)
+	if proof != nil {
+		if len(proof.Errors) == 0 {
+			message.ProtocolMessage.Payload.Proof = proof.Proof
+			provide.Render(message, 202, c)
+		} else {
+			obj := map[string]interface{}{}
+			obj["errors"] = proof.Errors
+			provide.Render(obj, 422, c)
+		}
 	} else {
 		obj := map[string]interface{}{}
 		obj["errors"] = message.Errors

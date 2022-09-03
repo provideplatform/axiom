@@ -101,7 +101,7 @@ type Message struct {
 
 	// HACK -- convenience ptr ... for access during baselineOutbound()
 	subjectAccount *SubjectAccount `sql:"-" json:"-"`
-	token          *string         `sql:"-" json:"-"`
+	//token          *string         `sql:"-" json:"-"`
 }
 
 // ProtocolMessage is a baseline protocol message

@@ -423,12 +423,12 @@ func (m *Message) baselineOutbound() bool {
 		return false
 	}
 
-	if m.token == nil {
-		m.Errors = append(m.Errors, &provide.Error{
-			Message: common.StringOrNil("access token not resolved"),
-		})
-		return false
-	}
+	// if m.token == nil {
+	// 	m.Errors = append(m.Errors, &provide.Error{
+	// 		Message: common.StringOrNil("access token not resolved"),
+	// 	})
+	// 	return false
+	// }
 
 	if m.subjectAccount.Metadata == nil || m.subjectAccount.Metadata.SOR == nil {
 		m.Errors = append(m.Errors, &provide.Error{
