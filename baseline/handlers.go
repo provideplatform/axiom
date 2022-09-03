@@ -212,6 +212,19 @@ func sendProtocolMessageHandler(c *gin.Context) {
 		return
 	}
 
+	message.ProtocolMessage = &ProtocolMessage{
+		Payload: &ProtocolMessagePayload{},
+	}
+
+	if mappedPayload, mappedPayloadOk := message.Payload.(map[string]interface{}); mappedPayloadOk {
+		message.ProtocolMessage.Payload.Object = mappedPayload // HACK!!!
+	}
+
+	if message.ProtocolMessage.Payload.Object == nil {
+		provide.RenderError(fmt.Sprintf("cannot execute workstep without mappable protocol message payload; %s", err.Error()), 422, c)
+		return
+	}
+
 	token, _ := util.ParseBearerAuthorizationHeader(c, nil)
 	proof, err := workstep.execute(message.subjectAccount, token.Raw, message.ProtocolMessage.Payload)
 	if err != nil {
