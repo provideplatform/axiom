@@ -188,7 +188,7 @@ func sendProtocolMessageHandler(c *gin.Context) {
 		return
 	}
 
-	_, _, baselineRecord, _, workstep, err := message.resolveContext()
+	_, _, _, _, workstep, err := message.resolveContext()
 	if err != nil {
 		provide.RenderError(err.Error(), 403, c)
 		return
@@ -198,8 +198,6 @@ func sendProtocolMessageHandler(c *gin.Context) {
 		provide.RenderError("failed to resolve workstep context", 404, c)
 		return
 	}
-
-	baselineRecord.cache()
 
 	authorizedSender := false
 	for _, participant := range workstep.Participants {

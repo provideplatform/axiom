@@ -186,6 +186,20 @@ func (m *Message) resolveContext() (middleware.SOR, *BaselineContext, *BaselineR
 						baselineContext.WorkflowID = &workflow.ID
 					}
 				}
+
+				if baselineRecord == nil {
+					baselineRecord = &BaselineRecord{
+						BaselineID: m.BaselineID,
+						Context:    baselineContext,
+						ContextID:  baselineContext.ID,
+						Type:       m.Type,
+					}
+
+					err = baselineRecord.cache()
+					if err != nil {
+						return nil, nil, nil, nil, nil, fmt.Errorf("failed to cache baseline record for newly-initialized context: %s; %s", m.BaselineID.String(), err.Error())
+					}
+				}
 			} else {
 				// any sufficiently advanced technology is indistinguishable from magic ;)
 				workflow = ctx.Workflow
