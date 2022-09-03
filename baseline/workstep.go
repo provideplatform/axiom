@@ -403,7 +403,9 @@ func (w *Workstep) execute(
 	var params map[string]interface{}
 	raw, _ := json.Marshal(payload)
 	json.Unmarshal(raw, &params) // HACK
-	proof, err := privacy.Prove(token, w.ProverID.String(), params)
+	proof, err := privacy.Prove(token, w.ProverID.String(), map[string]interface{}{
+		"witness": payload.Object, // HACK!!! this will soon be replaced by a circuit-specific witness factory...
+	})
 	if err != nil {
 		w.Errors = append(w.Errors, &provide.Error{
 			Message: common.StringOrNil(fmt.Sprintf("failed to execute workstep; %s", err.Error())),
