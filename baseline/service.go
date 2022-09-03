@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	mimc "github.com/consensys/gnark/crypto/hash/mimc/bn256"
+	dbconf "github.com/kthomas/go-db-config"
 	esutil "github.com/kthomas/go-elasticsearchutil"
 	natsutil "github.com/kthomas/go-natsutil"
 	uuid "github.com/kthomas/go.uuid"
@@ -243,6 +244,15 @@ func (m *Message) resolveContext() (middleware.SOR, *BaselineContext, *BaselineR
 		}
 	}
 
+	if len(workstep.Participants) == 0 {
+		common.Log.Debugf("enriching workstep context participants for resolved workstep id: %s", workstep.ID)
+		for _, participant := range workstep.listParticipants(dbconf.DatabaseConnection()) {
+			workstep.Participants = append(workstep.Participants, &Participant{
+				Address: participant.Participant, // HACK
+			})
+		}
+	}
+
 	return system, baselineContext, baselineRecord, workflow, workstep, err
 }
 
@@ -413,6 +423,7 @@ func (m *Message) baselineOutbound() bool {
 		return false
 	}
 
+	// FIXME-- shouldn't this simply resolve the workstep context?
 	system, _, baselineRecord, workflow, _, err := m.resolveContext()
 	if err != nil {
 		m.Errors = append(m.Errors, &provide.Error{

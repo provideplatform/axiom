@@ -188,7 +188,7 @@ func sendProtocolMessageHandler(c *gin.Context) {
 		return
 	}
 
-	_, _, _, _, workstep, err := message.resolveContext()
+	_, _, baselineRecord, _, workstep, err := message.resolveContext()
 	if err != nil {
 		provide.RenderError(err.Error(), 403, c)
 		return
@@ -199,6 +199,8 @@ func sendProtocolMessageHandler(c *gin.Context) {
 		return
 	}
 
+	baselineRecord.cache()
+
 	authorizedSender := false
 	for _, participant := range workstep.Participants {
 		if participant.Address != nil && *participant.Address == *message.subjectAccount.Metadata.OrganizationAddress {
@@ -208,7 +210,7 @@ func sendProtocolMessageHandler(c *gin.Context) {
 	}
 
 	if !authorizedSender {
-		provide.RenderError("forbidden", 403, c)
+		provide.RenderError(fmt.Sprintf("subject account is not an authorized sender; subject account id: %s", *subjectAccountID), 403, c)
 		return
 	}
 

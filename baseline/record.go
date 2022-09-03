@@ -43,7 +43,11 @@ func (r *BaselineRecord) cache() error {
 		if r.Context != nil {
 			r.Context.BaselineID = &baselineID
 		}
+
+		common.Log.Debugf("generated new baseline id for association with baseline record and associated context: %s", r.BaselineID.String())
 	}
+
+	common.Log.Debugf("attempting to cache baseline record and associated context with baseline id: %s", r.BaselineID.String())
 
 	var baselineIDKey *string
 	if r.ID != nil {
