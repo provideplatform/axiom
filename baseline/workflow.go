@@ -190,18 +190,16 @@ func baselineWorkflowFactory(subjectAccount *SubjectAccount, objectType string, 
 		return nil, err
 	}
 
-	instance := &WorkflowInstance{
-		Workflow: Workflow{
-			Name:           workflow.Name,
-			Description:    workflow.Description,
-			DeployedAt:     workflow.DeployedAt,
-			OrganizationID: workflow.OrganizationID,
-			Participants:   make([]*Participant, 0),
-			WorkgroupID:    workflow.WorkgroupID,
-			Version:        workflow.Version,
-		},
-		WorkflowID: &workflow.ID,
-		Worksteps:  make([]*WorkstepInstance, 0),
+	instance := &Workflow{
+		Name:           workflow.Name,
+		Description:    workflow.Description,
+		DeployedAt:     workflow.DeployedAt,
+		OrganizationID: workflow.OrganizationID,
+		Participants:   make([]*Participant, 0),
+		WorkgroupID:    workflow.WorkgroupID,
+		Version:        workflow.Version,
+		WorkflowID:     &workflow.ID,
+		Worksteps:      make([]*Workstep, 0),
 	}
 
 	db := dbconf.DatabaseConnection()
@@ -232,7 +230,8 @@ func baselineWorkflowFactory(subjectAccount *SubjectAccount, objectType string, 
 		return nil, fmt.Errorf("failed to initialize workflow instance for workflow: %s", workflow.ID)
 	}
 
-	return instance, nil
+	// HACK!
+	return FindWorkflowInstanceByID(instance.ID), nil
 }
 
 func LookupBaselineWorkflow(identifier string) *WorkflowInstance {
