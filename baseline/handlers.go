@@ -1053,7 +1053,17 @@ func listSchemasHandler(c *gin.Context) {
 	for _, system := range systems {
 		sor := middleware.SystemFactory(system)
 		if sor == nil {
-			common.Log.Warningf("subject account has unsupported or misconfigured system: %s; type: %s; skipping...", *system.Name, *system.Type)
+			systemName := "(nil)"
+			if system.Name != nil {
+				systemName = *system.Name
+			}
+
+			systemType := "(nil)"
+			if system.Type != nil {
+				systemType = *system.Type
+			}
+
+			common.Log.Warningf("subject account has unsupported or misconfigured system: %s; type: %s; skipping...", systemName, systemType)
 			continue
 		}
 
