@@ -758,7 +758,9 @@ func initSubjectAccounts() {
 	db.Find(&subjectAccounts)
 
 	for _, subjectAccount := range subjectAccounts {
-		subjectAccount.enrichMetadata() // HACK -- this also happens as the last step of enrich()
+		// HACK -- these two items also happen as part of enrich()
+		subjectAccount.enrichCredentials()
+		subjectAccount.enrichMetadata()
 
 		err := subjectAccount.enrich()
 		if err != nil {
