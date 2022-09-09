@@ -796,7 +796,7 @@ func (s *SubjectAccount) configureSystem(system *middleware.System) error {
 		common.Log.Warningf("failed to configure system; health check failed; %s", err.Error())
 		return err
 	}
-	common.Log.Debugf("system health check completed; system is reachable at endpoint: %s", system.EndpointURL)
+	common.Log.Debugf("system health check completed; system is reachable at endpoint: %s", *system.EndpointURL)
 
 	sorConfiguration := map[string]interface{}{
 		"bpi_endpoint":    s.Metadata.OrganizationAPIEndpoint,
