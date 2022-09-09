@@ -465,6 +465,11 @@ func (s *SubjectAccount) create(tx *gorm.DB) bool {
 		return false
 	}
 
+	err = s.requireSystems()
+	if err != nil {
+		common.Log.Warningf("failed to require system for BPI subject account: %s", *s.ID)
+	}
+
 	payload, _ := json.Marshal(map[string]interface{}{
 		"subject_account_id": *s.ID,
 	})
@@ -729,7 +734,7 @@ func init() {
 	}
 
 	SubjectAccountsByID = map[string][]*SubjectAccount{}
-	initSubjectAccounts()
+	// initSubjectAccounts()
 }
 
 // FindSubjectAccountByID finds the BPI subject accounts for the given subject id
@@ -776,6 +781,10 @@ func initSubjectAccounts() {
 
 // configureSystem
 func (s *SubjectAccount) configureSystem(system *middleware.System) error {
+	if system.EndpointURL == nil {
+		return errors.New("no endpoint url resolved for configured system")
+	}
+
 	sor := middleware.SystemFactory(system)
 	if sor == nil {
 		common.Log.Warning("middleware system configuration not resolved")
@@ -787,11 +796,7 @@ func (s *SubjectAccount) configureSystem(system *middleware.System) error {
 		common.Log.Warningf("failed to configure system; health check failed; %s", err.Error())
 		return err
 	}
-
-	common.Log.Debugf("health check completed; SOR API available")
-	if sorURL, sorURLOk := s.Metadata.SOR["url"].(string); sorURLOk {
-		common.Log.Debugf("SOR API endpoint: %s", sorURL)
-	}
+	common.Log.Debugf("system health check completed; system is reachable at endpoint: %s", system.EndpointURL)
 
 	sorConfiguration := map[string]interface{}{
 		"bpi_endpoint":    s.Metadata.OrganizationAPIEndpoint,
@@ -807,7 +812,7 @@ func (s *SubjectAccount) configureSystem(system *middleware.System) error {
 	}
 
 	sorConfigurationJSON, _ := json.MarshalIndent(sorConfiguration, "", "  ")
-	common.Log.Debugf("SOR tenant configured:\n%s", sorConfigurationJSON)
+	common.Log.Debugf("system tenant configured for BPI subject account: %s;\n%s", *s.ID, sorConfigurationJSON)
 
 	return nil
 }
