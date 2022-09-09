@@ -123,8 +123,8 @@ type SubjectAccountMetadata struct {
 	// OrganizationID is the id of the org
 	OrganizationID *string `json:"organization_id,omitempty"`
 
-	// OrganizationAPIEndpoint is the configured endpoint for the BPI REST API
-	OrganizationAPIEndpoint *string `json:"organization_bpi_endpoint,omitempty"`
+	// OrganizationBPIEndpoint is the configured endpoint for the BPI REST API
+	OrganizationBPIEndpoint *string `json:"organization_bpi_endpoint,omitempty"`
 
 	// OrganizationMessagingEndpoint is the public organziation messaging endpoint
 	OrganizationMessagingEndpoint *string `json:"organization_messaging_endpoint,omitempty"`
@@ -507,7 +507,7 @@ func (s *SubjectAccount) setDefaultItems() error {
 	}
 
 	if os.Getenv("BASELINE_ORGANIZATION_PROXY_ENDPOINT") != "" {
-		s.Metadata.OrganizationAPIEndpoint = common.StringOrNil(os.Getenv("BASELINE_ORGANIZATION_PROXY_ENDPOINT"))
+		s.Metadata.OrganizationBPIEndpoint = common.StringOrNil(os.Getenv("BASELINE_ORGANIZATION_PROXY_ENDPOINT"))
 	}
 
 	if os.Getenv("BASELINE_ORGANIZATION_MESSAGING_ENDPOINT") != "" {
@@ -809,8 +809,27 @@ func (s *SubjectAccount) configureSystem(system *middleware.System) error {
 	}
 	common.Log.Debugf("system health check completed; system is reachable at endpoint: %s", *system.EndpointURL)
 
+	bpiEndpoint := s.Metadata.OrganizationBPIEndpoint
+	if bpiEndpoint == nil {
+		accessToken, err := s.authorizeAccessToken()
+		if err != nil {
+			common.Log.Warningf("failed to configure system; failed to fetch organization details; %s", err.Error())
+			return err
+		}
+
+		org, err := ident.GetOrganizationDetails(*accessToken.AccessToken, *s.Metadata.OrganizationID, map[string]interface{}{})
+		if err != nil {
+			common.Log.Warningf("failed to configure system; failed to resolve organization BPI endpoint; %s", err.Error())
+			return err
+		}
+
+		if endpt, ok := org.Metadata["bpi_endpoint"].(string); ok {
+			bpiEndpoint = &endpt
+		}
+	}
+
 	sorConfiguration := map[string]interface{}{
-		"bpi_endpoint":       s.Metadata.OrganizationAPIEndpoint,
+		"bpi_endpoint":       bpiEndpoint,
 		"ident_endpoint":     fmt.Sprintf("%s://%s", os.Getenv("IDENT_API_SCHEME"), os.Getenv("IDENT_API_HOST")),
 		"organization_id":    s.Metadata.OrganizationID,
 		"refresh_token":      s.Metadata.OrganizationRefreshToken,
@@ -921,7 +940,7 @@ func (s *SubjectAccount) resolveWorkgroupParticipants() error {
 		for _, party := range s.Metadata.Counterparties { // FIXME
 			p := &Participant{
 				Address:           party.Address,
-				APIEndpoint:       party.APIEndpoint,
+				BPIEndpoint:       party.BPIEndpoint,
 				MessagingEndpoint: party.MessagingEndpoint,
 				WebsocketEndpoint: party.WebsocketEndpoint,
 				Workgroups:        make([]*Workgroup, 0),
@@ -946,7 +965,7 @@ func (s *SubjectAccount) resolveWorkgroupParticipants() error {
 			if addrOk {
 				p := &Participant{}
 				p.Address = common.StringOrNil(addr)
-				p.APIEndpoint = common.StringOrNil(apiEndpoint)
+				p.BPIEndpoint = common.StringOrNil(apiEndpoint)
 				p.MessagingEndpoint = common.StringOrNil(messagingEndpoint)
 
 				counterparties = append(counterparties, p)

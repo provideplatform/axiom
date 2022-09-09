@@ -926,7 +926,7 @@ func consumeSubjectAccountRegistrationMsg(msg *nats.Msg) {
 		return
 	}
 
-	if subjectAccount.Metadata.OrganizationAPIEndpoint == nil {
+	if subjectAccount.Metadata.OrganizationBPIEndpoint == nil {
 		common.Log.Warningf("failed to resolve organization API endpoint for storage in the public org registry; BPI subject account id: %s", subjectAccountID)
 		msg.Nak()
 		return

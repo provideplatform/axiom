@@ -111,7 +111,7 @@ func (s *SubjectAccount) requestBaselineOrganizationIssuedVC(address string) (*s
 		return nil, err
 	}
 
-	apiURLStr := lookupBaselineOrganizationAPIEndpoint(address)
+	apiURLStr := lookupBaselineOrganizationBPIEndpoint(address)
 	if apiURLStr == nil {
 		common.Log.Warningf("failed to lookup recipient API endpoint: %s", address)
 		return nil, fmt.Errorf("failed to lookup recipient API endpoint: %s", address)
@@ -195,18 +195,18 @@ func (s *SubjectAccount) requestBaselineOrganizationIssuedVC(address string) (*s
 	return credential, nil
 }
 
-func lookupBaselineOrganizationAPIEndpoint(recipient string) *string {
+func lookupBaselineOrganizationBPIEndpoint(recipient string) *string {
 	org := lookupBaselineOrganization(recipient)
 	if org == nil {
 		common.Log.Warningf("failed to retrieve cached API endpoint for baseline organization: %s", recipient)
 		return nil
 	}
 
-	if org.APIEndpoint == nil {
-		// this endpoint does not currently does not live on-chain, and should remain that way
-	}
+	// if org.BPIEndpoint == nil {
+	// this endpoint does not currently does not live on-chain, and should remain that way
+	// }
 
-	return org.APIEndpoint
+	return org.BPIEndpoint
 }
 
 func (s *SubjectAccount) lookupBaselineOrganizationMessagingEndpoint(recipient string) *string {
