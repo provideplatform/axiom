@@ -729,8 +729,7 @@ func init() {
 	}
 
 	SubjectAccountsByID = map[string][]*SubjectAccount{}
-
-	// bootstrapEnvironmentSubjectAccount()
+	initSubjectAccounts()
 }
 
 // FindSubjectAccountByID finds the BPI subject accounts for the given subject id
@@ -752,11 +751,31 @@ func ListSubjectAccountsBySubjectID(subjectID string) []*SubjectAccount {
 	return subjectAccounts
 }
 
-func (s *SubjectAccount) configureSystem() error {
-	sor := middleware.SORFactory(s.Metadata.SOR, nil)
+func initSubjectAccounts() {
+	db := dbconf.DatabaseConnection()
+
+	subjectAccounts := make([]*SubjectAccount, 0)
+	db.Find(&subjectAccounts)
+
+	for _, subjectAccount := range subjectAccounts {
+		err := subjectAccount.enrich()
+		if err != nil {
+			common.Log.Warningf("failed to start daemon for subject account: %s; failed to enrich; %s", *subjectAccount.ID, err.Error())
+		}
+
+		err = subjectAccount.startDaemon(subjectAccount.refreshTokenRaw)
+		if err != nil {
+			common.Log.Warningf("failed to start daemon for subject account: %s", *subjectAccount.ID)
+		}
+	}
+}
+
+// configureSystem
+func (s *SubjectAccount) configureSystem(system *middleware.System) error {
+	sor := middleware.SystemFactory(system)
 	if sor == nil {
 		common.Log.Warning("middleware system configuration not resolved")
-		return errors.New("middleware  system configuration not resolved")
+		return errors.New("middleware system configuration not resolved")
 	}
 
 	err := sor.HealthCheck()
@@ -784,7 +803,7 @@ func (s *SubjectAccount) configureSystem() error {
 	}
 
 	sorConfigurationJSON, _ := json.MarshalIndent(sorConfiguration, "", "  ")
-	common.Log.Debugf("SOR configured:\n%s", sorConfigurationJSON)
+	common.Log.Debugf("SOR tenant configured:\n%s", sorConfigurationJSON)
 
 	return nil
 }
@@ -1010,29 +1029,32 @@ func (s *SubjectAccount) resolveBaselineContract() error {
 	return nil
 }
 
-func (s *SubjectAccount) requireSOR() {
-	common.Log.Warningf("FIXME-- require all SORs")
-	// FIXME!!!
+// requireSystems ensures each system is configured
+func (s *SubjectAccount) requireSystems() error {
+	common.Log.Debugf("attempting to require systems for BPI subject account: %s", *s.ID)
 
-	if os.Getenv("PROVIDE_SOR_IDENTIFIER") == "" {
-		common.Log.Warningf("PROVIDE_SOR_IDENTIFIER not provided")
+	systems, err := s.listSystems()
+	if err != nil {
+		return err
 	}
 
-	if os.Getenv("PROVIDE_SOR_URL") == "" {
-		common.Log.Warningf("PROVIDE_SOR_URL not provided")
+	for _, system := range systems {
+		if system.Type == nil || system.Name == nil {
+			common.Log.Warningf("misconfigured system configured for BPI subject account: %s", *s.ID)
+			continue
+		}
+
+		common.Log.Debugf("attempting to configure %s system for BPI subject account: %s", *system.Type, *s.ID)
+		err := s.configureSystem(system)
+		if err != nil {
+			common.Log.Warningf("failed to configure %s system: %s; %s", *system.Type, *system.Name, err.Error())
+			continue
+		}
+
+		common.Log.Debugf("configured %s system for BPI subject account: %s", *system.Type, *s.ID)
 	}
 
-	s.Metadata.SOR = map[string]interface{}{
-		"identifier": os.Getenv("PROVIDE_SOR_IDENTIFIER"),
-	}
-
-	if os.Getenv("PROVIDE_SOR_URL") != "" && os.Getenv("PROVIDE_SOR_URL") != "https://" {
-		s.Metadata.SOR["url"] = os.Getenv("PROVIDE_SOR_URL")
-	}
-
-	if os.Getenv("PROVIDE_SOR_ORGANIZATION_CODE") != "" {
-		s.Metadata.SOR["organization_code"] = os.Getenv("PROVIDE_SOR_ORGANIZATION_CODE")
-	}
+	return nil
 }
 
 func (s *SubjectAccount) authorizeAccessToken() (*ident.Token, error) {
@@ -1108,6 +1130,8 @@ func (s *SubjectAccount) startDaemon(refreshToken *string) error {
 		common.Log.Warningf(msg)
 		return errors.New(msg)
 	}
+
+	s.requireSystems()
 
 	go func() {
 		timer := time.NewTicker(requireCounterpartiesTickerInterval)

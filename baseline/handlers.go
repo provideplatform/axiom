@@ -34,7 +34,6 @@ import (
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideplatform/baseline/common"
 	"github.com/provideplatform/baseline/middleware"
-	"github.com/provideplatform/provide-go/api"
 	"github.com/provideplatform/provide-go/api/baseline"
 	"github.com/provideplatform/provide-go/api/ident"
 	provide "github.com/provideplatform/provide-go/common"
@@ -823,20 +822,19 @@ func systemReachabilityHandler(c *gin.Context) {
 		return
 	}
 
-	switch *system.Type {
-	case "sap":
-		sor := middleware.SAPFactory(&system)
-		if err := sor.HealthCheck(); err != nil {
-			msg := fmt.Sprintf("system healthcheck failed; %s", err.Error())
-			provide.RenderError(msg, 422, c)
-			return
-		}
-
-		provide.Render(nil, 204, c)
-	default:
-		msg := fmt.Sprintf("system healthcheck failed; %s sor not implemented", *system.Type)
-		provide.RenderError(msg, 422, c)
+	sor := middleware.SystemFactory(&system)
+	if sor == nil {
+		provide.RenderError("unsupported system specified", 422, c)
+		return
 	}
+
+	if err := sor.HealthCheck(); err != nil {
+		msg := fmt.Sprintf("system healthcheck failed; %s", err.Error())
+		provide.RenderError(msg, 422, c)
+		return
+	}
+
+	provide.Render(nil, 204, c)
 }
 
 func listMappingsHandler(c *gin.Context) {
@@ -2149,59 +2147,6 @@ func createSubjectAccountHandler(c *gin.Context) {
 		obj["errors"] = subjectAccount.Errors
 		provide.Render(obj, 422, c)
 	}
-}
-
-func validateSubjectAccountParams(params *SubjectAccount) (bool, []*api.Error) {
-	errors := make([]*api.Error, 0)
-
-	if params.Metadata == nil {
-		errors = append(errors, &api.Error{
-			Message: common.StringOrNil("metadata is required"),
-		})
-		return false, errors
-	}
-
-	if params.Metadata.OrganizationID == nil || uuid.FromStringOrNil(*params.Metadata.OrganizationID) == uuid.Nil {
-		errors = append(errors, &api.Error{
-			Message: common.StringOrNil("organization_id is required"),
-		})
-	}
-
-	if params.Metadata.OrganizationAddress == nil {
-		errors = append(errors, &api.Error{
-			Message: common.StringOrNil("organization_address is required"),
-		})
-	}
-
-	if params.Metadata.OrganizationRefreshToken == nil {
-		errors = append(errors, &api.Error{
-			Message: common.StringOrNil("organization_refresh_token is required"),
-		})
-	}
-
-	if params.Metadata.WorkgroupID == nil || uuid.FromStringOrNil(*params.Metadata.WorkgroupID) == uuid.Nil {
-		errors = append(errors, &api.Error{
-			Message: common.StringOrNil("workgroup_id is required"),
-		})
-	}
-
-	if params.Metadata.NetworkID == nil || uuid.FromStringOrNil(*params.Metadata.NetworkID) == uuid.Nil {
-		errors = append(errors, &api.Error{
-			Message: common.StringOrNil("network_id is required"),
-		})
-	}
-
-	if params.Metadata.RegistryContractAddress == nil {
-		errors = append(errors, &api.Error{
-			Message: common.StringOrNil("registry_contract_address is required"),
-		})
-	}
-
-	if len(errors) > 0 {
-		return false, errors
-	}
-
-	return true, nil
 }
 
 func updateSubjectAccountsHandler(c *gin.Context) {

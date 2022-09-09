@@ -104,7 +104,7 @@ func SystemFactory(params *System) SOR {
 		common.Log.Warningf("middleware system factory called with invalid system identifier")
 	}
 
-	identifier := params.Name
+	identifier := params.Type
 	if identifier == nil {
 		// HACK!!!
 		identifier = params.System
