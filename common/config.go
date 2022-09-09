@@ -49,6 +49,12 @@ var (
 	// ConsumeNATSStreamingSubscriptions is a flag the indicates if the ident instance is running in API or consumer mode
 	ConsumeNATSStreamingSubscriptions bool
 
+	// DefaultBPIEndpoint is the BPI endpoint to use if not overridden by a subject account
+	DefaultBPIEndpoint *string
+
+	// DefaultIdentEndpoint is the ident endpoint to use if not overridden by a subject account
+	DefaultIdentEndpoint *string
+
 	// elasticClient is the elasticsearch client
 	ElasticClient *elastic.Client
 
@@ -72,6 +78,14 @@ func init() {
 	requireVault()
 
 	ConsumeNATSStreamingSubscriptions = strings.ToLower(os.Getenv("CONSUME_NATS_STREAMING_SUBSCRIPTIONS")) == "true"
+
+	if os.Getenv("DEFAULT_BPI_ENDPOINT") != "" {
+		DefaultBPIEndpoint = common.StringOrNil(os.Getenv("DEFAULT_BPI_ENDPOINT"))
+	}
+
+	if os.Getenv("DEFAULT_IDENT_ENDPOINT") != "" {
+		DefaultIdentEndpoint = common.StringOrNil(os.Getenv("DEFAULT_IDENT_ENDPOINT"))
+	}
 }
 
 func requireElastic() {

@@ -826,11 +826,15 @@ func (s *SubjectAccount) configureSystem(system *middleware.System) error {
 		if endpt, ok := org.Metadata["bpi_endpoint"].(string); ok {
 			bpiEndpoint = &endpt
 		}
+
+		if bpiEndpoint == nil && common.DefaultBPIEndpoint != nil {
+			bpiEndpoint = common.DefaultBPIEndpoint
+		}
 	}
 
 	sorConfiguration := map[string]interface{}{
 		"bpi_endpoint":       bpiEndpoint,
-		"ident_endpoint":     fmt.Sprintf("%s://%s", os.Getenv("IDENT_API_SCHEME"), os.Getenv("IDENT_API_HOST")),
+		"ident_endpoint":     common.DefaultIdentEndpoint,
 		"organization_id":    s.Metadata.OrganizationID,
 		"refresh_token":      s.Metadata.OrganizationRefreshToken,
 		"subject_account_id": *s.ID,
