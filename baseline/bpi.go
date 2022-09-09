@@ -1048,19 +1048,19 @@ func (s *SubjectAccount) requireSystems() error {
 	}
 
 	for _, system := range systems {
-		if system.Type == nil || system.Name == nil {
+		if system.System == nil || system.Name == nil {
 			common.Log.Warningf("misconfigured system configured for BPI subject account: %s", *s.ID)
 			continue
 		}
 
-		common.Log.Debugf("attempting to configure %s system for BPI subject account: %s", *system.Type, *s.ID)
+		common.Log.Debugf("attempting to configure %s system for BPI subject account: %s", *system.System, *s.ID)
 		err := s.configureSystem(system)
 		if err != nil {
-			common.Log.Warningf("failed to configure %s system: %s; %s", *system.Type, *system.Name, err.Error())
+			common.Log.Warningf("failed to configure %s system: %s; %s", *system.System, *system.Name, err.Error())
 			continue
 		}
 
-		common.Log.Debugf("configured %s system for BPI subject account: %s", *system.Type, *s.ID)
+		common.Log.Debugf("configured %s system for BPI subject account: %s", *system.System, *s.ID)
 	}
 
 	return nil

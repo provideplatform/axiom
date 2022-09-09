@@ -816,7 +816,7 @@ func systemReachabilityHandler(c *gin.Context) {
 		return
 	}
 
-	if system.Type == nil {
+	if system.System == nil {
 		msg := "failed to check system reachability status; system type required"
 		provide.RenderError(msg, 422, c)
 		return

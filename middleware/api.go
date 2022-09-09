@@ -25,9 +25,6 @@ const sorIdentifierSalesforce = "salesforce"
 const sorIdentifierSAP = "sap"
 const sorIdentifierServiceNow = "servicenow"
 
-const sorTypeGeneralConsistency = "general_consistency"
-const sorTypeServiceNowIncident = "servicenow_incident"
-
 const SORBusinessObjectStatusError = "error"
 const SORBusinessObjectStatusSuccess = "success"
 
@@ -62,55 +59,13 @@ type SOR interface {
 	UpdateObjectStatus(id string, params map[string]interface{}) error
 }
 
-// SORFactory initializes and returns a system of record interface impl
-func SORFactory(params map[string]interface{}, token *string) SOR {
-	switch params["identifier"].(string) {
-	case sorIdentifierDynamics365:
-		return InitDynamics365Service(token)
-	case sorIdentifierEphemeralMemory:
-		return InitEphemeralMemoryService(token)
-	case sorIdentifierExcel:
-		return InitExcelService(token)
-	case sorIdentifierSAP:
-		return InitSAPService(token)
-	case sorIdentifierSalesforce:
-		return InitSalesforceService(token)
-	case sorIdentifierServiceNow:
-		return InitServiceNowService(token)
-	default:
-		break
-	}
-
-	return nil
-}
-
-// SORFactoryByType initializes and returns a system of record interface impl for the given type
-func SORFactoryByType(params map[string]interface{}, recordType string, token *string) SOR {
-	switch recordType {
-	case sorTypeGeneralConsistency:
-		return InitEphemeralMemoryService(token)
-	case sorTypeServiceNowIncident:
-		return InitServiceNowService(token)
-	default:
-		break
-	}
-
-	return SORFactory(params, token)
-}
-
 // SystemFactory initializes and returns a system using the given middleware params
 func SystemFactory(params *System) SOR {
-	if params.Name == nil && params.System == nil {
+	if params.System == nil {
 		common.Log.Warningf("middleware system factory called with invalid system identifier")
 	}
 
-	identifier := params.Type
-	if identifier == nil {
-		// HACK!!!
-		identifier = params.System
-	}
-
-	switch *identifier {
+	switch *params.System {
 	case sorIdentifierDynamics365:
 		return Dynamics365Factory(params)
 	case sorIdentifierEphemeralMemory:
