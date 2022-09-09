@@ -213,7 +213,7 @@ func baselineWorkflowFactory(subjectAccount *SubjectAccount, objectType string, 
 		for _, org := range orgs {
 			instance.Participants = append(instance.Participants, &Participant{
 				Address:           common.StringFromInterface(org.Metadata["address"]),
-				APIEndpoint:       common.StringFromInterface(org.Metadata["api_endpoint"]),
+				BPIEndpoint:       common.StringFromInterface(org.Metadata["bpi_endpoint"]),
 				MessagingEndpoint: common.StringFromInterface(org.Metadata["messaging_endpoint"]),
 			})
 		}

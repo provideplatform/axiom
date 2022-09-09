@@ -124,7 +124,7 @@ type SubjectAccountMetadata struct {
 	OrganizationID *string `json:"organization_id,omitempty"`
 
 	// OrganizationAPIEndpoint is the configured endpoint for the BPI REST API
-	OrganizationAPIEndpoint *string `json:"organization_api_endpoint,omitempty"`
+	OrganizationAPIEndpoint *string `json:"organization_bpi_endpoint,omitempty"`
 
 	// OrganizationMessagingEndpoint is the public organziation messaging endpoint
 	OrganizationMessagingEndpoint *string `json:"organization_messaging_endpoint,omitempty"`
@@ -940,7 +940,7 @@ func (s *SubjectAccount) resolveWorkgroupParticipants() error {
 
 		for _, org := range orgs {
 			addr, addrOk := org.Metadata["address"].(string)
-			apiEndpoint, _ := org.Metadata["api_endpoint"].(string)
+			apiEndpoint, _ := org.Metadata["bpi_endpoint"].(string)
 			messagingEndpoint, _ := org.Metadata["messaging_endpoint"].(string)
 
 			if addrOk {

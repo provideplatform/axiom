@@ -28,7 +28,7 @@ import (
 // Participant is a party to a baseline workgroup or workflow context
 type Participant struct {
 	Metadata          map[string]interface{} `sql:"-" json:"metadata,omitempty"`
-	APIEndpoint       *string                `sql:"-" json:"api_endpoint,omitempty"`
+	BPIEndpoint       *string                `sql:"-" json:"bpi_endpoint,omitempty"`
 	MessagingEndpoint *string                `sql:"-" json:"messaging_endpoint,omitempty"`
 	WebsocketEndpoint *string                `sql:"-" json:"websocket_endpoint,omitempty"`
 
