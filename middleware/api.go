@@ -63,10 +63,12 @@ type SOR interface {
 func SystemFactory(params *System) SOR {
 	if params.Name == nil {
 		common.Log.Warningf("middleware factory requires a name parameter")
+		return nil
 	}
 
 	if params.Type == nil {
 		common.Log.Warningf("middleware factory requires a type parameter for system: %s", *params.Name)
+		return nil
 	}
 
 	switch *params.Type {
