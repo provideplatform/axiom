@@ -69,6 +69,17 @@ type BaselineClaims struct {
 	WorkgroupID                *string `json:"workgroup_id"`
 }
 
+// SendProtocolMessageAPIResponse is returned upon successfully sending a protocol message
+type SendProtocolMessageAPIResponse struct {
+	BaselineID       *uuid.UUID `json:"baseline_id"`
+	Proof            *string    `json:"proof"`
+	Recipients       []*string  `json:"recipients"`
+	Root             *uuid.UUID `json:"root,omitempty"`
+	SubjectAccountID *string    `json:"subject_account_id"`
+	Type             *string    `json:"type"`
+	WorkgroupID      *uuid.UUID `json:"workgroup_id"`
+}
+
 // SubjectAccount is a baseline BPI Subject Account per the specification
 type SubjectAccount struct {
 	provide.ModelWithDID

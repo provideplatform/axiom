@@ -233,8 +233,22 @@ func sendProtocolMessageHandler(c *gin.Context) {
 
 	if proof != nil {
 		if len(proof.Errors) == 0 {
-			message.ProtocolMessage.Payload.Proof = proof.Proof
-			provide.Render(message, 202, c)
+			recipients := make([]*string, 0)
+			for _, recipient := range message.Recipients {
+				if *recipient.Address != *message.subjectAccount.Metadata.OrganizationAddress {
+					recipients = append(recipients, common.StringOrNil(*recipient.Address))
+				}
+			}
+
+			provide.Render(&SendProtocolMessageAPIResponse{
+				BaselineID:       message.ProtocolMessage.BaselineID,
+				Proof:            proof.Proof,
+				Recipients:       recipients,
+				Root:             nil,
+				SubjectAccountID: subjectAccountID,
+				Type:             message.Type,
+				WorkgroupID:      message.WorkgroupID,
+			}, 202, c)
 		} else {
 			obj := map[string]interface{}{}
 			obj["errors"] = proof.Errors
