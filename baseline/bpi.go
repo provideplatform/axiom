@@ -799,10 +799,11 @@ func (s *SubjectAccount) configureSystem(system *middleware.System) error {
 	common.Log.Debugf("system health check completed; system is reachable at endpoint: %s", *system.EndpointURL)
 
 	sorConfiguration := map[string]interface{}{
-		"bpi_endpoint":    s.Metadata.OrganizationAPIEndpoint,
-		"ident_endpoint":  fmt.Sprintf("%s://%s", os.Getenv("IDENT_API_SCHEME"), os.Getenv("IDENT_API_HOST")),
-		"organization_id": s.Metadata.OrganizationID,
-		"refresh_token":   s.Metadata.OrganizationRefreshToken,
+		"bpi_endpoint":       s.Metadata.OrganizationAPIEndpoint,
+		"ident_endpoint":     fmt.Sprintf("%s://%s", os.Getenv("IDENT_API_SCHEME"), os.Getenv("IDENT_API_HOST")),
+		"organization_id":    s.Metadata.OrganizationID,
+		"refresh_token":      s.Metadata.OrganizationRefreshToken,
+		"subject_account_id": *s.ID,
 	}
 
 	err = sor.ConfigureTenant(sorConfiguration)
