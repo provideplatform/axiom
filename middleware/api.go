@@ -61,11 +61,15 @@ type SOR interface {
 
 // SystemFactory initializes and returns a system using the given middleware params
 func SystemFactory(params *System) SOR {
-	if params.System == nil {
-		common.Log.Warningf("middleware system factory called with invalid system identifier")
+	if params.Name == nil {
+		common.Log.Warningf("middleware factory requires a name parameter")
 	}
 
-	switch *params.System {
+	if params.Type == nil {
+		common.Log.Warningf("middleware factory requires a type parameter for system: %s", *params.Name)
+	}
+
+	switch *params.Type {
 	case sorIdentifierDynamics365:
 		return Dynamics365Factory(params)
 	case sorIdentifierEphemeralMemory:
