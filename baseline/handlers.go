@@ -830,7 +830,7 @@ func systemReachabilityHandler(c *gin.Context) {
 		return
 	}
 
-	if system.System == nil {
+	if system.Type == nil {
 		msg := "failed to check system reachability status; system type required"
 		provide.RenderError(msg, 422, c)
 		return
@@ -1053,7 +1053,7 @@ func listSchemasHandler(c *gin.Context) {
 	for _, system := range systems {
 		sor := middleware.SystemFactory(system)
 		if sor == nil {
-			common.Log.Warningf("subject account has unsupported or misconfigured system: %s; skipping...", *system.Name)
+			common.Log.Warningf("subject account has unsupported or misconfigured system: %s; type: %s; skipping...", *system.Name, *system.Type)
 			continue
 		}
 
@@ -1140,7 +1140,7 @@ func schemaDetailsHandler(c *gin.Context) {
 	for _, system := range systems {
 		sor := middleware.SystemFactory(system)
 		if sor == nil {
-			common.Log.Warningf("subject account has unsupported or misconfigured system: %s; skipping...", *system.Name)
+			common.Log.Warningf("subject account has unsupported or misconfigured system: %s; type: %s; skipping...", *system.Name, *system.Type)
 			continue
 		}
 
