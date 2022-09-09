@@ -758,6 +758,8 @@ func initSubjectAccounts() {
 	db.Find(&subjectAccounts)
 
 	for _, subjectAccount := range subjectAccounts {
+		subjectAccount.enrichMetadata() // HACK -- this also happens as the last step of enrich()
+
 		err := subjectAccount.enrich()
 		if err != nil {
 			common.Log.Warningf("failed to start daemon for subject account: %s; failed to enrich; %s", *subjectAccount.ID, err.Error())
