@@ -23,7 +23,7 @@ CREATE TABLE public.systems (
     organization_id uuid NOT NULL,
     workgroup_id uuid NOT NULL,
     vault_id uuid NOT NULL,
-    system_id uuid NOT NULL
+    secret_id uuid NOT NULL
 );
 
 ALTER TABLE public.systems OWNER TO baseline;
