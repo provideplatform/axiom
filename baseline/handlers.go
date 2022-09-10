@@ -920,6 +920,17 @@ func createSystemHandler(c *gin.Context) {
 	system.WorkgroupID = &workgroupID
 	system.OrganizationID = organizationID
 
+	if system.VaultID == nil {
+		subjectAccountID := subjectAccountIDFactory(organizationID.String(), workgroupID.String())
+		subjectAccount, err := resolveSubjectAccount(subjectAccountID)
+		if err != nil {
+			provide.RenderError(fmt.Sprintf("failed to resolve subject account when attempting to create system; %s", err.Error()), 500, c)
+			return
+		}
+
+		system.VaultID = subjectAccount.VaultID
+	}
+
 	if system.Create() {
 		provide.Render(system, 201, c)
 	} else if len(system.Errors) > 0 {
