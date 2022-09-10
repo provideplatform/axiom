@@ -836,7 +836,7 @@ func listSystemsHandler(c *gin.Context) {
 		subjectAccountID := subjectAccountIDFactory(organizationID.String(), c.Param("id"))
 		subjectAccount, _ := resolveSubjectAccount(subjectAccountID)
 
-		query = query.Where("vault_id = ? AND secret_id.status IN ?", subjectAccount.VaultID.String(), strings.Split(c.Query("secret_ids"), ","))
+		query = query.Where("vault_id = ? AND secret_id IN ?", subjectAccount.VaultID.String(), strings.Split(c.Query("secret_ids"), ","))
 	}
 
 	if c.Query("type") != "" {
