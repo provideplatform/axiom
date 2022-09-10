@@ -25,12 +25,12 @@ type System struct {
 	Type           *string    `sql:"not null" json:"type"`
 	OrganizationID *uuid.UUID `sql:"not null" json:"organization_id"`
 	WorkgroupID    *uuid.UUID `sql:"not null" json:"workgroup_id"`
+	VaultID        *uuid.UUID `sql:"not null" json:"vault_id"`
 
 	Auth        *middleware.SystemAuth       `sql:"-" json:"auth,omitempty"`
 	EndpointURL *string                      `sql:"-" json:"endpoint_url"`
 	Middleware  *middleware.SystemMiddleware `sql:"-" json:"middleware,omitempty"`
 
-	VaultID  *uuid.UUID `sql:"not null" json:"-"`
 	SecretID *uuid.UUID `sql:"not null" json:"-"`
 
 	// delegate *SubjectAccount `sql:"-" json:"-"`
