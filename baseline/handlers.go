@@ -85,10 +85,10 @@ func InstallSystemsAPI(r *gin.Engine) {
 	r.POST("/api/v1/systems/reachability", systemReachabilityHandler)
 
 	r.GET("/api/v1/workgroups/:id/systems", listSystemsHandler)
-	r.GET("/api/v1/workgroups/:workgroupId/systems/:id", systemDetailsHandler)
+	r.GET("/api/v1/workgroups/:id/systems/:systemId", systemDetailsHandler)
 	r.POST("/api/v1/workgroups/:id/systems", createSystemHandler)
-	r.PUT("/api/v1/workgroups/:workgroupId/systems/:id", updateSystemHandler)
-	r.DELETE("/api/v1/workgroups/:workgroupId/systems/:id", deleteSystemHandler)
+	r.PUT("/api/v1/workgroups/:id/systems/:systemId", updateSystemHandler)
+	r.DELETE("/api/v1/workgroups/:id/systems/:systemId", deleteSystemHandler)
 }
 
 // InstallSchemasAPI installs middleware schemas API
@@ -824,7 +824,7 @@ func listSystemsHandler(c *gin.Context) {
 
 	var systems []*System
 
-	workgroupID, err := uuid.FromString(c.Param("workgroupId"))
+	workgroupID, err := uuid.FromString(c.Param("id"))
 	if err != nil {
 		provide.RenderError(err.Error(), 404, c)
 		return
@@ -833,7 +833,7 @@ func listSystemsHandler(c *gin.Context) {
 	query := ListSystemsQuery(*organizationID, workgroupID)
 
 	if c.Query("secret_ids") != "" {
-		subjectAccountID := subjectAccountIDFactory(organizationID.String(), c.Param("id"))
+		subjectAccountID := subjectAccountIDFactory(organizationID.String(), workgroupID.String())
 		subjectAccount, _ := resolveSubjectAccount(subjectAccountID)
 
 		query = query.Where("vault_id = ? AND secret_id IN ?", subjectAccount.VaultID.String(), strings.Split(c.Query("secret_ids"), ","))
@@ -860,13 +860,13 @@ func systemDetailsHandler(c *gin.Context) {
 		return
 	}
 
-	workgroupID, err := uuid.FromString(c.Param("workgroupId"))
+	workgroupID, err := uuid.FromString(c.Param("id"))
 	if err != nil {
 		provide.RenderError(err.Error(), 404, c)
 		return
 	}
 
-	systemID, err := uuid.FromString(c.Param("id"))
+	systemID, err := uuid.FromString(c.Param("systemId"))
 	if err != nil {
 		provide.RenderError(err.Error(), 422, c)
 		return
@@ -898,7 +898,7 @@ func createSystemHandler(c *gin.Context) {
 		return
 	}
 
-	workgroupID, err := uuid.FromString(c.Param("workgroupId"))
+	workgroupID, err := uuid.FromString(c.Param("id"))
 	if err != nil {
 		provide.RenderError(err.Error(), 404, c)
 		return
@@ -938,7 +938,7 @@ func updateSystemHandler(c *gin.Context) {
 		return
 	}
 
-	workgroupID, err := uuid.FromString(c.Param("workgroupId"))
+	workgroupID, err := uuid.FromString(c.Param("id"))
 	if err != nil {
 		provide.RenderError(err.Error(), 404, c)
 		return
@@ -957,7 +957,7 @@ func updateSystemHandler(c *gin.Context) {
 		return
 	}
 
-	systemIDStr := c.Param("id")
+	systemIDStr := c.Param("systemId")
 	systemID, err := uuid.FromString(systemIDStr)
 	if err != nil {
 		provide.RenderError(err.Error(), 422, c)
@@ -1003,13 +1003,13 @@ func deleteSystemHandler(c *gin.Context) {
 		return
 	}
 
-	workgroupID, err := uuid.FromString(c.Param("workgroupId"))
+	workgroupID, err := uuid.FromString(c.Param("id"))
 	if err != nil {
 		provide.RenderError(err.Error(), 422, c)
 		return
 	}
 
-	systemIDStr := c.Param("id")
+	systemIDStr := c.Param("systemId")
 	systemID, err := uuid.FromString(systemIDStr)
 	if err != nil {
 		provide.RenderError(err.Error(), 422, c)
