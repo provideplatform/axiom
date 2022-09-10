@@ -18,7 +18,7 @@ CREATE TABLE public.systems (
     id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
     created_at timestamp with time zone NOT NULL,
     name text NOT NULL,
-    type varchar(64) NOT NULL,,
+    type varchar(64) NOT NULL,
     description text,
     organization_id uuid NOT NULL,
     workgroup_id uuid NOT NULL,
@@ -33,3 +33,5 @@ ALTER TABLE ONLY public.systems ADD CONSTRAINT systems_pkey PRIMARY KEY (id);
 CREATE INDEX idx_systems_type ON public.systems USING btree (type);
 CREATE INDEX idx_systems_organization_id_workgroup_id ON public.systems USING btree (organization_id, workgroup_id);
 CREATE INDEX idx_systems_vault_id_secret_id ON public.systems USING btree (vault_id, secret_id);
+
+ALTER TABLE ONLY public.systems ADD CONSTRAINT systems_workgroup_id_foreign FOREIGN KEY (workgroup_id) REFERENCES public.workgroups(id) ON UPDATE CASCADE ON DELETE CASCADE;
