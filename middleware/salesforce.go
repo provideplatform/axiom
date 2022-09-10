@@ -36,7 +36,7 @@ type SalesforceService struct {
 }
 
 // SalesforceService initializes a Salesforce instance
-func SalesforceFactory(params *System) *SalesforceService {
+func SalesforceFactory(params *SystemMetadata) *SalesforceService {
 	common.Log.Warningf("SalesforceNowFactory not implemented")
 	return nil
 }

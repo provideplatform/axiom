@@ -1060,7 +1060,7 @@ func systemReachabilityHandler(c *gin.Context) {
 		return
 	}
 
-	var system middleware.System
+	var system middleware.SystemMetadata
 	err = json.Unmarshal(buf, &system)
 	if err != nil {
 		msg := fmt.Sprintf("failed to check system reachability status; %s", err.Error())
@@ -1252,7 +1252,7 @@ func listSchemasHandler(c *gin.Context) {
 		return
 	}
 
-	var systems []*middleware.System
+	systems := make([]*System, 0)
 	var err error
 
 	useEphemeralSystem := c.Query("system_secret_ids") != ""
@@ -1278,10 +1278,20 @@ func listSchemasHandler(c *gin.Context) {
 
 		token, _ := util.ParseBearerAuthorizationHeader(c, nil)
 		systemSecretIDs := strings.Split(c.Query("system_secret_ids"), ",")
-		systems, err = resolveSystems(token.Raw, c.Query("vault_id"), systemSecretIDs)
+		ephemeralSystems, err := resolveEphemeralSystems(token.Raw, c.Query("vault_id"), systemSecretIDs)
 		if err != nil {
 			provide.RenderError("failed to list systems for ephemerally-referenced system secrets", 403, c)
 			return
+		}
+
+		for _, ephemeralSystem := range ephemeralSystems {
+			sys, err := SystemFromEphemeralSystemMetadata(ephemeralSystem)
+			if err != nil {
+				provide.RenderError("failed to initialize ephemeral system using ephemerally-referenced system secret", 403, c)
+				return
+			}
+
+			systems = append(systems, sys)
 		}
 	}
 
@@ -1289,7 +1299,7 @@ func listSchemasHandler(c *gin.Context) {
 
 	// FIXME-- dispatch goroutine-per-system with channel to sync the returned schemas for aggregation...
 	for _, system := range systems {
-		sor := middleware.SystemFactory(system)
+		sor := system.middlewareFactory()
 		if sor == nil {
 			systemName := "(nil)"
 			if system.Name != nil {
@@ -1349,7 +1359,7 @@ func schemaDetailsHandler(c *gin.Context) {
 		return
 	}
 
-	var systems []*middleware.System
+	systems := make([]*System, 0)
 	var err error
 
 	useEphemeralSystem := c.Query("system_secret_ids") != ""
@@ -1375,10 +1385,20 @@ func schemaDetailsHandler(c *gin.Context) {
 
 		token, _ := util.ParseBearerAuthorizationHeader(c, nil)
 		systemSecretIDs := strings.Split(c.Query("system_secret_ids"), ",")
-		systems, err = resolveSystems(token.Raw, c.Query("vault_id"), systemSecretIDs)
+		ephemeralSystems, err := resolveEphemeralSystems(token.Raw, c.Query("vault_id"), systemSecretIDs)
 		if err != nil {
 			provide.RenderError("failed to list systems for ephemerally-referenced system secrets", 403, c)
 			return
+		}
+
+		for _, ephemeralSystem := range ephemeralSystems {
+			sys, err := SystemFromEphemeralSystemMetadata(ephemeralSystem)
+			if err != nil {
+				provide.RenderError("failed to initialize ephemeral system using ephemerally-referenced system secret", 403, c)
+				return
+			}
+
+			systems = append(systems, sys)
 		}
 	}
 
@@ -1386,7 +1406,7 @@ func schemaDetailsHandler(c *gin.Context) {
 
 	// FIXME-- filter systems to resolve the original system from which the requested schema is being requested...
 	for _, system := range systems {
-		sor := middleware.SystemFactory(system)
+		sor := system.middlewareFactory()
 		if sor == nil {
 			systemName := "(nil)"
 			if system.Name != nil {

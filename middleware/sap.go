@@ -38,7 +38,7 @@ type SAPService struct {
 }
 
 // SAPFactory initializes a SAPService instance
-func SAPFactory(params *System) *SAPService {
+func SAPFactory(params *SystemMetadata) *SAPService {
 	var endpoint *url.URL
 	var err error
 
@@ -52,7 +52,7 @@ func SAPFactory(params *System) *SAPService {
 
 	if params.Auth == nil {
 		// HACK
-		params.Auth = &SystemAuthentication{}
+		params.Auth = &SystemAuth{}
 	}
 
 	return &SAPService{

@@ -41,7 +41,7 @@ type ServiceNowService struct {
 }
 
 // ServiceNowFactory initializes a ServiceNow instance
-func ServiceNowFactory(params *System) *ServiceNowService {
+func ServiceNowFactory(params *SystemMetadata) *ServiceNowService {
 	common.Log.Warningf("ServiceNowFactory not implemented")
 	return nil
 }

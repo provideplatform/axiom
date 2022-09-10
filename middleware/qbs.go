@@ -37,7 +37,7 @@ type QBSService struct {
 }
 
 // QBSFactory initializes a QBSService instance
-func QBSFactory(params *System) *QBSService {
+func QBSFactory(params *SystemMetadata) *QBSService {
 	var endpoint *url.URL
 	var err error
 
@@ -51,7 +51,7 @@ func QBSFactory(params *System) *QBSService {
 
 	if params.Auth == nil {
 		// HACK
-		params.Auth = &SystemAuthentication{}
+		params.Auth = &SystemAuth{}
 	}
 
 	return &QBSService{

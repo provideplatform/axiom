@@ -32,7 +32,7 @@ type EphemeralMemoryService struct {
 }
 
 // EphemeralMemoryFactory initializes a EphemeralMemory instance
-func EphemeralMemoryFactory(params *System) *EphemeralMemoryService {
+func EphemeralMemoryFactory(params *SystemMetadata) *EphemeralMemoryService {
 	common.Log.Warningf("EphemeralMemory not implemented")
 	return nil
 }

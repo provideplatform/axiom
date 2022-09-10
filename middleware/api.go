@@ -28,22 +28,40 @@ const sorIdentifierServiceNow = "servicenow"
 const SORBusinessObjectStatusError = "error"
 const SORBusinessObjectStatusSuccess = "success"
 
-type System struct {
-	Auth        *SystemAuthentication `json:"auth"`
-	EndpointURL *string               `json:"endpoint_url"`
-	Name        *string               `json:"name"`
-	System      *string               `json:"system"`
-	Type        *string               `json:"type"`
+// SystemMetadata is a convenience wrapper for parsing encrypted secret
+type SystemMetadata struct {
+	Auth        *SystemAuth       `sql:"-" json:"auth,omitempty"`
+	EndpointURL *string           `sql:"-" json:"endpoint_url"`
+	Middleware  *SystemMiddleware `sql:"-" json:"middleware,omitempty"`
+	Name        *string           `sql:"-" json:"name"`
+	Type        *string           `sql:"-" json:"type"`
 }
 
-type SystemAuthentication struct {
-	Method                   *string `json:"method"`
-	Username                 *string `json:"username"`
-	Password                 *string `json:"password"`
+// SystemAuth defines authn/authz params
+type SystemAuth struct {
+	Name        *string `json:"name,omitempty"`
+	Description *string `json:"description,omitempty"`
+	Method      *string `json:"method"`
+	Username    *string `json:"username"`
+	Password    *string `json:"password,omitempty"`
+	Token       *string `json:"token,omitempty"`
+
 	RequireClientCredentials bool    `json:"require_client_credentials"`
-	ClientID                 *string `json:"client_id"`
-	ClientSecret             *string `json:"client_secret"`
-	Token                    *string `json:"token"`
+	ClientID                 *string `json:"client_id,omitempty"`
+	ClientSecret             *string `json:"client_secret,omitempty"`
+}
+
+// SystemMiddleware defines middleware for inbound and outbound middleware
+type SystemMiddlewarePolicy struct {
+	Auth *SystemAuth `json:"auth"`
+	Name *string     `json:"name"`
+	URL  *string     `json:"url"`
+}
+
+// SystemMiddleware defines middleware for inbound and outbound middleware
+type SystemMiddleware struct {
+	Inbound  *SystemMiddlewarePolicy `json:"inbound,omitempty"`
+	Outbound *SystemMiddlewarePolicy `json:"outbound,omitempty"`
 }
 
 // SOR defines an interface for system of record backends
@@ -60,7 +78,7 @@ type SOR interface {
 }
 
 // SystemFactory initializes and returns a system using the given middleware params
-func SystemFactory(params *System) SOR {
+func SystemFactory(params *SystemMetadata) SOR {
 	if params.Name == nil {
 		common.Log.Warningf("middleware factory requires a name parameter")
 		return nil

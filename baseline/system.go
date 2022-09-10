@@ -9,6 +9,7 @@ import (
 	dbconf "github.com/kthomas/go-db-config"
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideplatform/baseline/common"
+	"github.com/provideplatform/baseline/middleware"
 	provide "github.com/provideplatform/provide-go/api"
 	"github.com/provideplatform/provide-go/api/vault"
 )
@@ -25,48 +26,15 @@ type System struct {
 	OrganizationID *uuid.UUID `sql:"not null" json:"organization_id"`
 	WorkgroupID    *uuid.UUID `sql:"not null" json:"workgroup_id"`
 
-	Auth        *SystemAuth       `sql:"-" json:"auth,omitempty"`
-	EndpointURL *string           `sql:"-" json:"endpoint_url"`
-	Middleware  *SystemMiddleware `sql:"-" json:"middleware,omitempty"`
+	Auth        *middleware.SystemAuth       `sql:"-" json:"auth,omitempty"`
+	EndpointURL *string                      `sql:"-" json:"endpoint_url"`
+	Middleware  *middleware.SystemMiddleware `sql:"-" json:"middleware,omitempty"`
 
 	VaultID  *uuid.UUID `sql:"not null" json:"-"`
 	SecretID *uuid.UUID `sql:"not null" json:"-"`
 
 	// delegate *SubjectAccount `sql:"-" json:"-"`
-	metadata *SystemMetadata `sql:"-" json:"-"`
-}
-
-// SystemMetadata is a convenience wrapper for parsing encrypted secret
-type SystemMetadata struct {
-	Auth        *SystemAuth       `sql:"-" json:"auth,omitempty"`
-	EndpointURL *string           `sql:"-" json:"endpoint_url"`
-	Middleware  *SystemMiddleware `sql:"-" json:"middleware,omitempty"`
-}
-
-// SystemAuth defines authn/authz params
-type SystemAuth struct {
-	Name        *string `json:"name,omitempty"`
-	Description *string `json:"description,omitempty"`
-	Method      *string `json:"method"`
-	Username    *string `json:"username"`
-	Password    *string `json:"password,omitempty"`
-
-	RequireClientCredentials bool    `json:"require_client_credentials"`
-	ClientID                 *string `json:"client_id,omitempty"`
-	ClientSecret             *string `json:"client_secret,omitempty"`
-}
-
-// SystemMiddleware defines middleware for inbound and outbound middleware
-type SystemMiddlewarePolicy struct {
-	Auth *SystemAuth `json:"auth"`
-	Name *string     `json:"name"`
-	URL  *string     `json:"url"`
-}
-
-// SystemMiddleware defines middleware for inbound and outbound middleware
-type SystemMiddleware struct {
-	Inbound  *SystemMiddlewarePolicy `json:"inbound,omitempty"`
-	Outbound *SystemMiddlewarePolicy `json:"outbound,omitempty"`
+	metadata *middleware.SystemMetadata `sql:"-" json:"-"`
 }
 
 // ListSystemsQuery returns the query for retrieving a list of systems for the given subject account context
@@ -85,6 +53,18 @@ func FindSystemByID(id uuid.UUID) *System {
 	}
 	system.enrich()
 	return system
+}
+
+// SystemFromEphemeralSystemMetadata returns a system for the given middleware system metadata
+func SystemFromEphemeralSystemMetadata(metadata *middleware.SystemMetadata) (*System, error) {
+	system := &System{
+		Name:        metadata.Name,
+		EndpointURL: metadata.EndpointURL,
+		Type:        metadata.Type,
+		metadata:    metadata,
+	}
+
+	return system, nil
 }
 
 // enrich the underlying system
@@ -186,7 +166,7 @@ func (s *System) persistSecret() bool {
 		return false
 	}
 
-	s.metadata = &SystemMetadata{
+	s.metadata = &middleware.SystemMetadata{
 		Auth:        s.Auth,
 		EndpointURL: s.EndpointURL,
 		Middleware:  s.Middleware,
@@ -225,6 +205,21 @@ func (s *System) persistSecret() bool {
 	}
 
 	return s.SecretID != nil && *s.SecretID != uuid.Nil
+}
+
+// middlewareFactory initializes the middleware system implementation
+func (s *System) middlewareFactory() middleware.SOR {
+	if s.metadata == nil && s.SecretID != nil {
+		s.enrich()
+	}
+
+	return middleware.SystemFactory(&middleware.SystemMetadata{
+		Auth:        s.Auth,
+		EndpointURL: s.EndpointURL,
+		Middleware:  s.Middleware,
+		Name:        s.Name,
+		Type:        s.Type,
+	})
 }
 
 // Validate a system

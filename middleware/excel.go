@@ -31,7 +31,7 @@ type ExcelService struct {
 }
 
 // ExcelFactory initializes an Excel instance
-func ExcelFactory(params *System) *ExcelService {
+func ExcelFactory(params *SystemMetadata) *ExcelService {
 	common.Log.Warningf("ExcelFactory not implemented")
 	return nil
 }

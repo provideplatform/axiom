@@ -202,36 +202,23 @@ func (s *SubjectAccount) validate() bool {
 	return len(s.Errors) == 0
 }
 
-func (s *SubjectAccount) listSystems() ([]*middleware.System, error) {
-	token, err := s.authorizeAccessToken()
+func (s *SubjectAccount) listSystems() ([]*System, error) {
+	if s.SubjectID == nil || s.Metadata == nil || s.Metadata.WorkgroupID == nil {
+		return nil, fmt.Errorf("failed to list systems for subject account: %s", *s.ID)
+	}
+
+	organizationID, err := uuid.FromString(*s.SubjectID)
 	if err != nil {
-		common.Log.Warningf("failed to vend organization access token; %s", err.Error())
-		return nil, err
+		return nil, fmt.Errorf("failed parse organization id for subject account: %s", *s.ID)
 	}
 
-	org, err := ident.GetOrganizationDetails(*token.AccessToken, *s.Metadata.OrganizationID, map[string]interface{}{})
+	workgroupID, err := uuid.FromString(*s.Metadata.WorkgroupID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to resolve organization: %s; %s", *s.Metadata.OrganizationID, err.Error())
+		return nil, fmt.Errorf("failed parse workgroup id for subject account: %s", *s.ID)
 	}
 
-	var systems []*middleware.System
-
-	if workgroupsMap, workgroupsMapOk := org.Metadata["workgroups"].(map[string]interface{}); workgroupsMapOk {
-		if workgroup, workgroupOk := workgroupsMap[*s.Metadata.WorkgroupID].(map[string]interface{}); workgroupOk {
-			common.Log.Debugf("resolved workgroup... %s", workgroup)
-			if systemSecretIDs, systemSecretIDsOk := workgroup["system_secret_ids"].([]interface{}); systemSecretIDsOk {
-				secretIDs := make([]string, 0)
-				for _, secretID := range systemSecretIDs {
-					secretIDs = append(secretIDs, secretID.(string))
-				}
-
-				systems, err = resolveSystems(*token.AccessToken, workgroup["vault_id"].(string), secretIDs)
-				if err != nil {
-					return nil, fmt.Errorf("failed to unmarshal system secret value: %s", err.Error())
-				}
-			}
-		}
-	}
+	systems := make([]*System, 0)
+	ListSystemsQuery(organizationID, workgroupID).Find(&systems)
 
 	return systems, nil
 }
@@ -243,9 +230,15 @@ func (s *SubjectAccount) resolveSystem(mappingType string) (middleware.SOR, erro
 	}
 
 	for _, sys := range systems {
-		if sys.Name != nil && *sys.Name == "sap" {
-			// HACK!!! TODO-- reesolve all systems and return []*middleware.SOR
-			return middleware.SystemFactory(sys), nil
+		err := sys.enrich()
+		if err != nil {
+			return nil, err
+		}
+
+		if sys.Type != nil && *sys.Type == "sap" { // FIXME-- use a const
+			common.Log.Warningf("types are not yet associated with a system_id; selecting first SAP system for demonstration purposes")
+			// HACK!!! TODO-- async query all systems and return if the given type has a schema...
+			return sys.middlewareFactory(), nil
 		}
 	}
 
@@ -792,7 +785,7 @@ func initSubjectAccounts() {
 }
 
 // configureSystem
-func (s *SubjectAccount) configureSystem(system *middleware.System) error {
+func (s *SubjectAccount) configureSystem(system *middleware.SystemMetadata) error {
 	if system.EndpointURL == nil {
 		return errors.New("no endpoint url resolved for configured system")
 	}
@@ -1089,8 +1082,14 @@ func (s *SubjectAccount) requireSystems() error {
 			continue
 		}
 
+		err := s.enrich()
+		if err != nil {
+			common.Log.Warningf("failed to to configure %s system for BPI subject account: %s; system: %s; enrichment failed; %s", *system.Type, *s.ID, system.ID, err.Error())
+			continue
+		}
+
 		common.Log.Debugf("attempting to configure %s system for BPI subject account: %s", *system.Type, *s.ID)
-		err := s.configureSystem(system)
+		err = s.configureSystem(system.metadata)
 		if err != nil {
 			common.Log.Warningf("failed to configure %s system: %s; %s", *system.Type, *system.Name, err.Error())
 			continue
@@ -1220,8 +1219,8 @@ func subjectAccountIDFactory(organizationID, workgroupID string) string {
 	return common.SHA256(fmt.Sprintf("%s.%s", organizationID, workgroupID))
 }
 
-func resolveSystems(accessToken, vaultID string, systemSecretIDs []string) ([]*middleware.System, error) {
-	systems := make([]*middleware.System, 0)
+func resolveEphemeralSystems(accessToken, vaultID string, systemSecretIDs []string) ([]*middleware.SystemMetadata, error) {
+	systems := make([]*middleware.SystemMetadata, 0)
 
 	for _, secretID := range systemSecretIDs {
 		common.Log.Debugf("resolved system secret id... %s", secretID)
@@ -1235,7 +1234,7 @@ func resolveSystems(accessToken, vaultID string, systemSecretIDs []string) ([]*m
 			return nil, fmt.Errorf("failed to fetch system secret: %s; %s", secretID, err.Error())
 		}
 
-		var system *middleware.System
+		var system *middleware.SystemMetadata
 		err = json.Unmarshal([]byte(*secret.Value), &system)
 		if err != nil {
 			return nil, fmt.Errorf("failed to unmarshal system secret value: %s", err.Error())

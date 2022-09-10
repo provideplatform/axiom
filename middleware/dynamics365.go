@@ -42,7 +42,7 @@ const subscribeTickInterval = 500 * time.Millisecond
 const subscribeSleepInterval = 250 * time.Millisecond
 
 // Dynamics365Factory initializes a Dynamics365Service instance
-func Dynamics365Factory(params *System) *Dynamics365Service {
+func Dynamics365Factory(params *SystemMetadata) *Dynamics365Service {
 	common.Log.Warningf("Dynamics365Factory not implemented")
 	return nil
 }
