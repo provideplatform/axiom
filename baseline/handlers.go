@@ -83,6 +83,12 @@ func InstallPublicWorkgroupAPI(r *gin.Engine) {
 // InstallSystemsAPI installs system management APIs
 func InstallSystemsAPI(r *gin.Engine) {
 	r.POST("/api/v1/systems/reachability", systemReachabilityHandler)
+
+	r.GET("/api/v1/workgroups/:id/systems", listSystemsHandler)
+	r.GET("/api/v1/workgroups/:workgroupId/systems/:id", systemDetailsHandler)
+	r.POST("/api/v1/workgroups/:id/systems", createSystemHandler)
+	r.PUT("/api/v1/workgroups/:workgroupId/systems/:id", updateSystemHandler)
+	r.DELETE("/api/v1/workgroups/:workgroupId/systems/:id", deleteSystemHandler)
 }
 
 // InstallSchemasAPI installs middleware schemas API
@@ -807,6 +813,227 @@ func createPublicWorkgroupInviteHandler(c *gin.Context) {
 			"organization_name": params.OrganizationName,
 		},
 	})
+}
+
+func listSystemsHandler(c *gin.Context) {
+	organizationID := util.AuthorizedSubjectID(c, "organization")
+	if organizationID == nil {
+		provide.RenderError("unauthorized", 401, c)
+		return
+	}
+
+	var systems []*System
+
+	workgroupID, err := uuid.FromString(c.Param("workgroupId"))
+	if err != nil {
+		provide.RenderError(err.Error(), 404, c)
+		return
+	}
+
+	query := ListSystemsQuery(*organizationID, workgroupID)
+
+	if c.Query("secret_ids") != "" {
+		subjectAccountID := subjectAccountIDFactory(organizationID.String(), c.Param("id"))
+		subjectAccount, _ := resolveSubjectAccount(subjectAccountID)
+
+		query = query.Where("vault_id = ? AND secret_id.status IN ?", subjectAccount.VaultID.String(), strings.Split(c.Query("secret_ids"), ","))
+	}
+
+	if c.Query("type") != "" {
+		query = query.Where("type = ?", c.Query("type"))
+	}
+
+	query = query.Order("type DESC")
+	provide.Paginate(c, query, &System{}).Find(&systems)
+
+	for _, system := range systems {
+		system.enrich()
+	}
+
+	provide.Render(systems, 200, c)
+}
+
+func systemDetailsHandler(c *gin.Context) {
+	organizationID := util.AuthorizedSubjectID(c, "organization")
+	if organizationID == nil {
+		provide.RenderError("unauthorized", 401, c)
+		return
+	}
+
+	workgroupID, err := uuid.FromString(c.Param("workgroupId"))
+	if err != nil {
+		provide.RenderError(err.Error(), 404, c)
+		return
+	}
+
+	systemID, err := uuid.FromString(c.Param("id"))
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	system := FindSystemByID(systemID)
+	if system == nil {
+		provide.RenderError("not found", 404, c)
+		return
+	}
+
+	if system.WorkgroupID == nil || !strings.EqualFold(workgroupID.String(), system.WorkgroupID.String()) {
+		provide.RenderError("forbidden", 403, c)
+		return
+	}
+
+	if system != nil {
+		system.enrich()
+		provide.Render(system, 200, c)
+	} else {
+		provide.RenderError("system not found", 404, c)
+	}
+}
+
+func createSystemHandler(c *gin.Context) {
+	organizationID := util.AuthorizedSubjectID(c, "organization")
+	if organizationID == nil {
+		provide.RenderError("unauthorized", 401, c)
+		return
+	}
+
+	workgroupID, err := uuid.FromString(c.Param("workgroupId"))
+	if err != nil {
+		provide.RenderError(err.Error(), 404, c)
+		return
+	}
+
+	buf, err := c.GetRawData()
+	if err != nil {
+		provide.RenderError(err.Error(), 400, c)
+		return
+	}
+
+	var system *System
+	err = json.Unmarshal(buf, &system)
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	system.WorkgroupID = &workgroupID
+	system.OrganizationID = organizationID
+
+	if system.Create() {
+		provide.Render(system, 201, c)
+	} else if len(system.Errors) > 0 {
+		obj := map[string]interface{}{}
+		obj["errors"] = system.Errors
+		provide.Render(obj, 422, c)
+	} else {
+		provide.RenderError("internal persistence error", 500, c)
+	}
+}
+
+func updateSystemHandler(c *gin.Context) {
+	organizationID := util.AuthorizedSubjectID(c, "organization")
+	if organizationID == nil {
+		provide.RenderError("unauthorized", 401, c)
+		return
+	}
+
+	workgroupID, err := uuid.FromString(c.Param("workgroupId"))
+	if err != nil {
+		provide.RenderError(err.Error(), 404, c)
+		return
+	}
+
+	buf, err := c.GetRawData()
+	if err != nil {
+		provide.RenderError(err.Error(), 400, c)
+		return
+	}
+
+	var _system *System
+	err = json.Unmarshal(buf, &_system)
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	systemIDStr := c.Param("id")
+	systemID, err := uuid.FromString(systemIDStr)
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	if _system.ID != uuid.Nil && !strings.EqualFold(_system.ID.String(), systemID.String()) {
+		provide.RenderError("system id cannot be changed", 422, c)
+		return
+	}
+
+	system := FindSystemByID(systemID)
+	if system == nil {
+		provide.RenderError("not found", 404, c)
+		return
+	}
+
+	if system.WorkgroupID == nil || !strings.EqualFold(workgroupID.String(), system.WorkgroupID.String()) {
+		provide.RenderError("forbidden", 403, c)
+		return
+	}
+
+	if !strings.EqualFold(system.ID.String(), systemID.String()) {
+		provide.RenderError("", 422, c)
+		return
+	}
+
+	if system.Update() {
+		provide.Render(nil, 204, c)
+	} else if len(system.Errors) > 0 {
+		obj := map[string]interface{}{}
+		obj["errors"] = system.Errors
+		provide.Render(obj, 422, c)
+	} else {
+		provide.RenderError("internal persistence error", 500, c)
+	}
+}
+
+func deleteSystemHandler(c *gin.Context) {
+	organizationID := util.AuthorizedSubjectID(c, "organization")
+	if organizationID == nil {
+		provide.RenderError("unauthorized", 401, c)
+		return
+	}
+
+	workgroupID, err := uuid.FromString(c.Param("workgroupId"))
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	systemIDStr := c.Param("id")
+	systemID, err := uuid.FromString(systemIDStr)
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	system := FindSystemByID(systemID)
+	if system == nil {
+		provide.RenderError("not found", 404, c)
+		return
+	}
+
+	if system.WorkgroupID == nil || !strings.EqualFold(workgroupID.String(), system.WorkgroupID.String()) {
+		provide.RenderError("forbidden", 403, c)
+		return
+	}
+
+	if system.Delete() {
+		provide.Render(nil, 204, c)
+	} else if len(system.Errors) > 0 {
+		obj := map[string]interface{}{}
+		obj["errors"] = system.Errors
+		provide.Render(obj, 422, c)
+	}
 }
 
 func systemReachabilityHandler(c *gin.Context) {

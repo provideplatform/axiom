@@ -45,6 +45,7 @@ import (
 
 const prvdSubjectAccountType = "PRVD"
 const vaultSecretTypeBPISubjectAccount = "bpi_subject_account"
+const vaultSecretTypeSystem = "system"
 
 var (
 	// SubjectAccounts are the cached BPI subject accounts on the configured instance; in-memory cache available only to instances serving the API
