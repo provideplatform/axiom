@@ -151,6 +151,14 @@ func (s *System) deleteSecret() bool {
 }
 
 func (s *System) persistSecret() bool {
+	if s.SecretID != nil {
+		if !s.deleteSecret() {
+			return false
+		}
+
+		s.SecretID = nil
+	}
+
 	subjectAccountID := subjectAccountIDFactory(s.OrganizationID.String(), s.WorkgroupID.String())
 	subjectAccount, err := resolveSubjectAccount(subjectAccountID)
 	if err != nil {
@@ -292,6 +300,10 @@ func (s *System) Create() bool {
 // Update the system
 func (s *System) Update() bool {
 	if !s.Validate() {
+		return false
+	}
+
+	if !s.persistSecret() {
 		return false
 	}
 
