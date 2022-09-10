@@ -58,8 +58,10 @@ func FindSystemByID(id uuid.UUID) *System {
 // SystemFromEphemeralSystemMetadata returns a system for the given middleware system metadata
 func SystemFromEphemeralSystemMetadata(metadata *middleware.SystemMetadata) (*System, error) {
 	system := &System{
-		Name:        metadata.Name,
+		Auth:        metadata.Auth,
 		EndpointURL: metadata.EndpointURL,
+		Middleware:  metadata.Middleware,
+		Name:        metadata.Name,
 		Type:        metadata.Type,
 		metadata:    metadata,
 	}
