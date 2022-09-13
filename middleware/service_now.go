@@ -19,6 +19,7 @@ package middleware
 import (
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/url"
 	"os"
 	"sync"
@@ -320,6 +321,12 @@ func (s *ServiceNowService) DeleteTenant(organizationID string) error {
 func (s *ServiceNowService) HealthCheck() error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+
+	conn, err := net.DialTimeout("tcp", s.Host, defaultServiceNowReachabilityTimeout)
+	if err == nil {
+		defer conn.Close()
+		return nil
+	}
 
 	if s.healthcheckPath == nil {
 		return fmt.Errorf("failed to complete health check; SERVICENOW_HEALTHCHECK_API_PATH not set")
