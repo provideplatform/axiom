@@ -29,10 +29,25 @@ import (
 	provide "github.com/provideplatform/provide-go/common"
 )
 
+const defaultAuthenticatePath = "proubc/auth"
+const defaultTenantPath = "proubc/tenants"
+const defaultListSchemasPath = "proubc/schemas"
+const defaultSchemaDetailsPath = "proubc/schemas"
+const defaultObjectsPath = "proubc/objects"
+const defaultHealthcheckPath = "proubc/status"
+
 // SAPService for the SAP API
 type SAPService struct {
 	api.Client
 	mutex        sync.Mutex
+
+	authenticateEndpoint *string
+	tenantPath *string
+	listSchemasPath *string
+	schemaDetailsPath *string
+	objectsPath *string
+	healthcheckPath *string
+
 	clientID     *string
 	clientSecret *string
 }
@@ -55,16 +70,52 @@ func SAPFactory(params *SystemMetadata) *SAPService {
 		params.Auth = &SystemAuth{}
 	}
 
+	authenticatePath := common.StringOrNil(defaultAuthenticatePath)
+	if os.Getenv("SAP_AUTHENTICATE_API_PATH") != "" {
+		authenticatePath = common.StringOrNil(os.Getenv("SAP_AUTHENTICATE_API_PATH"))
+	}
+
+	tenantPath := common.StringOrNil(defaultTenantPath)
+	if os.Getenv("SAP_TENANT_API_PATH") != "" {
+		tenantPath = common.StringOrNil(os.Getenv("SAP_TENANT_API_PATH"))
+	}
+
+	listSchemasPath := common.StringOrNil(defaultListSchemasPath)
+	if os.Getenv("SAP_LIST_SCHEMAS_API_PATH") != "" {
+		listSchemasPath = common.StringOrNil(os.Getenv("SAP_LIST_SCHEMAS_API_PATH"))
+	}
+
+	schemaDetailsPath := common.StringOrNil(defaultSchemaDetailsPath)
+	if os.Getenv("SAP_SCHEMA_DETAILS_API_PATH") != "" {
+		schemaDetailsPath = common.StringOrNil(os.Getenv("SAP_SCHEMA_DETAILS_API_PATH"))
+	}
+
+	objectsPath := common.StringOrNil(defaultObjectsPath)
+	if os.Getenv("SAP_OBJECTS_API_PATH") != "" {
+		objectsPath = common.StringOrNil(os.Getenv("SAP_OBJECTS_API_PATH"))
+	}
+
+	healthcheckPath := common.StringOrNil(defaultHealthcheckPath)
+	if os.Getenv("SAP_HEALTHCHECK_API_PATH") != "" {
+		healthcheckPath = common.StringOrNil(os.Getenv("SAP_HEALTHCHECK_API_PATH"))
+	}
+
 	return &SAPService{
 		api.Client{
 			Host:     endpoint.Host,
 			Path:     endpoint.Path,
 			Scheme:   endpoint.Scheme,
 			Token:    params.Auth.Token,
-			Username: provide.StringOrNil(*params.Auth.Username),
-			Password: provide.StringOrNil(*params.Auth.Password),
+			Username: common.StringOrNil(*params.Auth.Username),
+			Password: common.StringOrNil(*params.Auth.Password),
 		},
 		sync.Mutex{},
+		authenticatePath,
+		tenantPath,
+		listSchemasPath,
+		schemaDetailsPath,
+		objectsPath,
+		healthcheckPath,
 		params.Auth.ClientID,
 		params.Auth.ClientSecret,
 	}
@@ -98,16 +149,34 @@ func InitSAPService(token *string) *SAPService {
 		password = os.Getenv("SAP_API_PASSWORD")
 	}
 
-	var clientID *string
-	if os.Getenv("SAP_API_CLIENT_ID") != "" {
-		_clientID := os.Getenv("SAP_API_CLIENT_ID")
-		clientID = &_clientID
+	authenticatePath := common.StringOrNil(defaultAuthenticatePath)
+	if os.Getenv("SAP_AUTHENTICATE_API_PATH") != "" {
+		authenticatePath = common.StringOrNil(os.Getenv("SAP_AUTHENTICATE_API_PATH"))
 	}
 
-	var clientSecret *string
-	if os.Getenv("SAP_API_CLIENT_SECRET") != "" {
-		_clientSecret := os.Getenv("SAP_API_CLIENT_SECRET")
-		clientSecret = &_clientSecret
+	tenantPath := common.StringOrNil(defaultTenantPath)
+	if os.Getenv("SAP_TENANT_API_PATH") != "" {
+		tenantPath = common.StringOrNil(os.Getenv("SAP_TENANT_API_PATH"))
+	}
+
+	listSchemasPath := common.StringOrNil(defaultListSchemasPath)
+	if os.Getenv("SAP_LIST_SCHEMAS_API_PATH") != "" {
+		listSchemasPath = common.StringOrNil(os.Getenv("SAP_LIST_SCHEMAS_API_PATH"))
+	}
+
+	schemaDetailsPath := common.StringOrNil(defaultSchemaDetailsPath)
+	if os.Getenv("SAP_SCHEMA_DETAILS_API_PATH") != "" {
+		schemaDetailsPath = common.StringOrNil(os.Getenv("SAP_SCHEMA_DETAILS_API_PATH"))
+	}
+
+	objectsPath := common.StringOrNil(defaultObjectsPath)
+	if os.Getenv("SAP_OBJECTS_API_PATH") != "" {
+		objectsPath = common.StringOrNil(os.Getenv("SAP_OBJECTS_API_PATH"))
+	}
+
+	healthcheckPath := common.StringOrNil(defaultHealthcheckPath)
+	if os.Getenv("SAP_HEALTHCHECK_API_PATH") != "" {
+		healthcheckPath = common.StringOrNil(os.Getenv("SAP_HEALTHCHECK_API_PATH"))
 	}
 
 	return &SAPService{
@@ -116,12 +185,18 @@ func InitSAPService(token *string) *SAPService {
 			Path:     path,
 			Scheme:   scheme,
 			Token:    token,
-			Username: provide.StringOrNil(username),
-			Password: provide.StringOrNil(password),
+			Username: common.StringOrNil(username),
+			Password: common.StringOrNil(password),
 		},
 		sync.Mutex{},
-		clientID,
-		clientSecret,
+		authenticatePath,
+		tenantPath,
+		listSchemasPath,
+		schemaDetailsPath,
+		objectsPath,
+		healthcheckPath,
+		nil,
+		nil,
 	}
 }
 
@@ -150,7 +225,12 @@ func (s *SAPService) Authenticate() error {
 	s.Headers = map[string][]string{
 		"X-CSRF-Token": {"Fetch"},
 	}
-	status, resp, err := s.Head(s.requestURI("proubc/auth"), map[string]interface{}{})
+
+	if s.authenticateEndpoint == nil {
+		return fmt.Errorf("failed to authenticate user; SAP authenticate path not set")
+	}
+
+	status, resp, err := s.Head(s.requestURI(*s.authenticateEndpoint), map[string]interface{}{})
 	if err != nil {
 		return fmt.Errorf("failed to authenticate user; status: %v; %s", status, err.Error())
 	}
@@ -158,7 +238,7 @@ func (s *SAPService) Authenticate() error {
 
 	var cookies *string
 	if setCookie, setCookieOk := resp["Set-Cookie"]; setCookieOk {
-		cookies = provide.StringOrNil(strings.Join(setCookie, "; "))
+		cookies = common.StringOrNil(strings.Join(setCookie, "; "))
 	}
 	s.Cookie = cookies
 	if s.Cookie == nil {
@@ -171,7 +251,7 @@ func (s *SAPService) Authenticate() error {
 
 	var csrfToken *string
 	if len(resp["x-csrf-token"]) == 1 {
-		csrfToken = provide.StringOrNil(resp["x-csrf-token"][0])
+		csrfToken = common.StringOrNil(resp["x-csrf-token"][0])
 	}
 	if csrfToken == nil {
 		return fmt.Errorf("failed to authenticate user; no x-csrf-token header; status: %v", status)
@@ -197,7 +277,11 @@ func (s *SAPService) ConfigureTenant(params map[string]interface{}) error {
 	// 	params["company_code"] = companyCode
 	// }
 
-	status, _, err := s.Post(s.requestURI("proubc/tenants"), params)
+	if s.tenantPath == nil {
+		return fmt.Errorf("failed to authenticate user; SAP tenant path not set")
+	}
+
+	status, _, err := s.Post(s.requestURI(*s.tenantPath), params)
 	if err != nil {
 		return err
 	}
@@ -223,7 +307,11 @@ func (s *SAPService) ListSchemas(params map[string]interface{}) (interface{}, er
 		return nil, err
 	}
 
-	uri := s.requestURI("proubc/schemas")
+	if s.listSchemasPath == nil {
+		return nil, fmt.Errorf("failed to fetch business object model; SAP list schemas path not set")
+	}
+
+	uri := s.requestURI(*s.listSchemasPath)
 	status, resp, err := s.Get(uri, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch business object model; status: %v; %s", status, err.Error())
@@ -269,7 +357,11 @@ func (s *SAPService) GetSchema(recordType string, params map[string]interface{})
 		return nil, err
 	}
 
-	uri := s.requestURI(fmt.Sprintf("proubc/schemas/%s", recordType))
+	if s.schemaDetailsPath == nil {
+		return nil, fmt.Errorf("failed to fetch business object model; SAP schema details path not set")
+	}
+
+	uri := s.requestURI(fmt.Sprintf("%s/%s", *s.schemaDetailsPath, recordType))
 	status, resp, err := s.Get(uri, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch business object model; status: %v; %s", status, err.Error())
@@ -325,7 +417,11 @@ func (s *SAPService) CreateObject(params map[string]interface{}) (interface{}, e
 		return nil, err
 	}
 
-	status, resp, err := s.Post(s.requestURI("proubc/objects"), params)
+	if s.objectsPath == nil {
+		return nil, fmt.Errorf("failed to create business object; SAP objects path not set")
+	}
+
+	status, resp, err := s.Post(s.requestURI(*s.objectsPath), params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create business object; status: %v; %s", status, err.Error())
 	}
@@ -347,7 +443,11 @@ func (s *SAPService) UpdateObject(id string, params map[string]interface{}) erro
 		return err
 	}
 
-	uri := s.requestURI(fmt.Sprintf("proubc/objects/%s", id))
+	if s.objectsPath == nil {
+		return fmt.Errorf("failed to update business object; SAP objects path not set")
+	}
+
+	uri := s.requestURI(fmt.Sprintf("%s/%s", *s.objectsPath, id))
 	status, _, err := s.Put(uri, params)
 	if err != nil {
 		return fmt.Errorf("failed to update business object; status: %v; %s", status, err.Error())
@@ -370,7 +470,11 @@ func (s *SAPService) UpdateObjectStatus(id string, params map[string]interface{}
 		return err
 	}
 
-	uri := s.requestURI(fmt.Sprintf("proubc/objects/%s/status", id))
+	if s.objectsPath == nil {
+		return fmt.Errorf("failed to update business object status; SAP objects path not set")
+	}
+
+	uri := s.requestURI(fmt.Sprintf("%s/%s/status", *s.objectsPath, id))
 	status, _, err := s.Put(uri, params)
 	if err != nil {
 		provide.Log.Warningf("failed to update business object status; status: %v; %s", status, err.Error())
@@ -396,7 +500,11 @@ func (s *SAPService) DeleteTenant(organizationID string) error {
 		return err
 	}
 
-	uri := s.requestURI(fmt.Sprintf("proubc/tenants/%s", organizationID))
+	if s.tenantPath == nil {
+		return fmt.Errorf("failed to authenticate user; SAP tenant path not set")
+	}
+
+	uri := s.requestURI(fmt.Sprintf("%s/%s", *s.tenantPath, organizationID))
 	status, _, err := s.Delete(uri)
 	if err != nil {
 		return fmt.Errorf("failed to delete tenant config for organization %s; status: %v; %s", organizationID, status, err.Error())
@@ -419,7 +527,11 @@ func (s *SAPService) HealthCheck() error {
 		return err
 	}
 
-	status, _, err := s.Get(s.requestURI("proubc/status"), map[string]interface{}{})
+	if s.healthcheckPath == nil {
+		return fmt.Errorf("failed to complete health check; SAP healthcheck path not set")
+	}
+
+	status, _, err := s.Get(s.requestURI(*s.healthcheckPath), map[string]interface{}{})
 	if err != nil {
 		return fmt.Errorf("failed to complete health check; status: %v; %s", status, err.Error())
 	}
@@ -441,7 +553,11 @@ func (s *SAPService) TenantHealthCheck(organizationID string) error {
 		return err
 	}
 
-	uri := s.requestURI(fmt.Sprintf("proubc/tenants/%s", organizationID))
+	if s.tenantPath == nil {
+		return fmt.Errorf("failed to authenticate user; SAP tenant path not set")
+	}
+
+	uri := s.requestURI(fmt.Sprintf("%s/%s", *s.tenantPath, organizationID))
 	status, _, err := s.Get(uri, map[string]interface{}{})
 	if err != nil {
 		return fmt.Errorf("failed to complete tenant health check for organization %s; status: %v; %s", organizationID, status, err.Error())

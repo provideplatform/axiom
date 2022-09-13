@@ -17,8 +17,10 @@
 package middleware
 
 import (
+	"encoding/json"
 	"fmt"
 	"net"
+	"net/url"
 	"os"
 	"sync"
 	"time"
@@ -27,50 +29,117 @@ import (
 	"github.com/provideplatform/provide-go/common"
 )
 
-const defaultServiceNowHost = "base2demo.service-now.com"
-const defaultServiceNowPath = "api/now/table"
-const defaultServiceNowScheme = "https"
-const defaultServiceNowUsername = "admin"
-const defaultServiceNowPassword = "providenow"
 const defaultServiceNowReachabilityTimeout = time.Second * 5
 
 // ServiceNowService for the SAP API
 type ServiceNowService struct {
 	api.Client
 	mutex sync.Mutex
+
+	listSchemasPath *string
+	schemaDetailsPath *string
+	healthcheckPath *string
 }
 
 // ServiceNowFactory initializes a ServiceNow instance
 func ServiceNowFactory(params *SystemMetadata) *ServiceNowService {
-	common.Log.Warningf("ServiceNowFactory not implemented")
-	return nil
+	var endpoint *url.URL
+	var err error
+
+	if params.EndpointURL != nil {
+		endpoint, err = url.Parse(*params.EndpointURL)
+		if err != nil {
+			common.Log.Warningf("failed to parse endpoint url: %s", *params.EndpointURL)
+			return nil
+		}
+	}
+
+	if params.Auth == nil {
+		// HACK
+		params.Auth = &SystemAuth{}
+	}
+
+	var username *string
+	if params.Auth.Username != nil {
+		username = params.Auth.Username
+	}
+
+	var password *string
+	if params.Auth.Password != nil {
+		password = params.Auth.Password
+	}
+
+	var listSchemasPath *string
+	if os.Getenv("SERVICENOW_LIST_SCHEMAS_API_PATH") != "" {
+		listSchemasPath = common.StringOrNil(os.Getenv("SERVICENOW_LIST_SCHEMAS_API_PATH"))
+	}
+
+	var schemaDetailsPath *string
+	if os.Getenv("SERVICENOW_SCHEMA_DETAILS_API_PATH") != "" {
+		schemaDetailsPath = common.StringOrNil(os.Getenv("SERVICENOW_SCHEMA_DETAILS_API_PATH"))
+	}
+
+	var healthcheckPath *string
+	if os.Getenv("SERVICENOW_HEALTHCHECK_API_PATH") != "" {
+		healthcheckPath = common.StringOrNil(os.Getenv("SERVICENOW_HEALTHCHECK_API_PATH"))
+	}
+
+	return &ServiceNowService{
+		api.Client{
+			Host:     endpoint.Host,
+			Path:     endpoint.Path,
+			Scheme:   endpoint.Scheme,
+			Token:    params.Auth.Token,
+			Username: username,
+			Password: password,
+		},
+		sync.Mutex{},
+		listSchemasPath,
+		schemaDetailsPath,
+		healthcheckPath,
+	}
 }
 
 // InitServiceNowService convenience method to initialize a ServiceNow instance
 func InitServiceNowService(token *string) *ServiceNowService {
-	host := defaultServiceNowHost
+	var host string
 	if os.Getenv("SERVICENOW_API_HOST") != "" {
 		host = os.Getenv("SERVICENOW_API_HOST")
 	}
 
-	path := defaultServiceNowPath
+	var path string
 	if os.Getenv("SERVICENOW_API_PATH") != "" {
 		path = os.Getenv("SERVICENOW_API_PATH")
 	}
 
-	scheme := defaultServiceNowScheme
+	var scheme string
 	if os.Getenv("SERVICENOW_API_SCHEME") != "" {
 		scheme = os.Getenv("SERVICENOW_API_SCHEME")
 	}
 
-	username := defaultServiceNowUsername
+	var username string
 	if os.Getenv("SERVICENOW_API_USERNAME") != "" {
 		username = os.Getenv("SERVICENOW_API_USERNAME")
 	}
 
-	password := defaultServiceNowPassword
+	var password string
 	if os.Getenv("SERVICENOW_API_PASSWORD") != "" {
 		password = os.Getenv("SERVICENOW_API_PASSWORD")
+	}
+
+	var listSchemasPath *string
+	if os.Getenv("SERVICENOW_LIST_SCHEMAS_API_PATH") != "" {
+		listSchemasPath = common.StringOrNil(os.Getenv("SERVICENOW_LIST_SCHEMAS_API_PATH"))
+	}
+
+	var schemaDetailsPath *string
+	if os.Getenv("SERVICENOW_SCHEMA_DETAILS_API_PATH") != "" {
+		schemaDetailsPath = common.StringOrNil(os.Getenv("SERVICENOW_SCHEMA_DETAILS_API_PATH"))
+	}
+
+	var healthcheckPath *string
+	if os.Getenv("SERVICENOW_HEALTHCHECK_API_PATH") != "" {
+		healthcheckPath = common.StringOrNil(os.Getenv("SERVICENOW_HEALTHCHECK_API_PATH"))
 	}
 
 	return &ServiceNowService{
@@ -83,12 +152,10 @@ func InitServiceNowService(token *string) *ServiceNowService {
 			Password: common.StringOrNil(password),
 		},
 		sync.Mutex{},
+		listSchemasPath,
+		schemaDetailsPath,
+		healthcheckPath,
 	}
-}
-
-// Authenticate a user by email address and password, returning a newly-authorized X-CSRF-Token token
-func (s *ServiceNowService) Authenticate() error {
-	return nil
 }
 
 // ConfigureTenant configures a new proxy instance in ServiceNow for a given organization
@@ -101,7 +168,43 @@ func (s *ServiceNowService) ListSchemas(params map[string]interface{}) (interfac
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	return nil, fmt.Errorf("not implemented")
+	if s.listSchemasPath == nil {
+		return nil, fmt.Errorf("failed to fetch business object models; SERVICENOW_LIST_SCHEMAS_API_PATH not set")
+	}
+
+	status, resp, err := s.Get(*s.listSchemasPath, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch business object models; status: %v; %s", status, err.Error())
+	}
+
+	if status != 200 {
+		return nil, fmt.Errorf("failed to fetch business object models; status: %v", status)
+	}
+
+	if arr, ok := resp.([]interface{}); ok {
+		schemas := make([]interface{}, 0)
+
+		for _, item := range arr {
+			var systemSchema map[string]interface{}
+			raw, _ := json.Marshal(item)
+
+			err = json.Unmarshal(raw, &systemSchema)
+			if err != nil {
+				return nil, fmt.Errorf("failed to unmarshal; status: %v; %s", status, err.Error())
+			}
+
+			schemas = append(schemas, map[string]interface{}{
+				"description": systemSchema["table"],
+				"name":        systemSchema["table"],
+				"system_type": "servicenow",
+				"type":        systemSchema["id"],
+			})
+		}
+
+		return schemas, nil
+	}
+
+	return nil, fmt.Errorf("failed to fetch business object models; failed to parse response")
 }
 
 // GetSchema retrieves a business object model by type
@@ -109,18 +212,63 @@ func (s *ServiceNowService) GetSchema(recordType string, params map[string]inter
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	return nil, fmt.Errorf("not implemented")
+	if s.schemaDetailsPath == nil {
+		return nil, fmt.Errorf("failed to fetch business object model; SERVICENOW_SCHEMA_DETAILS_API_PATH not set")
+	}
+
+	uri := fmt.Sprintf("%s?table=%s", *s.schemaDetailsPath, recordType)
+	status, resp, err := s.Get(uri, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch business object model; status: %v; %s", status, err.Error())
+	}
+
+	if status != 200 {
+		return nil, fmt.Errorf("failed to fetch business object model; status: %v", status)
+	}
+
+	var _resp map[string]interface{}
+	raw, _ := json.Marshal(resp)
+
+	err = json.Unmarshal(raw, &_resp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch business object model; %s", err.Error())
+	}
+
+	if arr, ok := _resp["fields"].([]interface{}); ok {
+		fields := make([]interface{}, 0)
+
+		for _, item := range arr {
+			var _item map[string]interface{}
+			raw, _ := json.Marshal(item)
+
+			err = json.Unmarshal(raw, &_item)
+			if err != nil {
+				return nil, fmt.Errorf("failed to fetch business object model; %s", err.Error())
+			}
+
+			fields = append(fields, map[string]interface{}{
+				"name":        _item["display_value"],
+				"description": _item["internal_type"],
+				"type":        _item["internal_value"],
+			})
+		}
+
+		return map[string]interface{}{
+			"description": _resp["table"],
+			"fields":      fields,
+			"name":        _resp["table"],
+			"system_type": "servicenow",
+			"type":        _resp["table"],
+		}, nil
+	}
+
+	return nil, fmt.Errorf("failed to fetch business object model; failed to parse response")
 }
 
 // CreateObject is a generic way to create a business object in the ServiceNow environment
 func (s *ServiceNowService) CreateObject(params map[string]interface{}) (interface{}, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-
-	err := s.Authenticate()
-	if err != nil {
-		return nil, err
-	}
 
 	_params := params
 	if payload, payloadOk := params["payload"].(map[string]interface{}); payloadOk {
@@ -199,7 +347,20 @@ func (s *ServiceNowService) HealthCheck() error {
 		return nil
 	}
 
-	return err
+	if s.healthcheckPath == nil {
+		return fmt.Errorf("failed to complete health check; SERVICENOW_HEALTHCHECK_API_PATH not set")
+	}
+
+	status, _, err := s.Get(*s.healthcheckPath, map[string]interface{}{})
+	if err != nil {
+		return fmt.Errorf("failed to complete health check; status: %v; %s", status, err.Error())
+	}
+
+	if status != 200 {
+		return fmt.Errorf("failed to complete health check; status: %v", status)
+	}
+
+	return nil
 }
 
 // TenantHealthCheck
