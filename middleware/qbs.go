@@ -25,7 +25,6 @@ import (
 
 	"github.com/provideplatform/provide-go/api"
 	"github.com/provideplatform/provide-go/common"
-	provide "github.com/provideplatform/provide-go/common"
 )
 
 // QBSService for the QBS API
@@ -60,8 +59,8 @@ func QBSFactory(params *SystemMetadata) *QBSService {
 			Path:     endpoint.Path,
 			Scheme:   endpoint.Scheme,
 			Token:    params.Auth.Token,
-			Username: provide.StringOrNil(*params.Auth.Username),
-			Password: provide.StringOrNil(*params.Auth.Password),
+			Username: common.StringOrNil(*params.Auth.Username),
+			Password: common.StringOrNil(*params.Auth.Password),
 		},
 		sync.Mutex{},
 		params.Auth.ClientID,
@@ -115,8 +114,8 @@ func InitQBSService(token *string) *QBSService {
 			Path:     path,
 			Scheme:   scheme,
 			Token:    token,
-			Username: provide.StringOrNil(username),
-			Password: provide.StringOrNil(password),
+			Username: common.StringOrNil(username),
+			Password: common.StringOrNil(password),
 		},
 		sync.Mutex{},
 		clientID,

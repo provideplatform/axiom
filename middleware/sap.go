@@ -106,8 +106,8 @@ func SAPFactory(params *SystemMetadata) *SAPService {
 			Path:     endpoint.Path,
 			Scheme:   endpoint.Scheme,
 			Token:    params.Auth.Token,
-			Username: provide.StringOrNil(*params.Auth.Username),
-			Password: provide.StringOrNil(*params.Auth.Password),
+			Username: common.StringOrNil(*params.Auth.Username),
+			Password: common.StringOrNil(*params.Auth.Password),
 		},
 		sync.Mutex{},
 		authenticatePath,
@@ -185,8 +185,8 @@ func InitSAPService(token *string) *SAPService {
 			Path:     path,
 			Scheme:   scheme,
 			Token:    token,
-			Username: provide.StringOrNil(username),
-			Password: provide.StringOrNil(password),
+			Username: common.StringOrNil(username),
+			Password: common.StringOrNil(password),
 		},
 		sync.Mutex{},
 		authenticatePath,
@@ -238,7 +238,7 @@ func (s *SAPService) Authenticate() error {
 
 	var cookies *string
 	if setCookie, setCookieOk := resp["Set-Cookie"]; setCookieOk {
-		cookies = provide.StringOrNil(strings.Join(setCookie, "; "))
+		cookies = common.StringOrNil(strings.Join(setCookie, "; "))
 	}
 	s.Cookie = cookies
 	if s.Cookie == nil {
@@ -251,7 +251,7 @@ func (s *SAPService) Authenticate() error {
 
 	var csrfToken *string
 	if len(resp["x-csrf-token"]) == 1 {
-		csrfToken = provide.StringOrNil(resp["x-csrf-token"][0])
+		csrfToken = common.StringOrNil(resp["x-csrf-token"][0])
 	}
 	if csrfToken == nil {
 		return fmt.Errorf("failed to authenticate user; no x-csrf-token header; status: %v", status)
