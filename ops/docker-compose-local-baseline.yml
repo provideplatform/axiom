@@ -148,6 +148,7 @@ services:
       - ELASTICSEARCH_PASSWORD=3l4s71c
       - SERVICENOW_SCHEMA_LIST_API_PATH=api/x_ncurr_providenow/setup_configuration/ListSchemas
       - SERVICENOW_SCHEMA_DETAILS_API_PATH=api/x_ncurr_providenow/setup_configuration/GetSchemaDetails
+      - SERVICENOW_HEALTHCHECK_API_PATH=api/x_ncurr_providenow/setup_configuration/GetSchemaDetails
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://prvd-baseline:8080/status']
       interval: 1m
