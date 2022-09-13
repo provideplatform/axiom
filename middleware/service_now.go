@@ -29,11 +29,6 @@ import (
 	"github.com/provideplatform/provide-go/common"
 )
 
-const defaultServiceNowHost = "base2demo.service-now.com"
-const defaultServiceNowPath = "api/now/table"
-const defaultServiceNowScheme = "https"
-const defaultServiceNowUsername = "admin"
-const defaultServiceNowPassword = "providenow"
 const defaultServiceNowReachabilityTimeout = time.Second * 5
 
 // ServiceNowService for the SAP API
@@ -107,27 +102,27 @@ func ServiceNowFactory(params *SystemMetadata) *ServiceNowService {
 
 // InitServiceNowService convenience method to initialize a ServiceNow instance
 func InitServiceNowService(token *string) *ServiceNowService {
-	host := defaultServiceNowHost
+	var host string
 	if os.Getenv("SERVICENOW_API_HOST") != "" {
 		host = os.Getenv("SERVICENOW_API_HOST")
 	}
 
-	path := defaultServiceNowPath
+	var path string
 	if os.Getenv("SERVICENOW_API_PATH") != "" {
 		path = os.Getenv("SERVICENOW_API_PATH")
 	}
 
-	scheme := defaultServiceNowScheme
+	var scheme string
 	if os.Getenv("SERVICENOW_API_SCHEME") != "" {
 		scheme = os.Getenv("SERVICENOW_API_SCHEME")
 	}
 
-	username := defaultServiceNowUsername
+	var username string
 	if os.Getenv("SERVICENOW_API_USERNAME") != "" {
 		username = os.Getenv("SERVICENOW_API_USERNAME")
 	}
 
-	password := defaultServiceNowPassword
+	var password string
 	if os.Getenv("SERVICENOW_API_PASSWORD") != "" {
 		password = os.Getenv("SERVICENOW_API_PASSWORD")
 	}
