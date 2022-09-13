@@ -179,16 +179,6 @@ func InitSAPService(token *string) *SAPService {
 		healthcheckPath = common.StringOrNil(os.Getenv("SAP_HEALTHCHECK_API_PATH"))
 	}
 
-	var clientID *string
-	if os.Getenv("SAP_API_CLIENT_ID") != "" {
-		clientID = common.StringOrNil(os.Getenv("SAP_API_CLIENT_ID"))
-	}
-
-	var clientSecret *string
-	if os.Getenv("SAP_API_CLIENT_SECRET") != "" {
-		clientSecret = common.StringOrNil(os.Getenv("SAP_API_CLIENT_SECRET"))
-	}
-
 	return &SAPService{
 		api.Client{
 			Host:     host,
@@ -205,8 +195,8 @@ func InitSAPService(token *string) *SAPService {
 		schemaDetailsPath,
 		objectsPath,
 		healthcheckPath,
-		clientID,
-		clientSecret,
+		nil,
+		nil,
 	}
 }
 
