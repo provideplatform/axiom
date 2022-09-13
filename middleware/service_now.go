@@ -176,6 +176,7 @@ func (s *ServiceNowService) ListSchemas(params map[string]interface{}) (interfac
 			schemas = append(schemas, map[string]interface{}{
 				"description": systemSchema["table"],
 				"name":        systemSchema["table"],
+				"system_type": "servicenow",
 				"type":        systemSchema["id"],
 			})
 		}
@@ -236,6 +237,7 @@ func (s *ServiceNowService) GetSchema(recordType string, params map[string]inter
 			"description": _resp["table"],
 			"fields":      fields,
 			"name":        _resp["table"],
+			"system_type": "servicenow",
 			"type":        _resp["table"],
 		}, nil
 	}
