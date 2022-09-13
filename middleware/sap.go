@@ -248,6 +248,7 @@ func (s *SAPService) ListSchemas(params map[string]interface{}) (interface{}, er
 			schemas = append(schemas, map[string]interface{}{
 				"description": systemSchema["idoctypedescr"],
 				"name":        systemSchema["idoctype"],
+				"system_type": "sap",
 				"type":        systemSchema["idoctype"],
 			})
 		}
@@ -305,6 +306,7 @@ func (s *SAPService) GetSchema(recordType string, params map[string]interface{})
 				"description": basicType["idoctypedescr"],
 				"fields":      fields,
 				"name":        basicType["idoctype"],
+				"system_type": "sap",
 				"type":        basicType["idoctype"],
 			}
 		}
