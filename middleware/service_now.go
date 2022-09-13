@@ -123,6 +123,21 @@ func InitServiceNowService(token *string) *ServiceNowService {
 		password = os.Getenv("SERVICENOW_API_PASSWORD")
 	}
 
+	var listSchemasPath *string
+	if os.Getenv("SERVICENOW_LIST_SCHEMAS_API_PATH") != "" {
+		listSchemasPath = common.StringOrNil(os.Getenv("SERVICENOW_LIST_SCHEMAS_API_PATH"))
+	}
+
+	var schemaDetailsPath *string
+	if os.Getenv("SERVICENOW_SCHEMA_DETAILS_API_PATH") != "" {
+		schemaDetailsPath = common.StringOrNil(os.Getenv("SERVICENOW_SCHEMA_DETAILS_API_PATH"))
+	}
+
+	var healthcheckPath *string
+	if os.Getenv("SERVICENOW_HEALTHCHECK_API_PATH") != "" {
+		healthcheckPath = common.StringOrNil(os.Getenv("SERVICENOW_HEALTHCHECK_API_PATH"))
+	}
+
 	return &ServiceNowService{
 		api.Client{
 			Host:     host,
@@ -133,9 +148,9 @@ func InitServiceNowService(token *string) *ServiceNowService {
 			Password: common.StringOrNil(password),
 		},
 		sync.Mutex{},
-		nil,
-		nil,
-		nil,
+		listSchemasPath,
+		schemaDetailsPath,
+		healthcheckPath,
 	}
 }
 
