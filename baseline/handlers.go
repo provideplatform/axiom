@@ -247,7 +247,7 @@ func sendProtocolMessageHandler(c *gin.Context) {
 			}
 
 			provide.Render(&SendProtocolMessageAPIResponse{
-				BaselineID:       message.ProtocolMessage.BaselineID,
+				BaselineID:       message.BaselineID,
 				Proof:            proof.Proof,
 				Recipients:       recipients,
 				Root:             nil,
