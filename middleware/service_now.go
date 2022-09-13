@@ -27,7 +27,6 @@ import (
 
 	"github.com/provideplatform/provide-go/api"
 	"github.com/provideplatform/provide-go/common"
-	provide "github.com/provideplatform/provide-go/common"
 )
 
 const defaultServiceNowHost = "base2demo.service-now.com"
@@ -65,6 +64,16 @@ func ServiceNowFactory(params *SystemMetadata) *ServiceNowService {
 		params.Auth = &SystemAuth{}
 	}
 
+	var username *string
+	if params.Auth.Username != nil {
+		username = params.Auth.Username
+	}
+
+	var password *string
+	if params.Auth.Password != nil {
+		password = params.Auth.Password
+	}
+
 	var listSchemasPath *string
 	if os.Getenv("SERVICENOW_LIST_SCHEMAS_API_PATH") != "" {
 		listSchemasPath = common.StringOrNil(os.Getenv("SERVICENOW_LIST_SCHEMAS_API_PATH"))
@@ -86,8 +95,8 @@ func ServiceNowFactory(params *SystemMetadata) *ServiceNowService {
 			Path:     endpoint.Path,
 			Scheme:   endpoint.Scheme,
 			Token:    params.Auth.Token,
-			Username: provide.StringOrNil(*params.Auth.Username),
-			Password: provide.StringOrNil(*params.Auth.Password),
+			Username: username,
+			Password: password,
 		},
 		sync.Mutex{},
 		listSchemasPath,
