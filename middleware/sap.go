@@ -39,14 +39,14 @@ const defaultHealthcheckPath = "proubc/status"
 // SAPService for the SAP API
 type SAPService struct {
 	api.Client
-	mutex        sync.Mutex
+	mutex sync.Mutex
 
 	authenticateEndpoint *string
-	tenantPath *string
-	listSchemasPath *string
-	schemaDetailsPath *string
-	objectsPath *string
-	healthcheckPath *string
+	tenantPath           *string
+	listSchemasPath      *string
+	schemaDetailsPath    *string
+	objectsPath          *string
+	healthcheckPath      *string
 
 	clientID     *string
 	clientSecret *string
@@ -375,8 +375,46 @@ func (s *SAPService) GetSchema(recordType string, params map[string]interface{})
 
 	if _resp, respOk := resp.(map[string]interface{}); respOk {
 		basicType, _ := _resp["basictype"].(map[string]interface{})
+
+		// TODO: create mapping of segments -> child segments mapping "idocstruct[].syntax_attrib.parseg !== "" (or null)"
+		invertedSegmentChildParents := map[string][]string{}
+		invertedSegmentParentExists := map[string]bool{}
+		invertedSegmentChildsParentIdx := map[string]uint{} // FIXME... this should have a maximum supported size... uint8 plz? --KT
+
+		// TODO-- idocsStruct to idocsMetaStruct during this inverted index population... --KT
+		if idocsStruct, idocsStructOk := _resp["idocstruct"].([]interface{}); idocsStructOk {
+			for _, idocStruct := range idocsStruct {
+				_idocStruct, _idocStructOk := idocStruct.(map[string]interface{})
+				if !_idocStructOk {
+					continue
+				}
+
+				if syntaxAttrib, syntaxAttribOk := _idocStruct["syntax_attrib"].(map[string]interface{}); syntaxAttribOk {
+					var parseg *string
+					if _parseg, parsegOk := syntaxAttrib["parseg"].(string); parsegOk && _parseg != "" {
+						parseg = common.StringOrNil(_parseg)
+					}
+
+					if parseg != nil {
+						// we found a parent
+						childSegmentType, childSegmentTypeOk := _idocStruct["segment_type"].(string)
+						if !childSegmentTypeOk {
+							common.Log.Warningf("malformed segment idoc metadata encountered for parent segment: %s", *parseg)
+							continue
+						}
+
+						// FIXME
+						invertedSegmentChildParents[childSegmentType] = append(invertedSegmentChildParents[childSegmentType], *parseg)
+						invertedSegmentParentExists[childSegmentType] = true
+						// FIXME... for readability's sake... perhaps explicitly set invertedSegmentChildsParentIdx[childSegmentType] = 0
+					}
+				}
+			}
+		}
+
 		if segmentsStruct, segmentsStructOk := _resp["segmentstruct"].([]interface{}); segmentsStructOk {
 			fields := make([]interface{}, 0)
+			fieldsMap := map[string]interface{}{}
 
 			for _, item := range segmentsStruct {
 				raw, _ := json.Marshal(item)
@@ -386,17 +424,59 @@ func (s *SAPService) GetSchema(recordType string, params map[string]interface{})
 					return nil, fmt.Errorf("failed to unmarshal idoc segment struct; status: %v; %s", status, err.Error())
 				}
 
+				segmentType, segmentTypeOk := systemField["segment_type"].(string)
+				if !segmentTypeOk {
+					common.Log.Warningf("malformed segment metadata encountered for type: %s", segmentType)
+					continue
+				}
+
+				idocType, idocTypeOk := basicType["idoctype"].(string)
+				if !idocTypeOk {
+					common.Log.Warningf("malformed idoc metadata encountered for type: %s", segmentType)
+					continue
+				}
+
+				// i := 0
+				// 6-total lpad (i.e. 000001)
+				// if segment_type has a parent in the inverted child->parent segment index, nest using dot-notation according
+
+				var key *string
+
+				if !invertedSegmentParentExists[segmentType] {
+					// no parent exists
+					common.Log.Tracef("computed key %s for top-level segment type within idoc segment %s for inclusion in flattened schema for idoc type %s", key, segmentType, segmentType, idocType)
+
+					// FIXME-- copy segmentType bytes into key below...
+					key = &segmentType
+				} else {
+					// a parent exists for this child...
+					parentSegmentType := invertedSegmentChildParents[segmentType][invertedSegmentChildsParentIdx[segmentType]]
+					common.Log.Tracef("resolved parent segment type %s for child %s within idoc segment %s", parentSegmentType, segmentType, idocType)
+
+					// FIXME-- copy segmentType bytes into key below... so we don't mutate value at `segmentType` ptr
+					key = common.StringOrNil(fmt.Sprintf("%s.%s", parentSegmentType, *key))
+					common.Log.Tracef("computed key %s for parent segment type %s for child %s for inclusion in flattened schema for idoc type %s", key, parentSegmentType, segmentType, idocType)
+				}
+
 				attributes := systemField["field_attrib"].(map[string]interface{})
 				fields = append(fields, map[string]interface{}{
+					"__id":        key,
 					"name":        systemField["fieldname"],
 					"description": attributes["descrp"],
 					"type":        attributes["datatype"],
 				})
+
+				fieldsMap[*key] = map[string]interface{}{
+					"name":        systemField["fieldname"],
+					"description": attributes["descrp"],
+					"type":        attributes["datatype"],
+				}
 			}
 
 			schema = map[string]interface{}{
 				"description": basicType["idoctypedescr"],
 				"fields":      fields,
+				"fields_map":  fieldsMap,
 				"name":        basicType["idoctype"],
 				"system_type": "sap",
 				"type":        basicType["idoctype"],
