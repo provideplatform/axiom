@@ -36,9 +36,9 @@ type ServiceNowService struct {
 	api.Client
 	mutex sync.Mutex
 
-	listSchemasPath *string
+	listSchemasPath   *string
 	schemaDetailsPath *string
-	healthcheckPath *string
+	healthcheckPath   *string
 }
 
 // ServiceNowFactory initializes a ServiceNow instance

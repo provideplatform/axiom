@@ -39,14 +39,14 @@ const defaultHealthcheckPath = "proubc/status"
 // SAPService for the SAP API
 type SAPService struct {
 	api.Client
-	mutex        sync.Mutex
+	mutex sync.Mutex
 
 	authenticateEndpoint *string
-	tenantPath *string
-	listSchemasPath *string
-	schemaDetailsPath *string
-	objectsPath *string
-	healthcheckPath *string
+	tenantPath           *string
+	listSchemasPath      *string
+	schemaDetailsPath    *string
+	objectsPath          *string
+	healthcheckPath      *string
 
 	clientID     *string
 	clientSecret *string

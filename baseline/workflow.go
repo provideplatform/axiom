@@ -318,6 +318,13 @@ func (w *Workflow) deploy() bool {
 			})
 			return false
 		}
+
+		if _, mappingModelIdOk := metadata["mapping_model_id"]; !mappingModelIdOk {
+			w.Errors = append(w.Errors, &provide.Error{
+				Message: common.StringOrNil("failed to deploy workflow; mapping_model_id is required on each workstep"),
+			})
+			return false
+		}
 	}
 
 	finalWorkstep := worksteps[len(worksteps)-1]
