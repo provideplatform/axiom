@@ -444,7 +444,7 @@ func (s *SAPService) GetSchema(recordType string, params map[string]interface{})
 
 				if !invertedSegmentParentExists[segmentType] {
 					// no parent exists
-					common.Log.Tracef("computed key %s for top-level segment type within idoc segment %s for inclusion in flattened schema for idoc type %s", key, segmentType, segmentType, idocType)
+					common.Log.Tracef("no key computed for top-level segment type within idoc segment %s for inclusion in flattened schema for idoc type %s", segmentType, idocType)
 
 					// FIXME-- copy segmentType bytes into key below...
 					key = &segmentType
