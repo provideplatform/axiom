@@ -413,8 +413,7 @@ func (w *Workflow) index() error {
 
 	common.Indexer.Q(&esutil.Message{
 		Header: &esutil.MessageHeader{
-			DocType: common.StringOrNil(common.IndexerDocumentTypeWorkflowPrototype),
-			Index:   common.StringOrNil(common.IndexerDocumentIndexBaselineWorkflowPrototypes),
+			Index: common.StringOrNil(common.IndexerDocumentIndexBaselineWorkflowPrototypes),
 		},
 		Payload: payload,
 	})
