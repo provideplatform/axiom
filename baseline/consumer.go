@@ -625,6 +625,12 @@ func consumeBaselineWorkstepFinalizeDeploySubscriptionsMsg(msg *nats.Msg) {
 		return
 	}
 
+	if subjectAccount.Metadata == nil {
+		common.Log.Error("failed to resolve BPI subject account metadata")
+		msg.Nak()
+		return
+	}
+
 	if subjectAccount.Metadata.OrganizationID == nil {
 		common.Log.Error("failed to resolve BPI subject account; organization id required")
 		msg.Nak()
@@ -740,6 +746,12 @@ func consumeDispatchProtocolMessageSubscriptionsMsg(msg *nats.Msg) {
 	subjectAccount, err := resolveSubjectAccount(*protomsg.SubjectAccountID) // FIXME... audit this to verify it is sufficiently secure...
 	if err != nil {
 		common.Log.Errorf("failed to resolve BPI subject account for workflow: %s; %s", *protomsg.WorkflowID, err.Error())
+		msg.Nak()
+		return
+	}
+
+	if subjectAccount.Metadata == nil {
+		common.Log.Error("failed to resolve BPI subject account metadata")
 		msg.Nak()
 		return
 	}
