@@ -455,7 +455,7 @@ func (s *SAPService) GetSchema(recordType string, params map[string]interface{})
 
 					// FIXME-- copy segmentType bytes into key below... so we don't mutate value at `segmentType` ptr
 					key = common.StringOrNil(fmt.Sprintf("%s.%s", parentSegmentType, *key))
-					common.Log.Tracef("computed key %s for parent segment type %s for child %s for inclusion in flattened schema for idoc type %s", key, parentSegmentType, segmentType, idocType)
+					common.Log.Tracef("computed key %s for parent segment type %s for child %s for inclusion in flattened schema for idoc type %s", *key, parentSegmentType, segmentType, idocType)
 				}
 
 				attributes := systemField["field_attrib"].(map[string]interface{})
