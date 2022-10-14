@@ -454,7 +454,12 @@ func (s *SAPService) GetSchema(recordType string, params map[string]interface{})
 					common.Log.Tracef("resolved parent segment type %s for child %s within idoc segment %s", parentSegmentType, segmentType, idocType)
 
 					// FIXME-- copy segmentType bytes into key below... so we don't mutate value at `segmentType` ptr
-					key = common.StringOrNil(fmt.Sprintf("%s.%s", parentSegmentType, *key))
+					if key == nil {
+						key = common.StringOrNil(parentSegmentType)
+					} else {
+						key = common.StringOrNil(fmt.Sprintf("%s.%s", parentSegmentType, *key))
+					}
+
 					common.Log.Tracef("computed key %s for parent segment type %s for child %s for inclusion in flattened schema for idoc type %s", *key, parentSegmentType, segmentType, idocType)
 				}
 
