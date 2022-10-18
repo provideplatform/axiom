@@ -8,6 +8,7 @@ require (
 	github.com/Azure/go-autorest/autorest v0.11.19 // indirect
 	github.com/Azure/go-autorest/autorest/adal v0.9.14 // indirect
 	github.com/consensys/gnark v0.3.9-0.20210209002645-110d32683f59
+	github.com/consensys/gnark-crypto v0.7.0
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/ethereum/go-ethereum v1.9.25
 	github.com/form3tech-oss/jwt-go v3.2.3+incompatible // indirect
@@ -29,6 +30,6 @@ require (
 	github.com/onsi/gomega v1.11.0
 	github.com/provideplatform/ident v0.9.10-0.20210903195520-28bcb83ac5d6
 	github.com/provideplatform/provide-go v0.0.0-20220826053550-2ecfc647d3e3
-	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97
+	golang.org/x/crypto v0.0.0-20220321153916-2c7772ba3064
 	nhooyr.io/websocket v1.8.7 // indirect
 )

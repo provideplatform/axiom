@@ -21,8 +21,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 	"strings"
 	"time"
+
+	gnarkhash "github.com/consensys/gnark-crypto/hash"
 
 	"github.com/ethereum/go-ethereum/common/compiler"
 	"github.com/jinzhu/gorm"
@@ -400,11 +403,26 @@ func (w *Workstep) execute(
 		return nil, fmt.Errorf(*w.Errors[0].Message)
 	}
 
+	hash := gnarkhash.MIMC_BLS12_377.New()
+	var i big.Int
+
 	var params map[string]interface{}
 	raw, _ := json.Marshal(payload)
 	json.Unmarshal(raw, &params) // HACK
+
+	hash.Write(raw)
+	preImage := hash.Sum(nil)
+	preImageStr := i.SetBytes(preImage).String()
+
+	_hash := gnarkhash.MIMC_BLS12_377.New()
+	_hash.Write(preImage)
+	hashStr := i.SetBytes(_hash.Sum(nil)).String()
+
 	proof, err := privacy.Prove(token, w.ProverID.String(), map[string]interface{}{
-		"witness": payload.Object, // HACK!!! this will soon be replaced by a circuit-specific witness factory...
+		"witness": map[string]interface{}{
+			"Preimage": preImageStr,
+			"Hash":     hashStr,
+		},
 	})
 	if err != nil {
 		w.Errors = append(w.Errors, &provide.Error{
