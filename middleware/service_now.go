@@ -351,7 +351,7 @@ func (s *ServiceNowService) HealthCheck() error {
 		return fmt.Errorf("failed to complete health check; SERVICENOW_HEALTHCHECK_API_PATH not set")
 	}
 
-	status, _, err := s.Get(*s.healthcheckPath, map[string]interface{}{})
+	status, _, err := s.Head(*s.healthcheckPath, map[string]interface{}{})
 	if err != nil {
 		return fmt.Errorf("failed to complete health check; status: %v; %s", status, err.Error())
 	}
