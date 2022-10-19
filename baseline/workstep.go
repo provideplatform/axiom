@@ -407,7 +407,7 @@ func (w *Workstep) execute(
 	var i big.Int
 
 	var params map[string]interface{}
-	raw, _ := json.Marshal(payload)
+	raw, _ := json.Marshal(payload.Object)
 	json.Unmarshal(raw, &params) // HACK
 
 	hash.Write(raw)
