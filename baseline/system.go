@@ -327,6 +327,7 @@ func (s *System) Create() bool {
 			err = sor.ConfigureTenant(map[string]interface{}{
 				"organization_id":    s.OrganizationID.String(),
 				"subject_account_id": subjectAccount.ID,
+				"workgroup_id":       s.WorkgroupID.String(),
 				"bpi_endpoint":       s.BPIEndpoint, // FIXME
 				"ident_endpoint":     s.IdentEndpoint,
 				"refresh_token":      subjectAccount.refreshTokenRaw,
