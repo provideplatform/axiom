@@ -33,6 +33,9 @@ type System struct {
 	VaultID  *uuid.UUID `sql:"not null" json:"-"`
 	SecretID *uuid.UUID `sql:"not null" json:"-"`
 
+	IdentEndpoint *string `sql:"-" json:"ident_endpoint,omitempty"`
+	BPIEndpoint   *string `sql:"-" json:"bpi_endpoint,omitempty"`
+
 	// delegate *SubjectAccount `sql:"-" json:"-"`
 	metadata *middleware.SystemMetadata `sql:"-" json:"-"`
 }
@@ -150,6 +153,16 @@ func (s *System) deleteSecret() bool {
 	return true
 }
 
+func (s *System) resolveSubjectAccount() (*SubjectAccount, error) {
+	subjectAccountID := subjectAccountIDFactory(s.OrganizationID.String(), s.WorkgroupID.String())
+	subjectAccount, err := resolveSubjectAccount(subjectAccountID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve subject account for system: %s; %s", s.ID, err.Error())
+	}
+
+	return subjectAccount, nil
+}
+
 func (s *System) persistSecret() bool {
 	if s.SecretID != nil {
 		if !s.deleteSecret() {
@@ -159,11 +172,10 @@ func (s *System) persistSecret() bool {
 		s.SecretID = nil
 	}
 
-	subjectAccountID := subjectAccountIDFactory(s.OrganizationID.String(), s.WorkgroupID.String())
-	subjectAccount, err := resolveSubjectAccount(subjectAccountID)
+	subjectAccount, err := s.resolveSubjectAccount()
 	if err != nil {
 		s.Errors = append(s.Errors, &provide.Error{
-			Message: common.StringOrNil(fmt.Sprintf("failed to enrich system: %s; invalid subject account context; %s", s.ID, err.Error())),
+			Message: common.StringOrNil(fmt.Sprintf("failed to enrich system; %s", err.Error())),
 		})
 		return false
 	}
@@ -171,7 +183,7 @@ func (s *System) persistSecret() bool {
 	token, err := subjectAccount.authorizeAccessToken()
 	if err != nil {
 		s.Errors = append(s.Errors, &provide.Error{
-			Message: common.StringOrNil(err.Error()),
+			Message: common.StringOrNil(fmt.Sprintf("failed to enrich system; %s", err.Error())),
 		})
 		return false
 	}
@@ -202,7 +214,7 @@ func (s *System) persistSecret() bool {
 	)
 	if err != nil {
 		s.Errors = append(s.Errors, &provide.Error{
-			Message: common.StringOrNil(fmt.Sprintf("failed to store system metadata for system: %s; BPI subject account %s in vault %s; %s", s.ID, subjectAccountID, s.VaultID.String(), err.Error())),
+			Message: common.StringOrNil(fmt.Sprintf("failed to store system metadata for system: %s; BPI subject account %s in vault %s; %s", s.ID, *subjectAccount.ID, s.VaultID.String(), err.Error())),
 		})
 		return false
 	}
@@ -279,8 +291,11 @@ func (s *System) Create() bool {
 
 	success := false
 	db := dbconf.DatabaseConnection()
-	if db.NewRecord(&s) {
-		result := db.Create(&s)
+	tx := db.Begin()
+	defer tx.RollbackUnlessCommitted()
+
+	if tx.NewRecord(&s) {
+		result := tx.Create(&s)
 		rowsAffected := result.RowsAffected
 		errors := result.GetErrors()
 		if len(errors) > 0 {
@@ -292,6 +307,44 @@ func (s *System) Create() bool {
 		}
 
 		success = rowsAffected > 0
+	}
+
+	if success {
+		common.Log.Debugf("successfully created system %s", s.ID)
+
+		sor := s.middlewareFactory()
+		if sor != nil {
+			common.Log.Debugf("successfully resolved middleware instance for created system %s; attempting to invoke middleware tenant creation", s.ID)
+
+			subjectAccount, err := s.resolveSubjectAccount()
+			if err != nil {
+				s.Errors = append(s.Errors, &provide.Error{
+					Message: common.StringOrNil(fmt.Sprintf("failed to invoke middleware tenant creation for created system %s: %s", s.ID, err.Error())),
+				})
+				return false
+			}
+
+			err = sor.ConfigureTenant(map[string]interface{}{
+				"organization_id":    s.OrganizationID.String(),
+				"subject_account_id": subjectAccount.ID,
+				"bpi_endpoint":       s.BPIEndpoint, // FIXME
+				"ident_endpoint":     s.IdentEndpoint,
+				"refresh_token":      subjectAccount.refreshTokenRaw,
+			})
+
+			if err != nil {
+				s.Errors = append(s.Errors, &provide.Error{
+					Message: common.StringOrNil(fmt.Sprintf("failed to invoke middleware tenant creation for created system %s: %s", s.ID, err.Error())),
+				})
+				return false
+			}
+		}
+
+		success = len(s.Errors) == 0
+	}
+
+	if success {
+		tx.Commit()
 	}
 
 	return success
