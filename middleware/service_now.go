@@ -247,9 +247,9 @@ func (s *ServiceNowService) GetSchema(recordType string, params map[string]inter
 			}
 
 			fields = append(fields, map[string]interface{}{
-				"name":        _item["display_value"],
-				"description": _item["internal_type"],
-				"type":        _item["internal_value"],
+				"name":        _item["internal_value"],
+				"description": _item["display_value"],
+				"type":        _item["internal_type"],
 			})
 		}
 
