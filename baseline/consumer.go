@@ -335,7 +335,7 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *nats.Msg) {
 			subjectAccountID = common.StringOrNil(subjectAccountIDFactory(orgID, workflow.WorkgroupID.String()))
 			protomsg.subjectAccount, err = resolveSubjectAccount(*subjectAccountID)
 			if err != nil {
-				common.Log.Warningf("failed to resolve subject account %s during processing of inbound protocol message to recipient: %s", subjectAccountID, *protomsg.Recipient)
+				common.Log.Warningf("failed to resolve subject account %s during processing of inbound protocol message to recipient: %s", *subjectAccountID, *protomsg.Recipient)
 				return
 			}
 
