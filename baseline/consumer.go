@@ -304,6 +304,51 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *nats.Msg) {
 		return
 	}
 
+	if protomsg.Recipient == nil {
+		common.Log.Warningf("inbound protocol message must include recipient address; %s", err.Error())
+		msg.Term()
+		return
+	}
+
+	var recipientOrganizationID uuid.UUID
+	var workflow *Workflow
+	var subjectAccountID *string
+
+	org := lookupBaselineOrganization(*protomsg.Recipient)
+	if org != nil || org.Metadata == nil {
+		common.Log.Warning("failed to resolve recipient organization for inbound protocol message")
+		msg.Nak()
+		return
+	}
+
+	if protomsg.WorkflowID != nil {
+		workflow = FindWorkflowByID(*protomsg.WorkflowID)
+		if workflow == nil {
+			common.Log.Warningf("failed to resolve workflow referenced by inbound protocol message; workflow id: %s", protomsg.WorkflowID.String())
+			msg.Nak()
+			return
+		}
+	}
+
+	if orgID, ok := org.Metadata["organization_id"].(string); ok {
+		if workflow != nil {
+			subjectAccountID = common.StringOrNil(subjectAccountIDFactory(orgID, workflow.WorkgroupID.String()))
+			protomsg.subjectAccount, err = resolveSubjectAccount(*subjectAccountID)
+			if err != nil {
+				common.Log.Warningf("failed to resolve subject account %s during processing of inbound protocol message to recipient: %s", subjectAccountID, *protomsg.Recipient)
+				return
+			}
+
+			if protomsg.subjectAccount != nil && protomsg.subjectAccount.Metadata != nil && protomsg.subjectAccount.Metadata.OrganizationID != nil {
+				recipientOrganizationID, err = uuid.FromString(*protomsg.subjectAccount.Metadata.OrganizationID)
+				if err != nil {
+					common.Log.Warningf("failed to parse recipient organization id %s during processing of inbound protocol message to recipient: %s", *protomsg.subjectAccount.Metadata.OrganizationID, *protomsg.Recipient)
+					return
+				}
+			}
+		}
+	}
+
 	switch *protomsg.Opcode {
 	case baseline.ProtocolMessageOpcodeBaseline:
 		if protomsg.WorkgroupID == nil {
@@ -328,23 +373,6 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *nats.Msg) {
 			common.Log.Warningf("inbound protocol message specified invalid sender; %s", err.Error())
 			msg.Term()
 			return
-		}
-
-		workflow := FindWorkflowByID(*protomsg.WorkflowID)
-		if workflow == nil {
-			common.Log.Warningf("inbound protocol message failed to resolve workflow: %s", protomsg.WorkflowID.String())
-			msg.Term() // FIXME-- should this just return and allow for redelivery in case of temporary latency issues?
-			return
-		}
-
-		org := lookupBaselineOrganization(*protomsg.Recipient)
-		if orgID, ok := org.Metadata["organization_id"].(string); ok {
-			subjectAccountID := subjectAccountIDFactory(orgID, workflow.WorkgroupID.String())
-			protomsg.subjectAccount, err = resolveSubjectAccount(subjectAccountID)
-			if err != nil {
-				common.Log.Warningf("failed to resolve subject account %s during processing of inbound protocol message to recipient: %s", subjectAccountID, *protomsg.Recipient)
-				return
-			}
 		}
 
 		if protomsg.subjectAccount == nil {
@@ -399,9 +427,34 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *nats.Msg) {
 			return
 		}
 
+		raw, err := json.Marshal(protomsg.Payload.Object)
+		if err != nil {
+			common.Log.Warningf("failed to handle object within payload of received sync protocol message; %s", err.Error())
+			return
+		}
+
 		switch *protomsg.Payload.Type {
 		case protomsgPayloadTypeMapping:
-			common.Log.Debugf("received sync payload type: %s", protomsgPayloadTypeMapping)
+
+			var _mapping *Mapping
+			err = json.Unmarshal(raw, &_mapping)
+			if err != nil {
+				common.Log.Warningf("failed to unmarshal mapping from payload of received sync protocol message; %s", err.Error())
+				return
+			}
+
+			common.Log.Debugf("received sync payload containing upstream mapping; attempting to upsert mapping: %s", _mapping.ID)
+			mapping := FindMappingByID(_mapping.ID)
+			if mapping == nil {
+				if !_mapping.Create() {
+					common.Log.Warningf("failed to insert mapping received in sync protocol message; %s", err.Error())
+					msg.Nak()
+				}
+			} else {
+				mapping.OrganizationID = &recipientOrganizationID
+				mapping.Update(_mapping)
+			}
+
 		case protomsgPayloadTypeProof:
 			common.Log.Debugf("received sync payload type: %s", protomsgPayloadTypeProof)
 		case protomsgPayloadTypeProver:

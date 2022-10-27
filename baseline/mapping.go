@@ -238,6 +238,15 @@ func (m *Mapping) Update(mapping *Mapping) bool {
 	if mapping.Type != nil {
 		m.Type = mapping.Type
 	}
+	if mapping.Ref != nil {
+		m.Ref = mapping.Ref
+	}
+	if mapping.RefMappingID != nil {
+		m.RefMappingID = mapping.RefMappingID
+	}
+	if m.Version == nil && mapping.Version != nil { // FIXME-- implement finalization of mappings and lock version
+		m.Version = mapping.Version
+	}
 
 	if !m.enrichRef() {
 		return false
