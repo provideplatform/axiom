@@ -35,6 +35,7 @@ import (
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideplatform/baseline/common"
 	provide "github.com/provideplatform/provide-go/api"
+	"github.com/provideplatform/provide-go/api/baseline"
 	"github.com/provideplatform/provide-go/api/nchain"
 	"github.com/provideplatform/provide-go/api/privacy"
 	"github.com/provideplatform/provide-go/api/vault"
@@ -493,6 +494,42 @@ func (w *Workstep) execute(
 		}
 
 		tx.Commit()
+
+		func() {
+			// TODO-- refactor the following into its own method
+			for _, participant := range participants {
+				// TODO-- workflow.sync()
+
+				if strings.EqualFold(*participant.Participant, strings.ToLower(*subjectAccount.Metadata.OrganizationAddress)) {
+					common.Log.Debugf("skipping no-op protocol message broadcast to self: %s", *participant.Participant)
+					continue
+				}
+
+				payload, err := json.Marshal(&ProtocolMessage{
+					// BaselineID:       ,
+					Opcode:    common.StringOrNil(baseline.ProtocolMessageOpcodeBaseline),
+					Sender:    subjectAccount.Metadata.OrganizationAddress,
+					Recipient: participant.Participant,
+					// Signature:        m.Signature,
+					Payload:          payload,
+					SubjectAccountID: subjectAccount.ID,
+					WorkflowID:       w.WorkflowID,
+					WorkgroupID:      workflow.WorkgroupID,
+					WorkstepID:       &w.ID,
+				})
+
+				if err != nil {
+					common.Log.Warningf("failed to broadcast %d-byte protocol message; %s", len(payload), err.Error())
+				}
+
+				common.Log.Debugf("attempting to broadcast %d-byte protocol message", len(payload))
+				_, err = natsutil.NatsJetstreamPublish(natsDispatchProtocolMessageSubject, payload)
+				if err != nil {
+					common.Log.Warningf("failed to broadcast %d-byte protocol message; %s", len(payload), err.Error())
+				}
+
+			}
+		}()
 	}
 
 	return proof, nil

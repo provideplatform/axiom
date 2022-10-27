@@ -7,15 +7,16 @@ require (
 	github.com/Azure/go-amqp v0.13.9 // indirect
 	github.com/Azure/go-autorest/autorest v0.11.19 // indirect
 	github.com/Azure/go-autorest/autorest/adal v0.9.14 // indirect
-	github.com/consensys/gnark v0.3.9-0.20210209002645-110d32683f59
 	github.com/consensys/gnark-crypto v0.7.0
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/ethereum/go-ethereum v1.9.25
 	github.com/form3tech-oss/jwt-go v3.2.3+incompatible // indirect
 	github.com/gin-gonic/gin v1.7.0
 	github.com/golang-migrate/migrate v3.5.4+incompatible
+	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/jinzhu/gorm v1.9.16
 	github.com/klauspost/compress v1.13.1 // indirect
+	github.com/kr/pretty v0.2.0 // indirect
 	github.com/kthomas/go-db-config v0.0.0-20200612131637-ec0436a9685e
 	github.com/kthomas/go-elasticsearchutil v0.0.0-20221012142803-5c77f026b016
 	github.com/kthomas/go-logger v0.0.0-20210526080020-a63672d0724c

@@ -20,19 +20,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math/big"
 	"strings"
 
-	mimc "github.com/consensys/gnark/crypto/hash/mimc/bn256"
 	dbconf "github.com/kthomas/go-db-config"
 	esutil "github.com/kthomas/go-elasticsearchutil"
-	natsutil "github.com/kthomas/go-natsutil"
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/olivere/elastic/v7"
 	"github.com/provideplatform/baseline/common"
 	"github.com/provideplatform/baseline/middleware"
 	provide "github.com/provideplatform/provide-go/api"
-	"github.com/provideplatform/provide-go/api/baseline"
 	"github.com/provideplatform/provide-go/api/privacy"
 )
 
@@ -395,239 +391,8 @@ func (m *ProtocolMessage) baselineInbound() bool {
 	return true
 }
 
-func (m *Message) baselineOutbound() bool {
-	if m.ID == nil {
-		m.Errors = append(m.Errors, &provide.Error{
-			Message: common.StringOrNil("id is required"),
-		})
-		return false
-	}
-	if m.Type == nil {
-		m.Errors = append(m.Errors, &provide.Error{
-			Message: common.StringOrNil("type is required"),
-		})
-		return false
-	}
-	if m.Payload == nil {
-		m.Errors = append(m.Errors, &provide.Error{
-			Message: common.StringOrNil("payload is required"),
-		})
-		return false
-	}
-
-	if m.subjectAccount == nil {
-		m.Errors = append(m.Errors, &provide.Error{
-			Message: common.StringOrNil("subject account not resolved"),
-		})
-		return false
-	}
-
-	// if m.token == nil {
-	// 	m.Errors = append(m.Errors, &provide.Error{
-	// 		Message: common.StringOrNil("access token not resolved"),
-	// 	})
-	// 	return false
-	// }
-
-	if m.subjectAccount.Metadata == nil || m.subjectAccount.Metadata.SOR == nil {
-		m.Errors = append(m.Errors, &provide.Error{
-			Message: common.StringOrNil("invalid system configuration"),
-		})
-		return false
-	}
-
-	// FIXME-- shouldn't this simply resolve the workstep context?
-	system, _, baselineRecord, workflow, _, err := m.resolveContext()
-	if err != nil {
-		m.Errors = append(m.Errors, &provide.Error{
-			Message: common.StringOrNil(err.Error()),
-		})
-		return false
-	}
-
-	err = baselineRecord.cache() // FIXME-- this is currently idempotent, but we should update the cached properties -- we will never cache or persist the payload itself...
-	if err != nil {
-		common.Log.Warning(err.Error())
-		m.Errors = append(m.Errors, &provide.Error{
-			Message: common.StringOrNil(err.Error()),
-		})
-		system.UpdateObjectStatus(*m.ID, map[string]interface{}{
-			"errors":     m.Errors,
-			"message_id": m.MessageID,
-			"status":     middleware.SORBusinessObjectStatusError,
-			"type":       *m.Type,
-		})
-		return false
-	}
-
-	// for _, workstep := range workflow.Worksteps {
-	// 	prover := workstep.Prover
-	// 	workstep.Prover = &privacy.Prover{
-	// 		Artifacts:     prover.Artifacts,
-	// 		Name:          prover.Name,
-	// 		Description:   prover.Description,
-	// 		Identifier:    prover.Identifier,
-	// 		Provider:      prover.Provider,
-	// 		ProvingScheme: prover.ProvingScheme,
-	// 		Curve:         prover.Curve,
-	// 	}
-	// }
-
-	for _, recipient := range workflow.Participants {
-		msg := &ProtocolMessage{
-			BaselineID: baselineRecord.BaselineID,
-			Opcode:     common.StringOrNil(baseline.ProtocolMessageOpcodeSync),
-			Payload: &ProtocolMessagePayload{
-				Object: map[string]interface{}{
-					"id":           workflow.ID,
-					"participants": workflow.Participants,
-					"shield":       workflow.Shield,
-					"worksteps":    workflow.Worksteps,
-				},
-				Type: common.StringOrNil(protomsgPayloadTypeWorkflow),
-			},
-			Recipient:  recipient.Address,
-			Sender:     m.subjectAccount.Metadata.OrganizationAddress,
-			Type:       m.Type,
-			WorkflowID: baselineRecord.Context.WorkflowID,
-		}
-
-		if recipient.Address != nil {
-			err := msg.broadcast(*recipient.Address)
-			if err != nil {
-				_msg := fmt.Sprintf("failed to dispatch protocol message to recipient: %s; %s", *recipient.Address, err.Error())
-				common.Log.Warning(_msg)
-				m.Errors = append(m.Errors, &provide.Error{
-					Message: common.StringOrNil(_msg),
-				})
-			}
-		} else {
-			common.Log.Warning("failed to dispatch protocol message to recipient; no recipient address")
-		}
-	}
-
-	m.BaselineID = baselineRecord.BaselineID
-	rawPayload, _ := json.Marshal(m.Payload)
-
-	// FIXME-- the following is prover-specific and needs to be extracted into an interface
-	var i big.Int
-	hFunc := mimc.NewMiMC("seed")
-	hFunc.Write(rawPayload)
-	preImage := hFunc.Sum(nil)
-	preImageString := i.SetBytes(preImage).String()
-
-	hash, _ := mimc.Sum("seed", preImage)
-	hashString := i.SetBytes(hash).String()
-
-	var shieldAddress *string
-	if baselineRecord.Context.Workflow != nil {
-		shieldAddress = baselineRecord.Context.Workflow.Shield
-	}
-
-	m.ProtocolMessage = &ProtocolMessage{
-		BaselineID: baselineRecord.BaselineID,
-		Opcode:     common.StringOrNil(baseline.ProtocolMessageOpcodeBaseline),
-		Payload: &ProtocolMessagePayload{
-			Object: m.Payload.(map[string]interface{}),
-			Type:   m.Type,
-			Witness: map[string]interface{}{
-				"Document.Hash":     hashString,
-				"Document.Preimage": preImageString,
-			},
-		},
-		Shield:     shieldAddress,
-		Type:       m.Type,
-		WorkflowID: baselineRecord.Context.WorkflowID,
-	}
-
-	err = m.prove()
-	if err != nil {
-		msg := fmt.Sprintf("failed to prove outbound baseline protocol message; invalid state transition; %s", err.Error())
-		common.Log.Warning(msg)
-		m.Errors = append(m.Errors, &provide.Error{
-			Message: common.StringOrNil(msg),
-		})
-		system.UpdateObjectStatus(*m.ID, map[string]interface{}{
-			"baseline_id": m.BaselineID.String(),
-			"errors":      m.Errors,
-			"message_id":  m.MessageID,
-			"status":      middleware.SORBusinessObjectStatusError,
-			"type":        *m.Type,
-		})
-		return false
-	}
-
-	recipients := make([]*Participant, 0)
-	if len(m.Recipients) > 0 {
-		recipients = append(recipients, m.Recipients...)
-	} else {
-		recipients = append(recipients, baselineRecord.Context.Workflow.Participants...)
-	}
-
-	common.Log.Debugf("dispatching outbound protocol message intended for %d recipients", len(recipients))
-
-	for _, recipient := range recipients {
-		if recipient.Address != nil {
-			common.Log.Debugf("dispatching outbound protocol message to %s", *recipient.Address)
-			err := m.ProtocolMessage.broadcast(*recipient.Address)
-			if err != nil {
-				msg := fmt.Sprintf("failed to dispatch protocol message to recipient: %s; %s", *recipient.Address, err.Error())
-				common.Log.Warning(msg)
-				m.Errors = append(m.Errors, &provide.Error{
-					Message: common.StringOrNil(msg),
-				})
-			}
-		} else {
-			common.Log.Warning("failed to dispatch protocol message to recipient; no recipient address")
-		}
-	}
-
-	err = system.UpdateObjectStatus(*m.ID, map[string]interface{}{
-		"baseline_id": m.BaselineID.String(),
-		"message_id":  m.MessageID,
-		"status":      middleware.SORBusinessObjectStatusSuccess,
-		"type":        *m.Type,
-	})
-	if err != nil {
-		common.Log.Warningf("failed to update business logic status; %s", err.Error())
-	}
-
-	go m.ProtocolMessage.index()
-
-	return true
-}
-
-func (m *ProtocolMessage) broadcast(recipient string) error {
-	if strings.EqualFold(recipient, strings.ToLower(*m.subjectAccount.Metadata.OrganizationAddress)) {
-		common.Log.Debugf("skipping no-op protocol message broadcast to self: %s", recipient)
-		return nil
-	}
-
-	payload, err := json.Marshal(&ProtocolMessage{
-		BaselineID:       m.BaselineID,
-		Opcode:           m.Opcode,
-		Sender:           m.Sender,
-		Recipient:        common.StringOrNil(recipient),
-		Shield:           m.Shield,
-		Signature:        m.Signature,
-		Type:             m.Type,
-		Payload:          m.Payload,
-		SubjectAccountID: m.SubjectAccountID,
-		WorkflowID:       m.WorkflowID,
-		WorkgroupID:      m.WorkgroupID,
-		WorkstepID:       m.WorkstepID,
-	})
-
-	if err != nil {
-		common.Log.Warningf("failed to broadcast %d-byte protocol message; %s", len(payload), err.Error())
-		return err
-	}
-
-	common.Log.Debugf("attempting to broadcast %d-byte protocol message", len(payload))
-	_, err = natsutil.NatsJetstreamPublish(natsDispatchProtocolMessageSubject, payload)
-	return err
-}
-
+// prove generates a zk proof using the underlying message
+// TODO-- this is deprecated and currently unused; it should likely be removed
 func (m *Message) prove() error {
 	baselineRecord := lookupBaselineRecordByInternalID(*m.ID)
 	if baselineRecord == nil {
@@ -658,6 +423,8 @@ func (m *Message) prove() error {
 	return err
 }
 
+// verify the underlying protocol message, optionally storing
+// the proof for the associated workstep
 func (m *ProtocolMessage) verify(store bool) error {
 	baselineRecord := lookupBaselineRecord(m.BaselineID.String())
 	if baselineRecord == nil {

@@ -393,15 +393,25 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *nats.Msg) {
 			return
 		}
 
-		// FIXME -- use switch and attempt nack if invalid sync type...
-		if protomsg.Payload.Type != nil && *protomsg.Payload.Type == protomsgPayloadTypeProver {
+		if protomsg.Payload.Type == nil {
+			common.Log.Warning("failed to handle inbound sync protocol message; payload must contain a type")
+			msg.Term()
+			return
+		}
+
+		switch *protomsg.Payload.Type {
+		case protomsgPayloadTypeMapping:
+			common.Log.Debugf("received sync payload type: %s", protomsgPayloadTypeMapping)
+		case protomsgPayloadTypeProof:
+			common.Log.Debugf("received sync payload type: %s", protomsgPayloadTypeProof)
+		case protomsgPayloadTypeProver:
 			prover, err := privacy.CreateProver(*token, protomsg.Payload.Object)
 			if err != nil {
 				common.Log.Warningf("failed to handle inbound sync protocol message; failed to create prover; %s", err.Error())
 				return
 			}
 			common.Log.Debugf("sync protocol message created prover: %s", prover.ID)
-		} else if protomsg.Payload.Type != nil && *protomsg.Payload.Type == protomsgPayloadTypeWorkflow {
+		case protomsgPayloadTypeWorkflow:
 			workflow := &WorkflowInstance{}
 			raw, err := json.Marshal(protomsg.Payload.Object)
 			if err != nil {
@@ -441,8 +451,11 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *nats.Msg) {
 			}
 
 			common.Log.Debugf("cached %d-workstep workflow: %s", len(workflow.Worksteps), workflow.ID)
+		default:
+			common.Log.Warningf("inbound protocol message specified invalid type; %s", err.Error())
+			msg.Term()
+			return
 		}
-
 	default:
 		common.Log.Warningf("inbound protocol message specified invalid opcode; %s", err.Error())
 		msg.Term()
