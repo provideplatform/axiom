@@ -17,13 +17,17 @@
 package baseline
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/jinzhu/gorm"
 	dbconf "github.com/kthomas/go-db-config"
+	natsutil "github.com/kthomas/go-natsutil"
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideplatform/baseline/common"
 	provide "github.com/provideplatform/provide-go/api"
+	"github.com/provideplatform/provide-go/api/baseline"
+	"github.com/provideplatform/provide-go/api/ident"
 )
 
 // Mapping is a baseline mapping prototype
@@ -191,6 +195,7 @@ func (m *Mapping) Create() bool {
 				}
 
 				tx.Commit()
+				m.sync()
 			}
 		}
 	}
@@ -265,6 +270,7 @@ func (m *Mapping) Update(mapping *Mapping) bool {
 	success := rowsAffected > 0
 	if success {
 		tx.Commit()
+		m.sync()
 	}
 
 	return success
@@ -349,6 +355,86 @@ func (f *MappingField) Create(tx *gorm.DB) bool {
 	}
 
 	return success
+}
+
+// resolveSubjectAccount resolves the BPI subject account for the underlying mapping
+func (m *Mapping) resolveSubjectAccount() (*SubjectAccount, error) {
+	if m.OrganizationID == nil || m.WorkgroupID == nil {
+		return nil, fmt.Errorf("failed to resolve subject account for mapping without an organization and workgroup id; mapping: %s", m.ID)
+	}
+
+	subjectAccountID := subjectAccountIDFactory(m.OrganizationID.String(), m.WorkgroupID.String())
+	subjectAccount, err := resolveSubjectAccount(subjectAccountID)
+	if err != nil {
+		return nil, err
+	}
+
+	return subjectAccount, nil
+}
+
+// sync distributes the underlying mapping to downstream workgroup participants
+func (m *Mapping) sync() error {
+	subjectAccount, err := m.resolveSubjectAccount()
+	if err != nil {
+		return err
+	}
+
+	raw, _ := json.Marshal(m)
+	obj := map[string]interface{}{}
+	err = json.Unmarshal(raw, &obj)
+	if err != nil {
+		return err
+	}
+
+	accessToken, err := subjectAccount.authorizeAccessToken()
+	if err != nil {
+		return err
+	}
+
+	org, err := ident.GetOrganizationDetails(*accessToken.AccessToken, *subjectAccount.Metadata.OrganizationID, map[string]interface{}{})
+	if err != nil {
+		common.Log.Warningf("failed to sync mapping; failed to resolve organization address; %s", err.Error())
+		return err
+	}
+
+	var address *string
+	if addr, ok := org.Metadata["address"].(string); ok {
+		address = &addr
+	}
+
+	if address == nil {
+		return fmt.Errorf("failed to sync mapping: %s; failed to resolve sending organization address", m.ID)
+	}
+
+	workgroup := FindWorkgroupByID(*m.WorkgroupID)
+	if workgroup == nil {
+		return fmt.Errorf("failed to sync mapping: %s; failed to resolve workgroup: %s", m.ID, m.WorkgroupID.String())
+	}
+
+	for _, participant := range workgroup.listParticipants(dbconf.DatabaseConnection()) {
+		msg := &ProtocolMessage{
+			Opcode: common.StringOrNil(baseline.ProtocolMessageOpcodeSync),
+			Payload: &ProtocolMessagePayload{
+				Object: obj,
+				Type:   common.StringOrNil(protomsgPayloadTypeMapping),
+			},
+			Recipient:        participant.Participant,
+			Sender:           address,
+			SubjectAccountID: subjectAccount.ID,
+			WorkgroupID:      m.WorkgroupID,
+		}
+		payload, _ := json.Marshal(msg)
+
+		common.Log.Debugf("attempting to broadcast %d-byte protocol message", len(payload))
+		_, err = natsutil.NatsJetstreamPublish(natsDispatchProtocolMessageSubject, payload)
+		if err != nil {
+			common.Log.Warningf("failed to dispatch protocol message; %s", err.Error())
+			// FIXME?? should we rollback a transaction here?
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (f *MappingField) Validate() bool {

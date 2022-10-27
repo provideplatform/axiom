@@ -37,7 +37,9 @@ import (
 
 const defaultNatsStream = "baseline"
 
-const protomsgPayloadTypeCircuit = "prover"
+const protomsgPayloadTypeMapping = "mapping"
+const protomsgPayloadTypeProof = "proof"
+const protomsgPayloadTypeProver = "prover"
 const protomsgPayloadTypeWorkflow = "workflow"
 
 const natsDispatchInvitationSubject = "baseline.invitation.outbound"
@@ -392,7 +394,7 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *nats.Msg) {
 		}
 
 		// FIXME -- use switch and attempt nack if invalid sync type...
-		if protomsg.Payload.Type != nil && *protomsg.Payload.Type == protomsgPayloadTypeCircuit {
+		if protomsg.Payload.Type != nil && *protomsg.Payload.Type == protomsgPayloadTypeProver {
 			prover, err := privacy.CreateProver(*token, protomsg.Payload.Object)
 			if err != nil {
 				common.Log.Warningf("failed to handle inbound sync protocol message; failed to create prover; %s", err.Error())

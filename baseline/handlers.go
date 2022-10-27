@@ -244,6 +244,28 @@ func sendProtocolMessageHandler(c *gin.Context) {
 				if *recipient.Address != *message.subjectAccount.Metadata.OrganizationAddress {
 					recipients = append(recipients, common.StringOrNil(*recipient.Address))
 				}
+
+				// FIXME!! move this logic to its own method...
+				msg := &ProtocolMessage{
+					Opcode: common.StringOrNil(baseline.ProtocolMessageOpcodeSync),
+					Payload: &ProtocolMessagePayload{
+						Object: message.ProtocolMessage.Payload.Object,
+						Proof:  proof.Proof,
+						Type:   common.StringOrNil(protomsgPayloadTypeMapping),
+					},
+					Recipient:        common.StringOrNil(*recipient.Address),
+					Sender:           message.subjectAccount.Metadata.OrganizationAddress,
+					SubjectAccountID: message.subjectAccount.ID,
+					WorkgroupID:      message.WorkgroupID,
+				}
+				payload, _ := json.Marshal(msg)
+
+				common.Log.Debugf("attempting to broadcast %d-byte protocol message", len(payload))
+				_, err = natsutil.NatsJetstreamPublish(natsDispatchProtocolMessageSubject, payload)
+				if err != nil {
+					common.Log.Warningf("failed to dispatch protocol message; %s", err.Error())
+				}
+				// end FIXME... all the above logic should be refactored to live somewhere else...
 			}
 
 			provide.Render(&SendProtocolMessageAPIResponse{
