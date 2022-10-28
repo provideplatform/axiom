@@ -238,8 +238,6 @@ func (s *SubjectAccount) resolveSystem(mappingType string) (middleware.SOR, erro
 		if sys.Type != nil {
 			switch *sys.Type {
 			case systemTypeSAP, systemTypeServiceNow:
-				common.Log.Warningf("types are not yet associated with a system_id; selecting first SAP system for demonstration purposes")
-				// HACK!!! TODO-- async query all systems and return if the given type has a schema...
 				middleware := sys.middlewareFactory()
 				if middleware != nil {
 					schema, err := middleware.GetSchema(mappingType, map[string]interface{}{})
