@@ -14,6 +14,10 @@ import (
 	"github.com/provideplatform/provide-go/api/vault"
 )
 
+const systemTypeD365 = "d365"
+const systemTypeSAP = "sap"
+const systemTypeServiceNow = "servicenow"
+
 // System is a persistent representation and instance of a functional
 // `middleware.System` implementation that uses a vault secret to
 // securely store the configuration

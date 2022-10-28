@@ -18,12 +18,12 @@ package middleware
 
 import "github.com/provideplatform/provide-go/common"
 
-const sorIdentifierDynamics365 = "dynamics365"
-const sorIdentifierEphemeralMemory = "ephemeral"
-const sorIdentifierExcel = "excel"
-const sorIdentifierSalesforce = "salesforce"
-const sorIdentifierSAP = "sap"
-const sorIdentifierServiceNow = "servicenow"
+const systemTypeDynamics365 = "dynamics365"
+const systemTypeEphemeralMemory = "ephemeral"
+const systemTypeExcel = "excel"
+const systemTypeSalesforce = "salesforce"
+const systemTypeSAP = "sap"
+const systemTypeServiceNow = "servicenow"
 
 const SORBusinessObjectStatusError = "error"
 const SORBusinessObjectStatusSuccess = "success"
@@ -90,17 +90,17 @@ func SystemFactory(params *SystemMetadata) SOR {
 	}
 
 	switch *params.Type {
-	case sorIdentifierDynamics365:
+	case systemTypeDynamics365:
 		return Dynamics365Factory(params)
-	case sorIdentifierEphemeralMemory:
+	case systemTypeEphemeralMemory:
 		return EphemeralMemoryFactory(params)
-	case sorIdentifierExcel:
+	case systemTypeExcel:
 		return ExcelFactory(params)
-	case sorIdentifierSAP:
+	case systemTypeSAP:
 		return SAPFactory(params)
-	case sorIdentifierSalesforce:
+	case systemTypeSalesforce:
 		return SalesforceFactory(params)
-	case sorIdentifierServiceNow:
+	case systemTypeServiceNow:
 		return ServiceNowFactory(params)
 	default:
 		break
