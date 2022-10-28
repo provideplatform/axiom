@@ -249,7 +249,6 @@ func (s *SubjectAccount) resolveSystem(mappingType string) (middleware.SOR, erro
 						return middleware, nil
 					}
 				}
-				return middleware, nil
 			default:
 				// no-op
 			}
