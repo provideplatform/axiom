@@ -240,7 +240,7 @@ func (s *SubjectAccount) lookupBaselineOrganizationMessagingEndpoint(recipient s
 			return nil
 		}
 
-		if endpoint, endpointOk := resp.Response.([]interface{})[2].(string); endpointOk {
+		if endpoint, endpointOk := resp.Response.([]interface{})[3].(string); endpointOk {
 			endpoint, err := base64.StdEncoding.DecodeString(endpoint)
 			if err != nil {
 				common.Log.Warningf("failed to retrieve messaging endpoint for baseline organization: %s; failed to base64 decode endpoint", recipient)
