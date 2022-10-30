@@ -194,7 +194,13 @@ func (s *SubjectAccount) requestBaselineOrganizationIssuedVC(address string) (*s
 	}
 
 	if status != 201 {
-		return nil, fmt.Errorf("failed to request verifiable credential from baseline organization: %s; received status code: %d", address, status)
+		err := fmt.Sprintf("failed to request verifiable credential from baseline organization: %s; received status code: %d", address, status)
+		if status == 422 {
+			rawResp, _ := json.Marshal(resp)
+			err = fmt.Sprintf("%s; %s", err, string(rawResp))
+		}
+
+		return nil, fmt.Errorf(err)
 	}
 
 	var credential *string

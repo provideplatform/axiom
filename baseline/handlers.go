@@ -2164,7 +2164,9 @@ func issueVerifiableCredentialHandler(c *gin.Context) {
 		}, 201, c)
 	} else {
 		obj := map[string]interface{}{}
-		obj["errors"] = []interface{}{} // FIXME
+		obj["errors"] = []interface{}{
+			err.Error(),
+		}
 		provide.Render(obj, 422, c)
 	}
 }
