@@ -123,6 +123,22 @@ func (s *SubjectAccount) requestBaselineOrganizationIssuedVC(address string) (*s
 		return nil, err
 	}
 
+	if s.Metadata == nil {
+		err = s.enrich()
+		if err != nil {
+			common.Log.Warningf("failed to enrich subject account: %s; %s", s.ID, err.Error())
+			return nil, err
+		}
+	}
+
+	if s.Metadata.Vault == nil {
+		err := s.requireVault()
+		if err != nil {
+			common.Log.Warningf("failed to require vault; %s", err.Error())
+			return nil, err
+		}
+	}
+
 	keys, err := vault.ListKeys(*token, s.Metadata.Vault.ID.String(), map[string]interface{}{
 		"spec": "secp256k1", // FIXME-- make general
 	})
