@@ -126,7 +126,7 @@ func (s *SubjectAccount) requestBaselineOrganizationIssuedVC(address string) (*s
 	if s.Metadata == nil {
 		err = s.enrich()
 		if err != nil {
-			common.Log.Warningf("failed to enrich subject account: %s; %s", s.ID, err.Error())
+			common.Log.Warningf("failed to enrich subject account: %s; %s", *s.ID, err.Error())
 			return nil, err
 		}
 	}
