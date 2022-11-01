@@ -375,7 +375,7 @@ func (w *Workstep) deploy(token string, organizationID uuid.UUID) bool {
 		}
 	}
 
-	return prover.ID != uuid.Nil && err != nil
+	return prover.ID != uuid.Nil && err == nil
 }
 
 func (w *Workstep) execute(
