@@ -685,7 +685,7 @@ func (s *SubjectAccount) findWorkflowPrototypeCandidatesByObjectType(objectType 
 `, objectType, *s.Metadata.WorkgroupID)
 
 	sq := elastic.NewRawStringQuery(query)
-	result, err := common.ElasticClient.Search().Index(common.IndexerDocumentIndexBaselineWorkflowPrototypes).Type(common.IndexerDocumentTypeWorkflowPrototype).Query(sq).Do(context.TODO())
+	result, err := common.ElasticClient.Search().Index(common.IndexerDocumentIndexBaselineWorkflowPrototypes).Query(sq).Do(context.TODO())
 	if err != nil {
 		return nil, err
 	}
