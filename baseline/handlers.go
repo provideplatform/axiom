@@ -226,7 +226,7 @@ func sendProtocolMessageHandler(c *gin.Context) {
 	}
 
 	if message.ProtocolMessage.Payload.Object == nil {
-		provide.RenderError(fmt.Sprintf("cannot execute workstep without mappable protocol message payload; %s", err.Error()), 422, c)
+		provide.RenderError("cannot execute workstep without mappable protocol message payload", 422, c)
 		return
 	}
 
