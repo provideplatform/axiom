@@ -80,7 +80,7 @@ func (m *Message) query() (*BaselineContext, error) {
 	values := make([]interface{}, 0)
 	if payload, payloadOk := m.Payload.(map[string]interface{}); payloadOk {
 		for k, v := range payload {
-			if strings.Contains(strings.ToLower(k), "id") { // FIXME
+			if strings.Contains(strings.ToLower(k), "id") && v != nil {
 				values = append(values, v)
 			}
 		}
