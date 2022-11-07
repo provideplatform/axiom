@@ -2254,7 +2254,7 @@ func createWorkstepConstraintHandler(c *gin.Context) {
 		return
 	}
 
-	if constraint.Create() {
+	if constraint.Create(dbconf.DatabaseConnection()) {
 		provide.Render(constraint, 201, c)
 	} else if len(workstep.Errors) > 0 {
 		obj := map[string]interface{}{}

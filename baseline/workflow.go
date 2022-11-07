@@ -578,6 +578,21 @@ func (w *Workflow) Create(tx *gorm.DB) bool {
 								instance.addParticipant(*p.Participant, _tx)
 							}
 						}
+
+						constraints := workstep.listConstraints(_tx)
+						if len(constraints) > 0 {
+							common.Log.Debugf("attaching %d constraints to workstep", len(constraints))
+							for _, c := range constraints {
+								_constraint := &Constraint{
+									Expression:           c.Expression,
+									Description:          c.Description,
+									ExecutionRequirement: c.ExecutionRequirement,
+									FinalityRequirement:  c.FinalityRequirement,
+									WorkstepID:           &instance.ID,
+								}
+								_constraint.Create(_tx)
+							}
+						}
 					} else {
 						err := fmt.Errorf("failed to spawn workstep instance for workflow: %s; workstep cardinality: %d; %s", w.ID, instance.Cardinality, *instance.Errors[0].Message)
 						common.Log.Warningf(err.Error())

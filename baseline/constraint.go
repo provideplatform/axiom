@@ -1,6 +1,7 @@
 package baseline
 
 import (
+	"github.com/jinzhu/gorm"
 	dbconf "github.com/kthomas/go-db-config"
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideplatform/baseline/common"
@@ -61,18 +62,22 @@ func (c *Constraint) Validate() bool {
 }
 
 // Create a constraint
-func (c *Constraint) Create() bool {
+func (c *Constraint) Create(tx *gorm.DB) bool {
+	_tx := tx
+	if _tx == nil {
+		db := dbconf.DatabaseConnection()
+		_tx = db.Begin()
+		defer _tx.RollbackUnlessCommitted()
+	}
+
 	if !c.Validate() {
 		return false
 	}
 
 	success := false
-	db := dbconf.DatabaseConnection()
-	tx := db.Begin()
-	defer tx.RollbackUnlessCommitted()
 
-	if tx.NewRecord(&c) {
-		result := tx.Create(&c)
+	if _tx.NewRecord(&c) {
+		result := _tx.Create(&c)
 		rowsAffected := result.RowsAffected
 		errors := result.GetErrors()
 		if len(errors) > 0 {
@@ -86,8 +91,8 @@ func (c *Constraint) Create() bool {
 		success = rowsAffected > 0
 	}
 
-	if success {
-		tx.Commit()
+	if success && tx == nil {
+		_tx.Commit()
 	}
 
 	return success
