@@ -2316,7 +2316,7 @@ func updateWorkstepConstraintHandler(c *gin.Context) {
 	}
 
 	if workstep.Status == nil || *workstep.Status != workstepStatusDraft {
-		provide.RenderError("cannot remove workstep constraint", 400, c)
+		provide.RenderError("cannot update workstep constraint", 400, c)
 		return
 	}
 
