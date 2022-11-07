@@ -126,7 +126,14 @@ func InstallWorkstepsAPI(r *gin.Engine) {
 	r.POST("/api/v1/workflows/:id/worksteps", createWorkstepHandler)
 	r.PUT("/api/v1/workflows/:id/worksteps/:workstepId", updateWorkstepHandler)
 	r.DELETE("/api/v1/workflows/:id/worksteps/:workstepId", deleteWorkstepHandler)
+
+	r.GET("/api/v1/workflows/:id/worksteps/:workstepId/constraints", listWorkstepConstraintsHandler)
+	r.POST("/api/v1/workflows/:id/worksteps/:workstepId/constraints", createWorkstepConstraintHandler)
+	r.PUT("/api/v1/workflows/:id/worksteps/:workstepId/constraints/:constraintId", updateWorkstepConstraintHandler)
+	r.DELETE("/api/v1/workflows/:id/worksteps/:workstepId/constraints/:constraintId", deleteWorkstepConstraintHandler)
+
 	r.POST("/api/v1/workflows/:id/worksteps/:workstepId/execute", executeWorkstepHandler)
+
 	r.GET("/api/v1/workflows/:id/worksteps/:workstepId/participants", listWorkstepParticipantsHandler)
 	r.POST("/api/v1/workflows/:id/worksteps/:workstepId/participants", createWorkstepParticipantHandler)
 	r.DELETE("/api/v1/workflows/:id/worksteps/:workstepId/participants/:participantId", deleteWorkstepParticipantHandler)
@@ -2157,6 +2164,251 @@ func issueVerifiableCredentialHandler(c *gin.Context) {
 	}
 }
 
+func listWorkstepConstraintsHandler(c *gin.Context) {
+	organizationID := util.AuthorizedSubjectID(c, "organization")
+	if organizationID == nil {
+		provide.RenderError("unauthorized", 401, c)
+		return
+	}
+
+	workflowID, err := uuid.FromString(c.Param("id"))
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	workstepID, err := uuid.FromString(c.Param("workstepId"))
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	workstep := FindWorkstepByID(workstepID)
+	if workstep == nil {
+		provide.RenderError("not found", 404, c)
+		return
+	} else if workstep.WorkflowID == nil || workstep.WorkflowID.String() != workflowID.String() {
+		provide.RenderError("forbidden", 403, c)
+		return
+	}
+
+	db := dbconf.DatabaseConnection()
+	constraints := workstep.listConstraints(db)
+	// var constraints []*WorkstepConstraint
+	// query := workstep.listConstraintsQuery()
+	// provide.Paginate(c, query, &WorkstepConstraint{}).Find(&constraints)
+	provide.Render(constraints, 200, c)
+}
+
+func createWorkstepConstraintHandler(c *gin.Context) {
+	organizationID := util.AuthorizedSubjectID(c, "organization")
+	if organizationID == nil {
+		provide.RenderError("unauthorized", 401, c)
+		return
+	}
+
+	var constraint *Constraint
+
+	buf, err := c.GetRawData()
+	if err != nil {
+		provide.RenderError(err.Error(), 400, c)
+		return
+	}
+
+	err = json.Unmarshal(buf, &constraint)
+	if err != nil {
+		msg := fmt.Sprintf("failed to umarshal constraint; %s", err.Error())
+		common.Log.Warning(msg)
+		provide.RenderError(msg, 422, c)
+		return
+	}
+
+	workflowID, err := uuid.FromString(c.Param("id"))
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	workstepID, err := uuid.FromString(c.Param("workstepId"))
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	workstep := FindWorkstepByID(workstepID)
+	if workstep == nil {
+		provide.RenderError("not found", 404, c)
+		return
+	} else if workstep.WorkflowID == nil || workstep.WorkflowID.String() != workflowID.String() {
+		provide.RenderError("forbidden", 403, c)
+		return
+	}
+
+	if workstep.Status == nil || *workstep.Status != workstepStatusDraft {
+		provide.RenderError("cannot add workstep constraint", 400, c)
+		return
+	}
+
+	if constraint.WorkstepID == nil || constraint.WorkstepID.String() != workstep.ID.String() {
+		provide.RenderError("forbidden", 403, c)
+		return
+	}
+
+	if constraint.Create() {
+		provide.Render(constraint, 201, c)
+	} else if len(workstep.Errors) > 0 {
+		obj := map[string]interface{}{}
+		obj["errors"] = workstep.Errors
+		provide.Render(obj, 422, c)
+	} else {
+		provide.RenderError("internal persistence error", 500, c)
+	}
+}
+
+func updateWorkstepConstraintHandler(c *gin.Context) {
+	organizationID := util.AuthorizedSubjectID(c, "organization")
+	if organizationID == nil {
+		provide.RenderError("unauthorized", 401, c)
+		return
+	}
+
+	var _constraint *Constraint
+
+	buf, err := c.GetRawData()
+	if err != nil {
+		provide.RenderError(err.Error(), 400, c)
+		return
+	}
+
+	err = json.Unmarshal(buf, &_constraint)
+	if err != nil {
+		msg := fmt.Sprintf("failed to umarshal constraint; %s", err.Error())
+		common.Log.Warning(msg)
+		provide.RenderError(msg, 422, c)
+		return
+	}
+
+	workflowID, err := uuid.FromString(c.Param("id"))
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	workstepID, err := uuid.FromString(c.Param("workstepId"))
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	constraintID, err := uuid.FromString(c.Param("constraintId"))
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	workstep := FindWorkstepByID(workstepID)
+	if workstep == nil {
+		provide.RenderError("not found", 404, c)
+		return
+	} else if workstep.WorkflowID == nil || workstep.WorkflowID.String() != workflowID.String() {
+		provide.RenderError("forbidden", 403, c)
+		return
+	}
+
+	if workstep.Status == nil || *workstep.Status != workstepStatusDraft {
+		provide.RenderError("cannot remove workstep constraint", 400, c)
+		return
+	}
+
+	constraint := FindConstraintByID(constraintID)
+	if constraint == nil {
+		provide.RenderError("not found", 404, c)
+		return
+	} else if constraint.WorkstepID == nil || constraint.WorkstepID.String() != workstep.ID.String() {
+		provide.RenderError("forbidden", 403, c)
+		return
+	}
+
+	if (constraint.WorkstepID == nil || _constraint.WorkstepID == nil) || constraint.WorkstepID.String() != _constraint.WorkstepID.String() {
+		provide.RenderError("constraint workstep id mismatch", 403, c)
+		return
+	}
+
+	constraint.Description = _constraint.Description
+	constraint.Expression = _constraint.Expression
+	constraint.ExecutionRequirement = _constraint.ExecutionRequirement
+	constraint.FinalityRequirement = _constraint.FinalityRequirement
+
+	if constraint.Update() {
+		provide.Render(nil, 204, c)
+	} else if len(workstep.Errors) > 0 {
+		obj := map[string]interface{}{}
+		obj["errors"] = workstep.Errors
+		provide.Render(obj, 422, c)
+	} else {
+		provide.RenderError("internal persistence error", 500, c)
+	}
+}
+
+func deleteWorkstepConstraintHandler(c *gin.Context) {
+	organizationID := util.AuthorizedSubjectID(c, "organization")
+	if organizationID == nil {
+		provide.RenderError("unauthorized", 401, c)
+		return
+	}
+
+	workflowID, err := uuid.FromString(c.Param("id"))
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	workstepID, err := uuid.FromString(c.Param("workstepId"))
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	constraintID, err := uuid.FromString(c.Param("constraintId"))
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	workstep := FindWorkstepByID(workstepID)
+	if workstep == nil {
+		provide.RenderError("not found", 404, c)
+		return
+	} else if workstep.WorkflowID == nil || workstep.WorkflowID.String() != workflowID.String() {
+		provide.RenderError("forbidden", 403, c)
+		return
+	}
+
+	if workstep.Status == nil || *workstep.Status != workstepStatusDraft {
+		provide.RenderError("cannot remove workstep constraint", 400, c)
+		return
+	}
+
+	constraint := FindConstraintByID(constraintID)
+	if constraint == nil {
+		provide.RenderError("not found", 404, c)
+		return
+	} else if constraint.WorkstepID == nil || constraint.WorkstepID.String() != workstep.ID.String() {
+		provide.RenderError("forbidden", 403, c)
+		return
+	}
+
+	if constraint.Delete() {
+		provide.Render(nil, 204, c)
+	} else if len(workstep.Errors) > 0 {
+		obj := map[string]interface{}{}
+		obj["errors"] = workstep.Errors
+		provide.Render(obj, 422, c)
+	} else {
+		provide.RenderError("internal persistence error", 500, c)
+	}
+}
+
 func listWorkstepParticipantsHandler(c *gin.Context) {
 	organizationID := util.AuthorizedSubjectID(c, "organization")
 	if organizationID == nil {
@@ -2238,7 +2490,7 @@ func createWorkstepParticipantHandler(c *gin.Context) {
 	}
 
 	if workstep.Status == nil || *workstep.Status != workstepStatusDraft {
-		provide.RenderError("cannot execute workstep", 400, c)
+		provide.RenderError("cannot add workstep participant", 400, c)
 		return
 	}
 
@@ -2290,7 +2542,7 @@ func deleteWorkstepParticipantHandler(c *gin.Context) {
 	}
 
 	if workstep.Status == nil || *workstep.Status != workstepStatusDraft {
-		provide.RenderError("cannot execute workstep", 400, c)
+		provide.RenderError("cannot remote workstep participant", 400, c)
 		return
 	}
 

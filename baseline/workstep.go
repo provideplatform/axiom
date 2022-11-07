@@ -609,6 +609,10 @@ func (w *Workstep) participantsCount(tx *gorm.DB) int {
 	return len
 }
 
+func (w *Workstep) listConstraints(tx *gorm.DB) []*Constraint {
+	return FindConstraintsByWorkstepID(w.ID)
+}
+
 func (w *Workstep) listParticipants(tx *gorm.DB) []*WorkstepParticipant {
 	participants := make([]*WorkstepParticipant, 0)
 	rows, err := tx.Raw("SELECT * FROM worksteps_participants WHERE workstep_id=?", w.ID).Rows()
