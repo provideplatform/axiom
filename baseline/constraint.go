@@ -104,14 +104,8 @@ func (c *Constraint) Update(constraint *Constraint) bool {
 		return false
 	}
 
-	if constraint.Description != nil {
-		c.Description = constraint.Description
-	}
-
-	if constraint.Expression != nil {
-		c.Expression = constraint.Expression
-	}
-
+	c.Description = constraint.Description
+	c.Expression = constraint.Expression
 	c.ExecutionRequirement = constraint.ExecutionRequirement
 	c.FinalityRequirement = constraint.FinalityRequirement
 
