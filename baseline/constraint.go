@@ -76,7 +76,7 @@ func (c *Constraint) Create(tx *gorm.DB) bool {
 
 	success := false
 
-	if _tx.NewRecord(&c) {
+	if _tx.NewRecord(c) {
 		result := _tx.Create(&c)
 		rowsAffected := result.RowsAffected
 		errors := result.GetErrors()
@@ -99,10 +99,21 @@ func (c *Constraint) Create(tx *gorm.DB) bool {
 }
 
 // Update the constraint
-func (c *Constraint) Update() bool {
+func (c *Constraint) Update(constraint *Constraint) bool {
 	if !c.Validate() {
 		return false
 	}
+
+	if constraint.Description != nil {
+		c.Description = constraint.Description
+	}
+
+	if constraint.Expression != nil {
+		c.Expression = constraint.Expression
+	}
+
+	c.ExecutionRequirement = constraint.ExecutionRequirement
+	c.FinalityRequirement = constraint.FinalityRequirement
 
 	db := dbconf.DatabaseConnection()
 	result := db.Save(&c)

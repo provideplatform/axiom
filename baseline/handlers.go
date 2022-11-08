@@ -2254,11 +2254,11 @@ func createWorkstepConstraintHandler(c *gin.Context) {
 		return
 	}
 
-	if constraint.Create(dbconf.DatabaseConnection()) {
+	if constraint.Create(nil) {
 		provide.Render(constraint, 201, c)
-	} else if len(workstep.Errors) > 0 {
+	} else if len(constraint.Errors) > 0 {
 		obj := map[string]interface{}{}
-		obj["errors"] = workstep.Errors
+		obj["errors"] = constraint.Errors
 		provide.Render(obj, 422, c)
 	} else {
 		provide.RenderError("internal persistence error", 500, c)
@@ -2334,16 +2334,11 @@ func updateWorkstepConstraintHandler(c *gin.Context) {
 		return
 	}
 
-	constraint.Description = _constraint.Description
-	constraint.Expression = _constraint.Expression
-	constraint.ExecutionRequirement = _constraint.ExecutionRequirement
-	constraint.FinalityRequirement = _constraint.FinalityRequirement
-
-	if constraint.Update() {
+	if constraint.Update(_constraint) {
 		provide.Render(nil, 204, c)
-	} else if len(workstep.Errors) > 0 {
+	} else if len(constraint.Errors) > 0 {
 		obj := map[string]interface{}{}
-		obj["errors"] = workstep.Errors
+		obj["errors"] = constraint.Errors
 		provide.Render(obj, 422, c)
 	} else {
 		provide.RenderError("internal persistence error", 500, c)
@@ -2400,9 +2395,9 @@ func deleteWorkstepConstraintHandler(c *gin.Context) {
 
 	if constraint.Delete() {
 		provide.Render(nil, 204, c)
-	} else if len(workstep.Errors) > 0 {
+	} else if len(constraint.Errors) > 0 {
 		obj := map[string]interface{}{}
-		obj["errors"] = workstep.Errors
+		obj["errors"] = constraint.Errors
 		provide.Render(obj, 422, c)
 	} else {
 		provide.RenderError("internal persistence error", 500, c)
