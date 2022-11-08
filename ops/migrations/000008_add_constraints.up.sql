@@ -26,8 +26,9 @@ CREATE TABLE public.constraints (
 
 ALTER TABLE public.constraints OWNER TO baseline;
 
-ALTER TABLE ONLY public.constraints ADD CONSTRAINT systems_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.constraints ADD CONSTRAINT constraints_pkey PRIMARY KEY (id);
 
-CREATE INDEX idx_constraints_workstep_id ON public.systems USING btree (workstep_id);
+CREATE INDEX idx_constraints_workstep_id ON public.constraints USING btree (workstep_id);
 
-ALTER TABLE ONLY public.constraints ADD CONSTRAINT constraints_workstep_id_foreign FOREIGN KEY (workstep_id) REFERENCES public.worksteps(id) ON UPDATE CASCADE ON DELETE CASCADE;
+ALTER TABLE ONLY public.constraints
+    ADD CONSTRAINT constraints_workstep_id_foreign FOREIGN KEY (workstep_id) REFERENCES public.worksteps(id) ON UPDATE CASCADE ON DELETE CASCADE;
