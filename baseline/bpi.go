@@ -920,11 +920,11 @@ func resolveSubjectAccount(subjectAccountID string, token, vc *string) (*Subject
 			uri := fmt.Sprintf("subjects/%s/accounts/%s", *organizationID, subjectAccountID)
 			status, resp, err := baselineClient.Get(uri, map[string]interface{}{})
 			if err != nil {
-				return nil, fmt.Errorf("failed to get subject account details for subject account: %s; %s", subjectAccountID, err.Error())
+				return nil, fmt.Errorf("failed to get details for subject account: %s; %s", subjectAccountID, err.Error())
 			}
 
 			if status != 200 {
-				msg := fmt.Sprintf("failed to get subject account details for subject account: %s; status: %d", subjectAccountID, status)
+				msg := fmt.Sprintf("failed to get details for subject account: %s; status: %d", subjectAccountID, status)
 				if resp != nil {
 					rawresp, _ := json.Marshal(resp)
 					msg = fmt.Sprintf("%s; %s", msg, string(rawresp))
