@@ -194,7 +194,7 @@ func sendProtocolMessageHandler(c *gin.Context) {
 		return
 	}
 
-	message.subjectAccount, err = resolveSubjectAccount(*subjectAccountID)
+	message.subjectAccount, err = resolveSubjectAccount(*subjectAccountID, nil, nil)
 	if err != nil {
 		provide.RenderError("failed to resolve BPI subject account", 403, c)
 		return
@@ -237,7 +237,7 @@ func sendProtocolMessageHandler(c *gin.Context) {
 		return
 	}
 
-	token, _ := util.ParseBearerAuthorizationHeader(c, nil)
+	token, _ := util.ParseBearerAuthorizationHeader(c.GetHeader("authorization"), nil)
 	proof, err := workstep.execute(message.subjectAccount, token.Raw, message.ProtocolMessage.Payload)
 	if err != nil {
 		provide.RenderError(fmt.Sprintf("cannot execute workstep; %s", err.Error()), 422, c)
@@ -322,7 +322,7 @@ func createWorkgroupHandler(c *gin.Context) {
 	isCreateWorkgroup := params["token"] == nil && params["subject_account_params"] == nil
 
 	if isCreateWorkgroup {
-		token, _ := util.ParseBearerAuthorizationHeader(c, nil)
+		token, _ := util.ParseBearerAuthorizationHeader(c.GetHeader("authorization"), nil)
 		resp, err := ident.CreateApplication(token.Raw, params)
 		if err != nil {
 			provide.RenderError(err.Error(), 422, c)
@@ -397,7 +397,7 @@ func updateWorkgroupHandler(c *gin.Context) {
 		return
 	}
 
-	token, _ := util.ParseBearerAuthorizationHeader(c, nil)
+	token, _ := util.ParseBearerAuthorizationHeader(c.GetHeader("authorization"), nil)
 	err = ident.UpdateApplication(token.Raw, workgroupID.String(), params)
 	if err != nil {
 		provide.RenderError(err.Error(), 422, c)
@@ -423,11 +423,11 @@ func updateWorkgroupHandler(c *gin.Context) {
 }
 
 func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[string]interface{}) {
-	bearerToken := params["token"].(string)
+	vcToken := params["token"].(string) // FIXME-- pass as verifiable_credential in params?
 
 	claims := &InviteClaims{}
 	var jwtParser jwt.Parser
-	_, _, err := jwtParser.ParseUnverified(bearerToken, claims)
+	_, _, err := jwtParser.ParseUnverified(vcToken, claims)
 
 	if err != nil {
 		msg := fmt.Sprintf("failed to accept workgroup invitation; failed to parse jwt; %s", err.Error())
@@ -472,14 +472,15 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 		return
 	}
 
-	invitorSubjectAccount, err := resolveSubjectAccount(*claims.Baseline.InvitorSubjectAccountID)
+	token, _ := util.ParseBearerAuthorizationHeader(c.GetHeader("authorization"), nil)
+	invitorSubjectAccount, err := resolveSubjectAccount(*claims.Baseline.InvitorSubjectAccountID, &token.Raw, &vcToken)
 	if err != nil {
 		provide.RenderError(err.Error(), 404, c)
 		return
 	}
 
 	// subjectAccountID := subjectAccountIDFactory(organizationID.String(), identifierUUID.String())
-	// subjectAccount, err := resolveSubjectAccount(subjectAccountID)
+	// subjectAccount, err := resolveSubjectAccount(subjectAccountID, nil)
 	// if err != nil {
 	// 	common.Log.Debugf("no BPI subject account resolved during attempted workgroup invite acceptance for subject account %s", subjectAccountID)
 	// 	// provide.RenderError(err.Error(), 403, c)
@@ -487,7 +488,7 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 	// }
 
 	// parse the token again, this time verifying the signature origin as the named subject account
-	_, err = jwt.Parse(bearerToken, func(_jwtToken *jwt.Token) (interface{}, error) {
+	_, err = jwt.Parse(vcToken, func(_jwtToken *jwt.Token) (interface{}, error) {
 		var kid *string
 		if kidhdr, ok := _jwtToken.Header["kid"].(string); ok {
 			kid = &kidhdr
@@ -683,7 +684,7 @@ func listWorkgroupsHandler(c *gin.Context) {
 		rpp = defaultResultsPerPage
 	}
 
-	token, _ := util.ParseBearerAuthorizationHeader(c, nil)
+	token, _ := util.ParseBearerAuthorizationHeader(c.GetHeader("authorization"), nil)
 	resp, err := ident.ListApplications(token.Raw, map[string]interface{}{
 		"rpp":  250, // HACK
 		"type": "baseline",
@@ -740,7 +741,7 @@ func workgroupDetailsHandler(c *gin.Context) {
 		return
 	}
 
-	token, _ := util.ParseBearerAuthorizationHeader(c, nil)
+	token, _ := util.ParseBearerAuthorizationHeader(c.GetHeader("authorization"), nil)
 	_, err := ident.GetApplicationDetails(token.Raw, workgroup.ID.String(), map[string]interface{}{})
 	if err != nil {
 		provide.RenderError(err.Error(), 404, c) // FIXME-- pass thru ident status
@@ -782,7 +783,7 @@ func workgroupAnalyticsHandler(c *gin.Context) {
 		return
 	}
 
-	token, _ := util.ParseBearerAuthorizationHeader(c, nil)
+	token, _ := util.ParseBearerAuthorizationHeader(c.GetHeader("authorization"), nil)
 	_, err := ident.GetApplicationDetails(token.Raw, workgroup.ID.String(), map[string]interface{}{})
 	if err != nil {
 		provide.RenderError(err.Error(), 404, c) // FIXME-- pass thru ident status
@@ -863,7 +864,7 @@ func listSystemsHandler(c *gin.Context) {
 
 	if c.Query("secret_ids") != "" {
 		subjectAccountID := subjectAccountIDFactory(organizationID.String(), workgroupID.String())
-		subjectAccount, _ := resolveSubjectAccount(subjectAccountID)
+		subjectAccount, _ := resolveSubjectAccount(subjectAccountID, nil, nil)
 
 		query = query.Where("vault_id = ? AND secret_id IN ?", subjectAccount.VaultID.String(), strings.Split(c.Query("secret_ids"), ","))
 	}
@@ -951,7 +952,7 @@ func createSystemHandler(c *gin.Context) {
 
 	if system.VaultID == nil {
 		subjectAccountID := subjectAccountIDFactory(organizationID.String(), workgroupID.String())
-		subjectAccount, err := resolveSubjectAccount(subjectAccountID)
+		subjectAccount, err := resolveSubjectAccount(subjectAccountID, nil, nil)
 		if err != nil {
 			provide.RenderError(fmt.Sprintf("failed to resolve subject account when attempting to create system; %s", err.Error()), 500, c)
 			return
@@ -1288,7 +1289,7 @@ func listSchemasHandler(c *gin.Context) {
 
 	if !useEphemeralSystem {
 		subjectAccountID := subjectAccountIDFactory(organizationID.String(), c.Param("id"))
-		subjectAccount, err := resolveSubjectAccount(subjectAccountID)
+		subjectAccount, err := resolveSubjectAccount(subjectAccountID, nil, nil)
 		if err != nil {
 			provide.RenderError(err.Error(), 403, c)
 			return
@@ -1305,7 +1306,7 @@ func listSchemasHandler(c *gin.Context) {
 			return
 		}
 
-		token, _ := util.ParseBearerAuthorizationHeader(c, nil)
+		token, _ := util.ParseBearerAuthorizationHeader(c.GetHeader("authorization"), nil)
 		systemSecretIDs := strings.Split(c.Query("system_secret_ids"), ",")
 		ephemeralSystems, err := resolveEphemeralSystems(token.Raw, c.Query("vault_id"), systemSecretIDs)
 		if err != nil {
@@ -1398,7 +1399,7 @@ func schemaDetailsHandler(c *gin.Context) {
 
 	if !useEphemeralSystem {
 		subjectAccountID := subjectAccountIDFactory(organizationID.String(), c.Param("id"))
-		subjectAccount, err := resolveSubjectAccount(subjectAccountID)
+		subjectAccount, err := resolveSubjectAccount(subjectAccountID, nil, nil)
 		if err != nil {
 			provide.RenderError(err.Error(), 403, c)
 			return
@@ -1415,7 +1416,7 @@ func schemaDetailsHandler(c *gin.Context) {
 			return
 		}
 
-		token, _ := util.ParseBearerAuthorizationHeader(c, nil)
+		token, _ := util.ParseBearerAuthorizationHeader(c.GetHeader("authorization"), nil)
 		systemSecretIDs := strings.Split(c.Query("system_secret_ids"), ",")
 		ephemeralSystems, err := resolveEphemeralSystems(token.Raw, c.Query("vault_id"), systemSecretIDs)
 		if err != nil {
@@ -1999,7 +2000,7 @@ func executeWorkstepHandler(c *gin.Context) {
 	}
 
 	subjectAccountID := subjectAccountIDFactory(organizationID.String(), workflow.WorkgroupID.String())
-	subjectAccount, err := resolveSubjectAccount(subjectAccountID)
+	subjectAccount, err := resolveSubjectAccount(subjectAccountID, nil, nil)
 	if err != nil {
 		provide.RenderError(err.Error(), 403, c)
 		return
@@ -2012,7 +2013,7 @@ func executeWorkstepHandler(c *gin.Context) {
 		return
 	}
 
-	token, _ := util.ParseBearerAuthorizationHeader(c, nil)
+	token, _ := util.ParseBearerAuthorizationHeader(c.GetHeader("authorization"), nil)
 	proof, err := workstep.execute(subjectAccount, token.Raw, payload)
 	if err != nil {
 		provide.RenderError(fmt.Sprintf("cannot execute workstep; %s", err.Error()), 422, c)
@@ -2081,7 +2082,7 @@ func workstepDetailsHandler(c *gin.Context) {
 	workstep := FindWorkstepByID(workstepID)
 
 	if workstep != nil {
-		token, _ := util.ParseBearerAuthorizationHeader(c, nil)
+		token, _ := util.ParseBearerAuthorizationHeader(c.GetHeader("authorization"), nil)
 		workstep.enrich(token.Raw)
 		provide.Render(workstep, 200, c)
 	} else {
@@ -2610,7 +2611,7 @@ func subjectAccountDetailsHandler(c *gin.Context) {
 		return
 	}
 
-	subjectAccount, err := resolveSubjectAccount(subjectAccountID)
+	subjectAccount, err := resolveSubjectAccount(subjectAccountID, nil, nil)
 	if err != nil {
 		provide.RenderError(err.Error(), 403, c)
 		return
