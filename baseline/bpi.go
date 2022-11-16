@@ -882,7 +882,7 @@ func resolveSubjectAccount(subjectAccountID string, token, vc *string) (*Subject
 	if token != nil && vc != nil {
 		// TODO-- refactor
 		// attempt DID-based subject account resolution
-		bearerToken, err := util.ParseBearerAuthorizationHeader(*token, nil)
+		bearerToken, err := util.ParseBearerAuthorizationHeader(fmt.Sprintf("bearer %s", *token), nil) // FIXME!-- refactor
 		if err != nil {
 			return nil, fmt.Errorf("failed to resolve DID-based BPI subject account: %s; failed to parse bearer authorization token; %s", subjectAccountID, err.Error())
 		}
