@@ -896,7 +896,7 @@ func resolveSubjectAccount(subjectAccountID string, token, vc *string) (*Subject
 					return nil, fmt.Errorf("failed to parse organization subject claim from bearer authorization header; subject malformed: %s", sub)
 				}
 				if subprts[0] == "organization" {
-					*organizationID = subprts[1]
+					organizationID = common.StringOrNil(subprts[1])
 				}
 			}
 		}
@@ -917,11 +917,6 @@ func resolveSubjectAccount(subjectAccountID string, token, vc *string) (*Subject
 
 		// attempt to resolve subject account using bpi endpoint on organization workgroup metadata
 		if organizationID != nil && workgroupID != nil && bpiEndpoint != nil {
-			org, err := ident.GetOrganizationDetails(bearerToken.Raw, *organizationID, map[string]interface{}{})
-			if err != nil {
-				return nil, fmt.Errorf("failed to resolve DID-based BPI subject account: %s; %s", subjectAccountID, err.Error())
-			}
-
 			// TODO-- change organization struct to include nested metadata definitions
 			bpiURL, err := url.Parse(*bpiEndpoint)
 			if err != nil {
@@ -952,7 +947,7 @@ func resolveSubjectAccount(subjectAccountID string, token, vc *string) (*Subject
 				return nil, fmt.Errorf("failed to enrich BPI subject account: %s; %s", subjectAccountID, err.Error())
 			}
 
-			common.Log.Debugf("resolved organization (%s) associated with DID-based BPI subject account: %s;", *org.Name, subjectAccountID)
+			common.Log.Debugf("resolved DID-based BPI subject account: %s;", subjectAccountID)
 			return subjectAccount, nil
 		}
 	}
