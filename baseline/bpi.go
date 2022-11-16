@@ -880,36 +880,22 @@ func resolveSubjectAccount(subjectAccountID string, token, vc *string) (*Subject
 	}
 
 	if token != nil && vc != nil {
-		// TODO-- refactor
-		// attempt DID-based subject account resolution
-		bearerToken, err := util.ParseBearerAuthorizationHeader(fmt.Sprintf("bearer %s", *token), nil) // FIXME!-- refactor
-		if err != nil {
-			return nil, fmt.Errorf("failed to resolve DID-based BPI subject account: %s; failed to parse bearer authorization token; %s", subjectAccountID, err.Error())
-		}
-
-		// attempt to parse organization id from bearer token
-		var organizationID *string
-		if bearerClaims, bearerClaimsOk := bearerToken.Claims.(jwt.MapClaims); bearerClaimsOk {
-			if sub, subok := bearerClaims["sub"].(string); subok {
-				subprts := strings.Split(sub, ":")
-				if len(subprts) != 2 {
-					return nil, fmt.Errorf("failed to parse organization subject claim from bearer authorization header; subject malformed: %s", sub)
-				}
-				if subprts[0] == "organization" {
-					organizationID = common.StringOrNil(subprts[1])
-				}
-			}
-		}
-
 		// attempt to parse workgroup id and invitor bpi endpoint from verifiable credential
+		var organizationID *string
 		var workgroupID *string
 		var bpiEndpoint *string
 
 		claims := &InviteClaims{} // TODO-- refactor
 		var jwtParser jwt.Parser
-		_, _, err = jwtParser.ParseUnverified(*vc, claims)
+		parsedVC, _, err := jwtParser.ParseUnverified(*vc, claims)
 		if err != nil {
 			return nil, fmt.Errorf("failed to resolve DID-based BPI subject account: %s; failed to parse workgroup ID from verifiable credential; %s", subjectAccountID, err)
+		}
+
+		if parsedVCClaims, parsedVCClaimsOk := parsedVC.Claims.(jwt.MapClaims); parsedVCClaimsOk {
+			if iss, issOk := parsedVCClaims["iss"].(string); issOk {
+				organizationID = common.StringOrNil(iss)
+			}
 		}
 
 		workgroupID = claims.Baseline.WorkgroupID
