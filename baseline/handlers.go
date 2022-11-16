@@ -194,7 +194,7 @@ func sendProtocolMessageHandler(c *gin.Context) {
 		return
 	}
 
-	message.subjectAccount, err = resolveSubjectAccount(*subjectAccountID, nil)
+	message.subjectAccount, err = resolveSubjectAccount(*subjectAccountID, nil, nil)
 	if err != nil {
 		provide.RenderError("failed to resolve BPI subject account", 403, c)
 		return
@@ -472,7 +472,7 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 		return
 	}
 
-	invitorSubjectAccount, err := resolveSubjectAccount(*claims.Baseline.InvitorSubjectAccountID, &bearerToken)
+	invitorSubjectAccount, err := resolveSubjectAccount(*claims.Baseline.InvitorSubjectAccountID, &bearerToken, claims.Baseline.WorkgroupID)
 	if err != nil {
 		provide.RenderError(err.Error(), 404, c)
 		return
@@ -863,7 +863,7 @@ func listSystemsHandler(c *gin.Context) {
 
 	if c.Query("secret_ids") != "" {
 		subjectAccountID := subjectAccountIDFactory(organizationID.String(), workgroupID.String())
-		subjectAccount, _ := resolveSubjectAccount(subjectAccountID, nil)
+		subjectAccount, _ := resolveSubjectAccount(subjectAccountID, nil, nil)
 
 		query = query.Where("vault_id = ? AND secret_id IN ?", subjectAccount.VaultID.String(), strings.Split(c.Query("secret_ids"), ","))
 	}
@@ -951,7 +951,7 @@ func createSystemHandler(c *gin.Context) {
 
 	if system.VaultID == nil {
 		subjectAccountID := subjectAccountIDFactory(organizationID.String(), workgroupID.String())
-		subjectAccount, err := resolveSubjectAccount(subjectAccountID, nil)
+		subjectAccount, err := resolveSubjectAccount(subjectAccountID, nil, nil)
 		if err != nil {
 			provide.RenderError(fmt.Sprintf("failed to resolve subject account when attempting to create system; %s", err.Error()), 500, c)
 			return
@@ -1288,7 +1288,7 @@ func listSchemasHandler(c *gin.Context) {
 
 	if !useEphemeralSystem {
 		subjectAccountID := subjectAccountIDFactory(organizationID.String(), c.Param("id"))
-		subjectAccount, err := resolveSubjectAccount(subjectAccountID, nil)
+		subjectAccount, err := resolveSubjectAccount(subjectAccountID, nil, nil)
 		if err != nil {
 			provide.RenderError(err.Error(), 403, c)
 			return
@@ -1398,7 +1398,7 @@ func schemaDetailsHandler(c *gin.Context) {
 
 	if !useEphemeralSystem {
 		subjectAccountID := subjectAccountIDFactory(organizationID.String(), c.Param("id"))
-		subjectAccount, err := resolveSubjectAccount(subjectAccountID, nil)
+		subjectAccount, err := resolveSubjectAccount(subjectAccountID, nil, nil)
 		if err != nil {
 			provide.RenderError(err.Error(), 403, c)
 			return
@@ -1999,7 +1999,7 @@ func executeWorkstepHandler(c *gin.Context) {
 	}
 
 	subjectAccountID := subjectAccountIDFactory(organizationID.String(), workflow.WorkgroupID.String())
-	subjectAccount, err := resolveSubjectAccount(subjectAccountID, nil)
+	subjectAccount, err := resolveSubjectAccount(subjectAccountID, nil, nil)
 	if err != nil {
 		provide.RenderError(err.Error(), 403, c)
 		return
@@ -2610,7 +2610,7 @@ func subjectAccountDetailsHandler(c *gin.Context) {
 		return
 	}
 
-	subjectAccount, err := resolveSubjectAccount(subjectAccountID, nil)
+	subjectAccount, err := resolveSubjectAccount(subjectAccountID, nil, nil)
 	if err != nil {
 		provide.RenderError(err.Error(), 403, c)
 		return

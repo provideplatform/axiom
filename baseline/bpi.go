@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -35,6 +36,7 @@ import (
 	"github.com/olivere/elastic/v7"
 	"github.com/provideplatform/baseline/common"
 	"github.com/provideplatform/baseline/middleware"
+	"github.com/provideplatform/provide-go/api"
 	provide "github.com/provideplatform/provide-go/api"
 	"github.com/provideplatform/provide-go/api/ident"
 	"github.com/provideplatform/provide-go/api/nchain"
@@ -861,7 +863,7 @@ func (s *SubjectAccount) configureSystem(system *middleware.SystemMetadata) erro
 }
 
 // resolveSubjectAccount resolves the BPI subject account for a given subject account id
-func resolveSubjectAccount(subjectAccountID string, token *string) (*SubjectAccount, error) {
+func resolveSubjectAccount(subjectAccountID string, token, workgroupID *string) (*SubjectAccount, error) {
 	if saccts, ok := SubjectAccountsByID[subjectAccountID]; ok {
 		return saccts[0], nil
 	}
@@ -872,7 +874,7 @@ func resolveSubjectAccount(subjectAccountID string, token *string) (*SubjectAcco
 		return subjectAccount, nil
 	}
 
-	if token != nil {
+	if token != nil && workgroupID != nil {
 		// attempt DID-based subject account resolution
 		bearerToken, err := util.ParseBearerAuthorizationHeader(*token, nil)
 		if err != nil {
@@ -882,15 +884,48 @@ func resolveSubjectAccount(subjectAccountID string, token *string) (*SubjectAcco
 		if claims, ok := bearerToken.Claims.(jwt.MapClaims); ok {
 			var organizationID *string
 			// FIXME-- verify "organization_id" to be the proper path to our invitor's org id... likely not "organization_id" --KT
-			if orgID, orgIDOk := claims["organization_id"].(string); orgIDOk {
-				organizationID = &orgID
+			if sub, subok := claims["sub"].(string); subok {
+				subprts := strings.Split(sub, ":")
+				if len(subprts) != 2 {
+					common.Log.Debugf("failed to parse organization subject claim from bearer authorization header; subject malformed: %s", sub)
+				}
+				if subprts[0] == "organization" {
+					*organizationID = subprts[1]
+				}
 			}
 
 			if organizationID != nil {
 				org, err := ident.GetOrganizationDetails(bearerToken.Raw, *organizationID, map[string]interface{}{})
+
 				if err == nil {
-					if subjectAccount != nil {
-						subjectAccount.enrich()
+					// TODO-- change organization struct to include nested metadata definitions
+					if orgWorkgroupsMetadata, orgWorkgroupsMetadataOk := org.Metadata["workgroups"].(map[string]interface{}); orgWorkgroupsMetadataOk {
+						if workgroupMetadata, workgroupMetadataOk := orgWorkgroupsMetadata[*workgroupID].(map[string]interface{}); workgroupMetadataOk {
+							if bpiEndpoint, bpiEndpointOk := workgroupMetadata["bpi_endpoint"].(string); bpiEndpointOk {
+								bpiURL, err := url.Parse(bpiEndpoint)
+								if err == nil {
+									baselineClient := &api.Client{
+										Host:   bpiURL.Host,
+										Scheme: bpiURL.Scheme,
+										Path:   "api/v1",
+										Token:  token,
+									}
+
+									uri := fmt.Sprintf("subjects/%s/accounts/%s", *organizationID, subjectAccountID)
+									status, resp, err := baselineClient.Get(uri, map[string]interface{}{})
+									if err == nil && status == 200 {
+										raw, _ := json.Marshal(resp)
+										err = json.Unmarshal(raw, subjectAccount)
+									} else if err != nil {
+										err = fmt.Errorf("%s; status: %d", err.Error(), status)
+									}
+								}
+							}
+						}
+					}
+
+					if subjectAccount != nil && err == nil {
+						subjectAccount.enrich() // TODO-- handle error
 						return subjectAccount, nil
 					}
 				}
