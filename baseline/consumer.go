@@ -333,7 +333,7 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *nats.Msg) {
 	if orgID, ok := org.Metadata["organization_id"].(string); ok {
 		if workflow != nil {
 			subjectAccountID = common.StringOrNil(subjectAccountIDFactory(orgID, workflow.WorkgroupID.String()))
-			protomsg.subjectAccount, err = resolveSubjectAccount(*subjectAccountID)
+			protomsg.subjectAccount, err = resolveSubjectAccount(*subjectAccountID, nil)
 			if err != nil {
 				common.Log.Warningf("failed to resolve subject account %s during processing of inbound protocol message to recipient: %s", *subjectAccountID, *protomsg.Recipient)
 				return
@@ -609,7 +609,7 @@ func consumeBaselineWorkstepDeploySubscriptionsMsg(msg *nats.Msg) {
 	}
 
 	subjectAccountID := subjectAccountIDFactory(organizationID.String(), workflow.WorkgroupID.String())
-	subjectAccount, err := resolveSubjectAccount(subjectAccountID)
+	subjectAccount, err := resolveSubjectAccount(subjectAccountID, nil)
 	if err != nil {
 		common.Log.Errorf("failed to resolve BPI subject account for workflow: %s; %s", workstep.WorkflowID, err.Error())
 		msg.Nak()
@@ -686,7 +686,7 @@ func consumeBaselineWorkstepFinalizeDeploySubscriptionsMsg(msg *nats.Msg) {
 	}
 
 	subjectAccountID := subjectAccountIDFactory(organizationID.String(), workflow.WorkgroupID.String())
-	subjectAccount, err := resolveSubjectAccount(subjectAccountID)
+	subjectAccount, err := resolveSubjectAccount(subjectAccountID, nil)
 	if err != nil {
 		common.Log.Errorf("failed to resolve BPI subject account for workflow: %s; %s", workstep.WorkflowID, err.Error())
 		msg.Nak()
@@ -811,7 +811,7 @@ func consumeDispatchProtocolMessageSubscriptionsMsg(msg *nats.Msg) {
 	// }
 
 	// subjectAccountID := subjectAccountIDFactory(organizationID.String(), *workgroupID)
-	subjectAccount, err := resolveSubjectAccount(*protomsg.SubjectAccountID) // FIXME... audit this to verify it is sufficiently secure...
+	subjectAccount, err := resolveSubjectAccount(*protomsg.SubjectAccountID, nil) // FIXME... audit this to verify it is sufficiently secure...
 	if err != nil {
 		common.Log.Errorf("failed to resolve BPI subject account for workflow: %s; %s", *protomsg.WorkflowID, err.Error())
 		msg.Nak()

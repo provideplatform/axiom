@@ -373,7 +373,7 @@ func (m *Mapping) resolveSubjectAccount() (*SubjectAccount, error) {
 	}
 
 	subjectAccountID := subjectAccountIDFactory(m.OrganizationID.String(), m.WorkgroupID.String())
-	subjectAccount, err := resolveSubjectAccount(subjectAccountID)
+	subjectAccount, err := resolveSubjectAccount(subjectAccountID, nil)
 	if err != nil {
 		return nil, err
 	}

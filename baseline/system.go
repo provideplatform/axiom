@@ -83,7 +83,7 @@ func (s *System) enrich() error {
 	}
 
 	subjectAccountID := subjectAccountIDFactory(s.OrganizationID.String(), s.WorkgroupID.String())
-	subjectAccount, err := resolveSubjectAccount(subjectAccountID)
+	subjectAccount, err := resolveSubjectAccount(subjectAccountID, nil)
 	if err != nil {
 		return fmt.Errorf("failed to enrich system: %s; invalid subject account context; %s", s.ID, err.Error())
 	}
@@ -125,7 +125,7 @@ func (s *System) enrich() error {
 
 func (s *System) deleteSecret() bool {
 	subjectAccountID := subjectAccountIDFactory(s.OrganizationID.String(), s.WorkgroupID.String())
-	subjectAccount, err := resolveSubjectAccount(subjectAccountID)
+	subjectAccount, err := resolveSubjectAccount(subjectAccountID, nil)
 	if err != nil {
 		s.Errors = append(s.Errors, &provide.Error{
 			Message: common.StringOrNil(fmt.Sprintf("failed to enrich system: %s; invalid subject account context; %s", s.ID, err.Error())),
@@ -159,7 +159,7 @@ func (s *System) deleteSecret() bool {
 
 func (s *System) resolveSubjectAccount() (*SubjectAccount, error) {
 	subjectAccountID := subjectAccountIDFactory(s.OrganizationID.String(), s.WorkgroupID.String())
-	subjectAccount, err := resolveSubjectAccount(subjectAccountID)
+	subjectAccount, err := resolveSubjectAccount(subjectAccountID, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve subject account for system: %s; %s", s.ID, err.Error())
 	}

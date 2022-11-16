@@ -129,7 +129,7 @@ func (m *Message) resolveContext() (middleware.SOR, *BaselineContext, *BaselineR
 
 	// if m.subjectAccount == nil {
 	// 	subjectAccountID := subjectAccountIDFactory(organizationID.String(), workflow.WorkgroupID.String())
-	// 	m.subjectAccount, err = resolveSubjectAccount(subjectAccountID)
+	// 	m.subjectAccount, err = resolveSubjectAccount(subjectAccountID, nil)
 	// 	if err != nil {
 	// 		return nil, nil, nil, nil, nil, fmt.Errorf("failed to resolve BPI subject account; %s", err.Error())
 	// 	}

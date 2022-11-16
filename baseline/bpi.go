@@ -861,7 +861,7 @@ func (s *SubjectAccount) configureSystem(system *middleware.SystemMetadata) erro
 }
 
 // resolveSubjectAccount resolves the BPI subject account for a given subject account id
-func resolveSubjectAccount(subjectAccountID string) (*SubjectAccount, error) {
+func resolveSubjectAccount(subjectAccountID string, token *string) (*SubjectAccount, error) {
 	if saccts, ok := SubjectAccountsByID[subjectAccountID]; ok {
 		return saccts[0], nil
 	}
@@ -872,7 +872,38 @@ func resolveSubjectAccount(subjectAccountID string) (*SubjectAccount, error) {
 		return subjectAccount, nil
 	}
 
-	return nil, fmt.Errorf("failed to resolve BPI subject account for subject account id: %s", subjectAccountID)
+	if token != nil {
+		// attempt DID-based subject account resolution
+		bearerToken, err := util.ParseBearerAuthorizationHeader(*token, nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve DID-based BPI subject account: %s; failed to parse bearer authorization token; %s", subjectAccountID, err.Error())
+		}
+
+		if claims, ok := bearerToken.Claims.(jwt.MapClaims); ok {
+			var organizationID *string
+			// FIXME-- verify "organization_id" to be the proper path to our invitor's org id... likely not "organization_id" --KT
+			if orgID, orgIDOk := claims["organization_id"].(string); orgIDOk {
+				organizationID = &orgID
+			}
+
+			if organizationID != nil {
+				org, err := ident.GetOrganizationDetails(bearerToken.Raw, *organizationID, map[string]interface{}{})
+				if err == nil {
+					if subjectAccount != nil {
+						subjectAccount.enrich()
+						return subjectAccount, nil
+					}
+				}
+
+				common.Log.Debugf("resolved organization (%s) associated with DID-based BPI subject account: %s;", *org.Name, subjectAccountID)
+
+				// TODO-- initialize subject account --KT
+				// subjectAccount = ...
+			}
+		}
+	}
+
+	return nil, fmt.Errorf("failed to resolve BPI subject account: %s", subjectAccountID)
 }
 
 func (s *SubjectAccount) requireWorkgroup() error {
