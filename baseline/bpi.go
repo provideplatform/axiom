@@ -38,6 +38,7 @@ import (
 	"github.com/provideplatform/baseline/middleware"
 	"github.com/provideplatform/provide-go/api"
 	provide "github.com/provideplatform/provide-go/api"
+	"github.com/provideplatform/provide-go/api/baseline"
 	"github.com/provideplatform/provide-go/api/ident"
 	"github.com/provideplatform/provide-go/api/nchain"
 	"github.com/provideplatform/provide-go/api/vault"
@@ -57,19 +58,16 @@ var (
 	SubjectAccountsByID map[string][]*SubjectAccount
 )
 
+// BaselineClaims represent JWT invitation claims
+type BaselineClaims struct {
+	jwt.MapClaims
+	Baseline *baseline.BaselineClaims `json:"baseline"`
+}
+
 // InviteClaims represent JWT invitation claims
 type InviteClaims struct {
 	jwt.MapClaims
-	Baseline *BaselineClaims `json:"baseline"`
-}
-
-// BaselineClaims represent JWT claims encoded within the invite token
-// FIXME!! this should be referenced from lib package
-type BaselineClaims struct {
-	InvitorOrganizationAddress *string `json:"invitor_organization_address"`
-	InvitorSubjectAccountID    *string `json:"invitor_subject_account_id"`
-	RegistryContractAddress    *string `json:"registry_contract_address"`
-	WorkgroupID                *string `json:"workgroup_id"`
+	Baseline *baseline.BaselineInviteClaims `json:"baseline"` // FIXME-- should this be renamed from baseline to baseline_invite or invite?
 }
 
 // SendProtocolMessageAPIResponse is returned upon successfully sending a protocol message
@@ -674,17 +672,17 @@ func (s *SubjectAccount) findWorkflowPrototypeCandidatesByObjectType(objectType 
 	}
 
 	query := fmt.Sprintf(`
-{
-  "bool": {
-	"must": {
-	  "term": { "initial_workstep_object_type.keyword": "%s" }
-	},
-	"filter": [
-	  { "term": { "workgroup_id.keyword": "%s" }}
-	]
+  {
+	"bool": {
+	  "must": {
+		"term": { "initial_workstep_object_type.keyword": "%s" }
+	  },
+	  "filter": [
+		{ "term": { "workgroup_id.keyword": "%s" }}
+	  ]
+	}
   }
-}
-`, objectType, *s.Metadata.WorkgroupID)
+  `, objectType, *s.Metadata.WorkgroupID)
 
 	sq := elastic.NewRawStringQuery(query)
 	result, err := common.ElasticClient.Search().Index(common.IndexerDocumentIndexBaselineWorkflowPrototypes).Query(sq).Do(context.TODO())
@@ -863,78 +861,99 @@ func (s *SubjectAccount) configureSystem(system *middleware.SystemMetadata) erro
 }
 
 // resolveSubjectAccount resolves the BPI subject account for a given subject account id
-func resolveSubjectAccount(subjectAccountID string, token, workgroupID *string) (*SubjectAccount, error) {
+func resolveSubjectAccount(subjectAccountID string, token, vc *string) (*SubjectAccount, error) {
 	if saccts, ok := SubjectAccountsByID[subjectAccountID]; ok {
 		return saccts[0], nil
 	}
 
+	var err error
+
+	// TODO-- refactor
 	subjectAccount := FindSubjectAccountByID(subjectAccountID)
 	if subjectAccount != nil {
-		subjectAccount.enrich()
+		err = subjectAccount.enrich()
+		if err != nil {
+			return nil, fmt.Errorf("failed to enrich BPI subject account: %s; %s", subjectAccountID, err.Error())
+		}
+
 		return subjectAccount, nil
 	}
 
-	if token != nil && workgroupID != nil {
+	if token != nil && vc != nil {
+		// TODO-- refactor
 		// attempt DID-based subject account resolution
 		bearerToken, err := util.ParseBearerAuthorizationHeader(*token, nil)
 		if err != nil {
 			return nil, fmt.Errorf("failed to resolve DID-based BPI subject account: %s; failed to parse bearer authorization token; %s", subjectAccountID, err.Error())
 		}
 
-		if claims, ok := bearerToken.Claims.(jwt.MapClaims); ok {
-			var organizationID *string
-			// FIXME-- verify "organization_id" to be the proper path to our invitor's org id... likely not "organization_id" --KT
-			if sub, subok := claims["sub"].(string); subok {
+		// attempt to parse organization id from bearer token
+		var organizationID *string
+		if bearerClaims, bearerClaimsOk := bearerToken.Claims.(jwt.MapClaims); bearerClaimsOk {
+			if sub, subok := bearerClaims["sub"].(string); subok {
 				subprts := strings.Split(sub, ":")
 				if len(subprts) != 2 {
-					common.Log.Debugf("failed to parse organization subject claim from bearer authorization header; subject malformed: %s", sub)
+					return nil, fmt.Errorf("failed to parse organization subject claim from bearer authorization header; subject malformed: %s", sub)
 				}
 				if subprts[0] == "organization" {
 					*organizationID = subprts[1]
 				}
 			}
+		}
 
-			if organizationID != nil {
-				org, err := ident.GetOrganizationDetails(bearerToken.Raw, *organizationID, map[string]interface{}{})
+		// attempt to parse workgroup id and invitor bpi endpoint from verifiable credential
+		var workgroupID *string
+		var bpiEndpoint *string
 
-				if err == nil {
-					// TODO-- change organization struct to include nested metadata definitions
-					if orgWorkgroupsMetadata, orgWorkgroupsMetadataOk := org.Metadata["workgroups"].(map[string]interface{}); orgWorkgroupsMetadataOk {
-						if workgroupMetadata, workgroupMetadataOk := orgWorkgroupsMetadata[*workgroupID].(map[string]interface{}); workgroupMetadataOk {
-							if bpiEndpoint, bpiEndpointOk := workgroupMetadata["bpi_endpoint"].(string); bpiEndpointOk {
-								bpiURL, err := url.Parse(bpiEndpoint)
-								if err == nil {
-									baselineClient := &api.Client{
-										Host:   bpiURL.Host,
-										Scheme: bpiURL.Scheme,
-										Path:   "api/v1",
-										Token:  token,
-									}
+		claims := &InviteClaims{} // TODO-- refactor
+		var jwtParser jwt.Parser
+		_, _, err = jwtParser.ParseUnverified(*vc, claims)
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve DID-based BPI subject account: %s; failed to parse workgroup ID from verifiable credential; %s", subjectAccountID, err)
+		}
 
-									uri := fmt.Sprintf("subjects/%s/accounts/%s", *organizationID, subjectAccountID)
-									status, resp, err := baselineClient.Get(uri, map[string]interface{}{})
-									if err == nil && status == 200 {
-										raw, _ := json.Marshal(resp)
-										err = json.Unmarshal(raw, subjectAccount)
-									} else if err != nil {
-										err = fmt.Errorf("%s; status: %d", err.Error(), status)
-									}
-								}
-							}
-						}
-					}
+		workgroupID = claims.Baseline.WorkgroupID
+		bpiEndpoint = claims.Baseline.InvitorBPIEndpoint
 
-					if subjectAccount != nil && err == nil {
-						subjectAccount.enrich() // TODO-- handle error
-						return subjectAccount, nil
-					}
-				}
-
-				common.Log.Debugf("resolved organization (%s) associated with DID-based BPI subject account: %s;", *org.Name, subjectAccountID)
-
-				// TODO-- initialize subject account --KT
-				// subjectAccount = ...
+		// attempt to resolve subject account using bpi endpoint on organization workgroup metadata
+		if organizationID != nil && workgroupID != nil && bpiEndpoint != nil {
+			org, err := ident.GetOrganizationDetails(bearerToken.Raw, *organizationID, map[string]interface{}{})
+			if err != nil {
+				return nil, fmt.Errorf("failed to resolve DID-based BPI subject account: %s; %s", subjectAccountID, err.Error())
 			}
+
+			// TODO-- change organization struct to include nested metadata definitions
+			bpiURL, err := url.Parse(*bpiEndpoint)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse BPI endpoint URL; %s", err.Error())
+			}
+
+			baselineClient := &api.Client{
+				Host:   bpiURL.Host,
+				Scheme: bpiURL.Scheme,
+				Path:   "api/v1",
+				Token:  token,
+			}
+
+			uri := fmt.Sprintf("subjects/%s/accounts/%s", *organizationID, subjectAccountID)
+			_, resp, err := baselineClient.Get(uri, map[string]interface{}{})
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse BPI endpoint from organization workgroup metadata; %s", err.Error())
+			}
+
+			raw, _ := json.Marshal(resp)
+			err = json.Unmarshal(raw, subjectAccount)
+			if err != nil {
+				return nil, fmt.Errorf("failed to unmarshal subject account from response; %s", err.Error())
+			}
+
+			err = subjectAccount.enrich()
+			if err != nil {
+				return nil, fmt.Errorf("failed to enrich BPI subject account: %s; %s", subjectAccountID, err.Error())
+			}
+
+			common.Log.Debugf("resolved organization (%s) associated with DID-based BPI subject account: %s;", *org.Name, subjectAccountID)
+			return subjectAccount, nil
 		}
 	}
 

@@ -423,11 +423,11 @@ func updateWorkgroupHandler(c *gin.Context) {
 }
 
 func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[string]interface{}) {
-	bearerToken := params["token"].(string)
+	vcToken := params["token"].(string) // FIXME-- pass as verifiable_credential in params?
 
 	claims := &InviteClaims{}
 	var jwtParser jwt.Parser
-	_, _, err := jwtParser.ParseUnverified(bearerToken, claims)
+	_, _, err := jwtParser.ParseUnverified(vcToken, claims)
 
 	if err != nil {
 		msg := fmt.Sprintf("failed to accept workgroup invitation; failed to parse jwt; %s", err.Error())
@@ -472,7 +472,8 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 		return
 	}
 
-	invitorSubjectAccount, err := resolveSubjectAccount(*claims.Baseline.InvitorSubjectAccountID, &bearerToken, claims.Baseline.WorkgroupID)
+	token, _ := util.ParseBearerAuthorizationHeader(c.GetHeader("authorization"), nil)
+	invitorSubjectAccount, err := resolveSubjectAccount(*claims.Baseline.InvitorSubjectAccountID, &token.Raw, &vcToken)
 	if err != nil {
 		provide.RenderError(err.Error(), 404, c)
 		return
@@ -487,7 +488,7 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 	// }
 
 	// parse the token again, this time verifying the signature origin as the named subject account
-	_, err = jwt.Parse(bearerToken, func(_jwtToken *jwt.Token) (interface{}, error) {
+	_, err = jwt.Parse(vcToken, func(_jwtToken *jwt.Token) (interface{}, error) {
 		var kid *string
 		if kidhdr, ok := _jwtToken.Header["kid"].(string); ok {
 			kid = &kidhdr
