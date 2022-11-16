@@ -931,13 +931,23 @@ func resolveSubjectAccount(subjectAccountID string, token, vc *string) (*Subject
 			}
 
 			uri := fmt.Sprintf("subjects/%s/accounts/%s", *organizationID, subjectAccountID)
-			_, resp, err := baselineClient.Get(uri, map[string]interface{}{})
+			status, resp, err := baselineClient.Get(uri, map[string]interface{}{})
 			if err != nil {
-				return nil, fmt.Errorf("failed to parse BPI endpoint from organization workgroup metadata; %s", err.Error())
+				return nil, fmt.Errorf("failed to get subject account details for subject account: %s; %s", subjectAccountID, err.Error())
+			}
+
+			if status != 200 {
+				msg := fmt.Sprintf("failed to get subject account details for subject account: %s; status: %d", subjectAccountID, status)
+				if resp != nil {
+					rawresp, _ := json.Marshal(resp)
+					msg = fmt.Sprintf("%s; %s", msg, string(rawresp))
+				}
+
+				return nil, fmt.Errorf(msg)
 			}
 
 			raw, _ := json.Marshal(resp)
-			err = json.Unmarshal(raw, subjectAccount)
+			err = json.Unmarshal(raw, &subjectAccount)
 			if err != nil {
 				return nil, fmt.Errorf("failed to unmarshal subject account from response; %s", err.Error())
 			}
