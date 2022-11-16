@@ -881,10 +881,6 @@ func resolveSubjectAccount(subjectAccountID string, token, vc *string) (*Subject
 
 	if token != nil && vc != nil {
 		// attempt to parse workgroup id and invitor bpi endpoint from verifiable credential
-		var organizationID *string
-		var workgroupID *string
-		var bpiEndpoint *string
-
 		claims := &InviteClaims{} // TODO-- refactor
 		var jwtParser jwt.Parser
 		parsedVC, _, err := jwtParser.ParseUnverified(*vc, claims)
@@ -892,17 +888,22 @@ func resolveSubjectAccount(subjectAccountID string, token, vc *string) (*Subject
 			return nil, fmt.Errorf("failed to resolve DID-based BPI subject account: %s; failed to parse workgroup ID from verifiable credential; %s", subjectAccountID, err)
 		}
 
+		var organizationID *string
 		if parsedVCClaims, parsedVCClaimsOk := parsedVC.Claims.(jwt.MapClaims); parsedVCClaimsOk {
 			if iss, issOk := parsedVCClaims["iss"].(string); issOk {
 				organizationID = common.StringOrNil(iss)
 			}
 		}
 
-		workgroupID = claims.Baseline.WorkgroupID
-		bpiEndpoint = claims.Baseline.InvitorBPIEndpoint
+		var bpiEndpoint *string
+		var workgroupID *string
+		if claims.Baseline != nil {
+			bpiEndpoint = claims.Baseline.InvitorBPIEndpoint
+			workgroupID = claims.Baseline.WorkgroupID
+		}
 
 		// attempt to resolve subject account using bpi endpoint on organization workgroup metadata
-		if organizationID != nil && workgroupID != nil && bpiEndpoint != nil {
+		if bpiEndpoint != nil && organizationID != nil && workgroupID != nil {
 			// TODO-- change organization struct to include nested metadata definitions
 			bpiURL, err := url.Parse(*bpiEndpoint)
 			if err != nil {
