@@ -38,7 +38,6 @@ import (
 	"github.com/provideplatform/baseline/middleware"
 	"github.com/provideplatform/provide-go/api"
 	provide "github.com/provideplatform/provide-go/api"
-	"github.com/provideplatform/provide-go/api/baseline"
 	"github.com/provideplatform/provide-go/api/ident"
 	"github.com/provideplatform/provide-go/api/nchain"
 	"github.com/provideplatform/provide-go/api/vault"
@@ -58,16 +57,20 @@ var (
 	SubjectAccountsByID map[string][]*SubjectAccount
 )
 
-// BaselineClaims represent JWT invitation claims
-type BaselineClaims struct {
-	jwt.MapClaims
-	Baseline *baseline.BaselineClaims `json:"baseline"`
-}
-
 // InviteClaims represent JWT invitation claims
 type InviteClaims struct {
 	jwt.MapClaims
-	Baseline *baseline.BaselineInviteClaims `json:"baseline"` // FIXME-- should this be renamed from baseline to baseline_invite or invite?
+	Baseline *BaselineClaims `json:"baseline"`
+}
+
+// BaselineClaims represent JWT invitation claims
+type BaselineClaims struct {
+	BPIEndpoint                *string `json:"bpi_endpoint,omitempty"`
+	RegistryContractAddress    *string `json:"registry_contract_address,omitempty"`
+	WorkgroupID                *string `json:"workgroup_id,omitempty"`
+	InvitorBPIEndpoint         *string `json:"invitor_bpi_endpoint,omitempty"`
+	InvitorOrganizationAddress *string `json:"invitor_organization_address,omitempty"`
+	InvitorSubjectAccountID    *string `json:"invitor_subject_account_id,omitempty"`
 }
 
 // SendProtocolMessageAPIResponse is returned upon successfully sending a protocol message
