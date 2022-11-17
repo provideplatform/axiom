@@ -61,15 +61,15 @@ var (
 type InviteClaims struct {
 	jwt.MapClaims
 
-	Baseline  *BaselineClaims `json:"baseline"`
-	Kid       *string         `json:"kid,omitempty"` // key fingerprint
-	Audience  *string         `json:"aud,omitempty"`
-	ID        *string         `json:"jti,omitempty"`
-	Issuer    *string         `json:"iss,omitempty"`
-	IssuedAt  *string         `json:"iat,omitempty"`
-	ExpiresAt *string         `json:"exp,omitempty"`
-	NotBefore *string         `json:"nbf,omitempty"`
-	Subject   *string         `json:"sub,omitempty"`
+	Baseline *BaselineClaims `json:"baseline"`
+	Kid      *string         `json:"kid,omitempty"` // key fingerprint
+	Audience *string         `json:"aud,omitempty"`
+	ID       *string         `json:"jti,omitempty"`
+	Issuer   *string         `json:"iss,omitempty"`
+	// IssuedAt  *string         `json:"iat,omitempty"`
+	// ExpiresAt *string         `json:"exp,omitempty"`
+	// NotBefore *string         `json:"nbf,omitempty"`
+	Subject *string `json:"sub,omitempty"`
 }
 
 // BaselineClaims represent JWT invitation claims
