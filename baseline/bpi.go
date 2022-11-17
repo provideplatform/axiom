@@ -916,7 +916,6 @@ func resolveSubjectAccount(subjectAccountID string, token, vc *string) (*Subject
 				return nil, fmt.Errorf("failed to parse BPI endpoint URL; %s", err.Error())
 			}
 
-			// TODO-- set invitor messaging endpoint as aud in vc
 			baselineClient := &api.Client{
 				Host:   bpiURL.Host,
 				Scheme: bpiURL.Scheme,
@@ -944,6 +943,11 @@ func resolveSubjectAccount(subjectAccountID string, token, vc *string) (*Subject
 			err = json.Unmarshal(raw, &subjectAccount)
 			if err != nil {
 				return nil, fmt.Errorf("failed to unmarshal subject account from response; %s", err.Error())
+			}
+
+			err = subjectAccount.enrich()
+			if err != nil {
+				return nil, fmt.Errorf("failed to enrich BPI subject account: %s; %s", subjectAccountID, err.Error())
 			}
 
 			common.Log.Debugf("resolved DID-based BPI subject account: %s;", subjectAccountID)
