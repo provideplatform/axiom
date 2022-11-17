@@ -865,6 +865,7 @@ func (s *SubjectAccount) configureSystem(system *middleware.SystemMetadata) erro
 
 // resolveSubjectAccount resolves the BPI subject account for a given subject account id
 func resolveSubjectAccount(subjectAccountID string, token, vc *string) (*SubjectAccount, error) {
+	common.Log.Debugf("attempting to resolve subject account id: %s", subjectAccountID)
 	if saccts, ok := SubjectAccountsByID[subjectAccountID]; ok {
 		return saccts[0], nil
 	}
@@ -883,24 +884,29 @@ func resolveSubjectAccount(subjectAccountID string, token, vc *string) (*Subject
 	}
 
 	if token != nil && vc != nil {
+		common.Log.Debugf("attempting to resolve subject account from counterparty")
+
 		// attempt to parse workgroup id and invitor bpi endpoint from verifiable credential
 		claims := &InviteClaims{} // TODO-- refactor
 		var jwtParser jwt.Parser
-		parsedVC, _, err := jwtParser.ParseUnverified(*vc, claims)
+		vcToken, _, err := jwtParser.ParseUnverified(*vc, claims)
 		if err != nil {
 			return nil, fmt.Errorf("failed to resolve DID-based BPI subject account: %s; failed to parse workgroup ID from verifiable credential; %s", subjectAccountID, err)
 		}
 
 		var organizationID *string
-		if parsedVCClaims, parsedVCClaimsOk := parsedVC.Claims.(jwt.MapClaims); parsedVCClaimsOk {
-			if iss, issOk := parsedVCClaims["iss"].(string); issOk {
-				organizationID = common.StringOrNil(iss)
-			}
+		if iss, issOk := claims.MapClaims["iss"].(string); issOk {
+			common.Log.Debugf("organization id: %s", iss)
+			organizationID = common.StringOrNil(iss)
+		} else {
+			rawclaims, _ := json.Marshal(vcToken)
+			common.Log.Debugf("failed to parse iss from verifiable credential; %s", string(rawclaims))
 		}
 
 		var bpiEndpoint *string
 		var workgroupID *string
 		if claims.Baseline != nil {
+			common.Log.Debugf("wg id: %s; bpi endpoint: %s", *claims.Baseline.WorkgroupID, *claims.Baseline.InvitorBPIEndpoint)
 			bpiEndpoint = claims.Baseline.InvitorBPIEndpoint
 			workgroupID = claims.Baseline.WorkgroupID
 		}
