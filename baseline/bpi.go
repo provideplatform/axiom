@@ -66,9 +66,9 @@ type InviteClaims struct {
 	Audience  *string         `json:"aud,omitempty"`
 	ID        *string         `json:"jti,omitempty"`
 	Issuer    *string         `json:"iss,omitempty"`
-	IssuedAt  *time.Time      `json:"iat,omitempty"`
-	ExpiresAt *time.Time      `json:"exp,omitempty"`
-	NotBefore *time.Time      `json:"nbf,omitempty"`
+	IssuedAt  *string         `json:"iat,omitempty"`
+	ExpiresAt *string         `json:"exp,omitempty"`
+	NotBefore *string         `json:"nbf,omitempty"`
 	Subject   *string         `json:"sub,omitempty"`
 }
 
