@@ -877,7 +877,11 @@ func listSystemsHandler(c *gin.Context) {
 	provide.Paginate(c, query, &System{}).Find(&systems)
 
 	for _, system := range systems {
-		system.enrich()
+		err = system.enrich()
+		if err != nil {
+			provide.RenderError(err.Error(), 422, c)
+			return
+		}
 	}
 
 	provide.Render(systems, 200, c)
@@ -913,12 +917,19 @@ func systemDetailsHandler(c *gin.Context) {
 		return
 	}
 
-	if system != nil {
-		system.enrich()
-		provide.Render(system, 200, c)
-	} else {
-		provide.RenderError("system not found", 404, c)
+	if system.OrganizationID == nil || !strings.EqualFold(organizationID.String(), system.OrganizationID.String()) {
+		provide.RenderError("forbidden", 403, c)
+		return
 	}
+
+	err = system.enrich()
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	provide.Render(system, 200, c)
+	
 }
 
 func createSystemHandler(c *gin.Context) {
@@ -1021,6 +1032,11 @@ func updateSystemHandler(c *gin.Context) {
 		return
 	}
 
+	if system.OrganizationID == nil || !strings.EqualFold(organizationID.String(), system.OrganizationID.String()) {
+		provide.RenderError("forbidden", 403, c)
+		return
+	}
+
 	if !strings.EqualFold(system.ID.String(), systemID.String()) {
 		provide.RenderError("", 422, c)
 		return
@@ -1064,6 +1080,11 @@ func deleteSystemHandler(c *gin.Context) {
 	}
 
 	if system.WorkgroupID == nil || !strings.EqualFold(workgroupID.String(), system.WorkgroupID.String()) {
+		provide.RenderError("forbidden", 403, c)
+		return
+	}
+
+	if system.OrganizationID == nil || !strings.EqualFold(organizationID.String(), system.OrganizationID.String()) {
 		provide.RenderError("forbidden", 403, c)
 		return
 	}
@@ -1218,6 +1239,11 @@ func updateMappingHandler(c *gin.Context) {
 		return
 	}
 
+	if mapping.OrganizationID == nil || !strings.EqualFold(organizationID.String(), mapping.OrganizationID.String()) {
+		provide.RenderError("forbidden", 403, c)
+		return
+	}
+
 	_mapping := &Mapping{}
 	err = json.Unmarshal(buf, _mapping)
 	if err != nil {
@@ -1263,6 +1289,11 @@ func deleteMappingHandler(c *gin.Context) {
 	mapping := FindMappingByID(mappingID)
 	if mapping == nil {
 		provide.RenderError("not found", 404, c)
+		return
+	}
+
+	if mapping.OrganizationID == nil || !strings.EqualFold(organizationID.String(), mapping.OrganizationID.String()) {
+		provide.RenderError("forbidden", 403, c)
 		return
 	}
 
@@ -1539,6 +1570,11 @@ func deployWorkflowHandler(c *gin.Context) {
 		return
 	}
 
+	if workflow.OrganizationID == nil || !strings.EqualFold(organizationID.String(), workflow.OrganizationID.String()) {
+		provide.RenderError("forbidden", 403, c)
+		return
+	}
+
 	_workflow := &Workflow{}
 	_workflow.Status = common.StringOrNil(workflowStatusDeployed) // HACK!!!
 	_workflow.Version = workflow.Version
@@ -1576,6 +1612,11 @@ func versionWorkflowHandler(c *gin.Context) {
 	workflow := FindWorkflowByID(workflowID)
 	if workflow == nil {
 		provide.RenderError("not found", 404, c)
+		return
+	}
+
+	if workflow.OrganizationID == nil || !strings.EqualFold(organizationID.String(), workflow.OrganizationID.String()) {
+		provide.RenderError("forbidden", 403, c)
 		return
 	}
 
@@ -1661,6 +1702,11 @@ func listWorkflowVersionsHandler(c *gin.Context) {
 		return
 	}
 
+	if workflow.OrganizationID == nil || !strings.EqualFold(organizationID.String(), workflow.OrganizationID.String()) {
+		provide.RenderError("forbidden", 403, c)
+		return
+	}
+
 	db := dbconf.DatabaseConnection()
 	versions := workflow.listVersions(db)
 	// var versions []*WorkflowVersion
@@ -1691,6 +1737,11 @@ func updateWorkflowHandler(c *gin.Context) {
 	workflow := FindWorkflowByID(workflowID)
 	if workflow == nil {
 		provide.RenderError("not found", 404, c)
+		return
+	}
+
+	if workflow.OrganizationID == nil || !strings.EqualFold(organizationID.String(), workflow.OrganizationID.String()) {
+		provide.RenderError("forbidden", 403, c)
 		return
 	}
 
@@ -1728,6 +1779,11 @@ func deleteWorkflowHandler(c *gin.Context) {
 	workflow := FindWorkflowByID(workflowID)
 	if workflow == nil {
 		provide.RenderError("not found", 404, c)
+		return
+	}
+
+	if workflow.OrganizationID == nil || !strings.EqualFold(organizationID.String(), workflow.OrganizationID.String()) {
+		provide.RenderError("forbidden", 403, c)
 		return
 	}
 
@@ -1788,13 +1844,23 @@ func workflowDetailsHandler(c *gin.Context) {
 	}
 
 	workflow := FindWorkflowByID(workflowID)
-
-	if workflow != nil {
-		workflow.enrich()
-		provide.Render(workflow, 200, c)
-	} else {
-		provide.RenderError("workflow not found", 404, c)
+	if workflow == nil {
+		provide.RenderError("not found", 404, c)
+		return
 	}
+
+	if workflow.OrganizationID == nil || !strings.EqualFold(organizationID.String(), workflow.OrganizationID.String()) {
+		provide.RenderError("forbidden", 403, c)
+		return
+	}
+
+	err = workflow.enrich()
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c) // TODO-- use error handling pattern
+		return
+	}
+
+	provide.Render(workflow, 200, c)
 }
 
 func createWorkstepHandler(c *gin.Context) {
@@ -1827,12 +1893,22 @@ func createWorkstepHandler(c *gin.Context) {
 	workstep.WorkflowID = &workflowID
 
 	workflow := FindWorkflowByID(workflowID)
-	if workflow != nil && !workflow.isPrototype() {
+	if workflow == nil {
+		provide.RenderError("not found", 404, c)
+		return
+	}
+
+	if workflow.OrganizationID == nil || !strings.EqualFold(organizationID.String(), workflow.OrganizationID.String()) {
+		provide.RenderError("forbidden", 403, c)
+		return
+	}
+
+	if !workflow.isPrototype() {
 		provide.RenderError("cannot add workstep to workflow instance", 400, c)
 		return
 	}
 
-	if workflow != nil && workflow.Status != nil && *workflow.Status != workflowStatusDraft {
+	if workflow.Status != nil && *workflow.Status != workflowStatusDraft {
 		provide.RenderError("cannot add worksteps to non-draft workflow prototype", 400, c)
 		return
 	}
@@ -1867,6 +1943,17 @@ func updateWorkstepHandler(c *gin.Context) {
 		return
 	}
 
+	workflow := FindWorkflowByID(workflowID)
+	if workflow == nil {
+		provide.RenderError("not found", 404, c)
+		return
+	}
+
+	if workflow.OrganizationID == nil || !strings.EqualFold(organizationID.String(), workflow.OrganizationID.String()) {
+		provide.RenderError("forbidden", 403, c)
+		return
+	}
+
 	workstepID, err := uuid.FromString(c.Param("workstepId"))
 	if err != nil {
 		provide.RenderError(err.Error(), 422, c)
@@ -1877,7 +1964,9 @@ func updateWorkstepHandler(c *gin.Context) {
 	if workstep == nil {
 		provide.RenderError("not found", 404, c)
 		return
-	} else if workstep.WorkflowID == nil || workstep.WorkflowID.String() != workflowID.String() {
+	}
+
+	if workstep.WorkflowID == nil || workstep.WorkflowID.String() != workflowID.String() {
 		provide.RenderError("forbidden", 403, c)
 		return
 	}
@@ -1938,7 +2027,9 @@ func deleteWorkstepHandler(c *gin.Context) {
 	if workstep == nil {
 		provide.RenderError("not found", 404, c)
 		return
-	} else if workstep.WorkflowID == nil || workstep.WorkflowID.String() != workflowID.String() {
+	} 
+	
+	if workstep.WorkflowID == nil || workstep.WorkflowID.String() != workflowID.String() {
 		provide.RenderError("forbidden", 403, c)
 		return
 	}
@@ -1979,6 +2070,11 @@ func executeWorkstepHandler(c *gin.Context) {
 		return
 	}
 
+	if workflow.OrganizationID == nil || !strings.EqualFold(organizationID.String(), workflow.OrganizationID.String()) {
+		provide.RenderError("forbidden", 403, c)
+		return
+	}
+
 	workstepID, err := uuid.FromString(c.Param("workstepId"))
 	if err != nil {
 		provide.RenderError(err.Error(), 422, c)
@@ -1989,7 +2085,9 @@ func executeWorkstepHandler(c *gin.Context) {
 	if workstep == nil {
 		provide.RenderError("not found", 404, c)
 		return
-	} else if workstep.WorkflowID == nil || workstep.WorkflowID.String() != workflowID.String() {
+	} 
+	
+	if workstep.WorkflowID == nil || workstep.WorkflowID.String() != workflowID.String() {
 		provide.RenderError("forbidden", 403, c)
 		return
 	}
@@ -2073,6 +2171,23 @@ func workstepDetailsHandler(c *gin.Context) {
 		return
 	}
 
+	workflowID, err := uuid.FromString(c.Param("id"))
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	workflow := FindWorkflowByID(workflowID)
+	if workflow == nil {
+		provide.RenderError("not found", 404, c)
+		return
+	}
+
+	if workflow.OrganizationID == nil || !strings.EqualFold(organizationID.String(), workflow.OrganizationID.String()) {
+		provide.RenderError("forbidden", 403, c)
+		return
+	}
+
 	workstepID, err := uuid.FromString(c.Param("workstepId"))
 	if err != nil {
 		provide.RenderError(err.Error(), 422, c)
@@ -2080,14 +2195,19 @@ func workstepDetailsHandler(c *gin.Context) {
 	}
 
 	workstep := FindWorkstepByID(workstepID)
-
-	if workstep != nil {
-		token, _ := util.ParseBearerAuthorizationHeader(c.GetHeader("authorization"), nil)
-		workstep.enrich(token.Raw)
-		provide.Render(workstep, 200, c)
-	} else {
-		provide.RenderError("workstep not found", 404, c)
+	if workstep == nil {
+		provide.RenderError("not found", 404, c)
+		return
 	}
+
+	token, _ := util.ParseBearerAuthorizationHeader(c.GetHeader("authorization"), nil)
+	_ = workstep.enrich(token.Raw) // FIXME-- this fails
+	// if err != nil {
+	// 	provide.RenderError(err.Error(), 422, c)
+	// 	return
+	// }
+
+	provide.Render(workstep, 200, c)
 }
 
 func issueVerifiableCredentialHandler(c *gin.Context) {
@@ -2178,6 +2298,17 @@ func listWorkstepConstraintsHandler(c *gin.Context) {
 		return
 	}
 
+	workflow := FindWorkflowByID(workflowID)
+	if workflow == nil {
+		provide.RenderError("not found", 404, c)
+		return
+	}
+
+	if workflow.OrganizationID == nil || !strings.EqualFold(organizationID.String(), workflow.OrganizationID.String()) {
+		provide.RenderError("forbidden", 403, c)
+		return
+	}
+
 	workstepID, err := uuid.FromString(c.Param("workstepId"))
 	if err != nil {
 		provide.RenderError(err.Error(), 422, c)
@@ -2188,7 +2319,9 @@ func listWorkstepConstraintsHandler(c *gin.Context) {
 	if workstep == nil {
 		provide.RenderError("not found", 404, c)
 		return
-	} else if workstep.WorkflowID == nil || workstep.WorkflowID.String() != workflowID.String() {
+	}
+	
+	if workstep.WorkflowID == nil || workstep.WorkflowID.String() != workflowID.String() {
 		provide.RenderError("forbidden", 403, c)
 		return
 	}
@@ -2230,6 +2363,17 @@ func createWorkstepConstraintHandler(c *gin.Context) {
 		return
 	}
 
+	workflow := FindWorkflowByID(workflowID)
+	if workflow == nil {
+		provide.RenderError("not found", 404, c)
+		return
+	}
+
+	if workflow.OrganizationID == nil || !strings.EqualFold(organizationID.String(), workflow.OrganizationID.String()) {
+		provide.RenderError("forbidden", 403, c)
+		return
+	}
+
 	workstepID, err := uuid.FromString(c.Param("workstepId"))
 	if err != nil {
 		provide.RenderError(err.Error(), 422, c)
@@ -2240,7 +2384,9 @@ func createWorkstepConstraintHandler(c *gin.Context) {
 	if workstep == nil {
 		provide.RenderError("not found", 404, c)
 		return
-	} else if workstep.WorkflowID == nil || workstep.WorkflowID.String() != workflowID.String() {
+	} 
+	
+	if workstep.WorkflowID == nil || workstep.WorkflowID.String() != workflowID.String() {
 		provide.RenderError("forbidden", 403, c)
 		return
 	}
@@ -2295,6 +2441,17 @@ func updateWorkstepConstraintHandler(c *gin.Context) {
 		return
 	}
 
+	workflow := FindWorkflowByID(workflowID)
+	if workflow == nil {
+		provide.RenderError("not found", 404, c)
+		return
+	}
+
+	if workflow.OrganizationID == nil || !strings.EqualFold(organizationID.String(), workflow.OrganizationID.String()) {
+		provide.RenderError("forbidden", 403, c)
+		return
+	}
+
 	workstepID, err := uuid.FromString(c.Param("workstepId"))
 	if err != nil {
 		provide.RenderError(err.Error(), 422, c)
@@ -2311,7 +2468,9 @@ func updateWorkstepConstraintHandler(c *gin.Context) {
 	if workstep == nil {
 		provide.RenderError("not found", 404, c)
 		return
-	} else if workstep.WorkflowID == nil || workstep.WorkflowID.String() != workflowID.String() {
+	}
+	
+	if workstep.WorkflowID == nil || workstep.WorkflowID.String() != workflowID.String() {
 		provide.RenderError("forbidden", 403, c)
 		return
 	}
@@ -2325,7 +2484,9 @@ func updateWorkstepConstraintHandler(c *gin.Context) {
 	if constraint == nil {
 		provide.RenderError("not found", 404, c)
 		return
-	} else if constraint.WorkstepID == nil || constraint.WorkstepID.String() != workstep.ID.String() {
+	} 
+	
+	if constraint.WorkstepID == nil || constraint.WorkstepID.String() != workstep.ID.String() {
 		provide.RenderError("forbidden", 403, c)
 		return
 	}
@@ -2359,6 +2520,17 @@ func deleteWorkstepConstraintHandler(c *gin.Context) {
 		return
 	}
 
+	workflow := FindWorkflowByID(workflowID)
+	if workflow == nil {
+		provide.RenderError("not found", 404, c)
+		return
+	}
+
+	if workflow.OrganizationID == nil || !strings.EqualFold(organizationID.String(), workflow.OrganizationID.String()) {
+		provide.RenderError("forbidden", 403, c)
+		return
+	}
+
 	workstepID, err := uuid.FromString(c.Param("workstepId"))
 	if err != nil {
 		provide.RenderError(err.Error(), 422, c)
@@ -2375,7 +2547,9 @@ func deleteWorkstepConstraintHandler(c *gin.Context) {
 	if workstep == nil {
 		provide.RenderError("not found", 404, c)
 		return
-	} else if workstep.WorkflowID == nil || workstep.WorkflowID.String() != workflowID.String() {
+	} 
+	
+	if workstep.WorkflowID == nil || workstep.WorkflowID.String() != workflowID.String() {
 		provide.RenderError("forbidden", 403, c)
 		return
 	}
@@ -2389,7 +2563,9 @@ func deleteWorkstepConstraintHandler(c *gin.Context) {
 	if constraint == nil {
 		provide.RenderError("not found", 404, c)
 		return
-	} else if constraint.WorkstepID == nil || constraint.WorkstepID.String() != workstep.ID.String() {
+	} 
+	
+	if constraint.WorkstepID == nil || constraint.WorkstepID.String() != workstep.ID.String() {
 		provide.RenderError("forbidden", 403, c)
 		return
 	}
@@ -2418,6 +2594,17 @@ func listWorkstepParticipantsHandler(c *gin.Context) {
 		return
 	}
 
+	workflow := FindWorkflowByID(workflowID)
+	if workflow == nil {
+		provide.RenderError("not found", 404, c)
+		return
+	}
+
+	if workflow.OrganizationID == nil || !strings.EqualFold(organizationID.String(), workflow.OrganizationID.String()) {
+		provide.RenderError("forbidden", 403, c)
+		return
+	}
+
 	workstepID, err := uuid.FromString(c.Param("workstepId"))
 	if err != nil {
 		provide.RenderError(err.Error(), 422, c)
@@ -2428,7 +2615,9 @@ func listWorkstepParticipantsHandler(c *gin.Context) {
 	if workstep == nil {
 		provide.RenderError("not found", 404, c)
 		return
-	} else if workstep.WorkflowID == nil || workstep.WorkflowID.String() != workflowID.String() {
+	} 
+	
+	if workstep.WorkflowID == nil || workstep.WorkflowID.String() != workflowID.String() {
 		provide.RenderError("forbidden", 403, c)
 		return
 	}
@@ -2470,6 +2659,17 @@ func createWorkstepParticipantHandler(c *gin.Context) {
 		return
 	}
 
+	workflow := FindWorkflowByID(workflowID)
+	if workflow == nil {
+		provide.RenderError("not found", 404, c)
+		return
+	}
+
+	if workflow.OrganizationID == nil || !strings.EqualFold(organizationID.String(), workflow.OrganizationID.String()) {
+		provide.RenderError("forbidden", 403, c)
+		return
+	}
+
 	workstepID, err := uuid.FromString(c.Param("workstepId"))
 	if err != nil {
 		provide.RenderError(err.Error(), 422, c)
@@ -2480,7 +2680,9 @@ func createWorkstepParticipantHandler(c *gin.Context) {
 	if workstep == nil {
 		provide.RenderError("not found", 404, c)
 		return
-	} else if workstep.WorkflowID == nil || workstep.WorkflowID.String() != workflowID.String() {
+	} 
+	
+	if workstep.WorkflowID == nil || workstep.WorkflowID.String() != workflowID.String() {
 		provide.RenderError("forbidden", 403, c)
 		return
 	}
@@ -2522,6 +2724,17 @@ func deleteWorkstepParticipantHandler(c *gin.Context) {
 		return
 	}
 
+	workflow := FindWorkflowByID(workflowID)
+	if workflow == nil {
+		provide.RenderError("not found", 404, c)
+		return
+	}
+
+	if workflow.OrganizationID == nil || !strings.EqualFold(organizationID.String(), workflow.OrganizationID.String()) {
+		provide.RenderError("forbidden", 403, c)
+		return
+	}
+
 	workstepID, err := uuid.FromString(c.Param("workstepId"))
 	if err != nil {
 		provide.RenderError(err.Error(), 422, c)
@@ -2532,7 +2745,9 @@ func deleteWorkstepParticipantHandler(c *gin.Context) {
 	if workstep == nil {
 		provide.RenderError("not found", 404, c)
 		return
-	} else if workstep.WorkflowID == nil || workstep.WorkflowID.String() != workflowID.String() {
+	} 
+	
+	if workstep.WorkflowID == nil || workstep.WorkflowID.String() != workflowID.String() {
 		provide.RenderError("forbidden", 403, c)
 		return
 	}
@@ -2619,6 +2834,11 @@ func subjectAccountDetailsHandler(c *gin.Context) {
 
 	if subjectAccount == nil || subjectAccount.ID == nil {
 		provide.RenderError("BPI subject account not found", 404, c)
+		return
+	}
+
+	if subjectAccount.SubjectID != nil && *subjectAccount.SubjectID != organizationID.String() {
+		provide.RenderError("forbidden", 403, c)
 		return
 	}
 
