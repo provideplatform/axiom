@@ -63,12 +63,13 @@ type InviteClaims struct {
 
 	Baseline  *BaselineClaims `json:"baseline"`
 	Kid       *string         `json:"kid,omitempty"` // key fingerprint
-	Audience  *string         `json:"audience,omitempty"`
-	Issuer    *string         `json:"issuer,omitempty"`
-	IssuedAt  *time.Time      `json:"issued_at,omitempty"`
-	ExpiresAt *time.Time      `json:"expires_at,omitempty"`
-	NotBefore *time.Time      `json:"not_before_at,omitempty"`
-	Subject   *string         `json:"subject,omitempty"`
+	Audience  *string         `json:"aud,omitempty"`
+	ID        *string         `json:"jti,omitempty"`
+	Issuer    *string         `json:"iss,omitempty"`
+	IssuedAt  *time.Time      `json:"iat,omitempty"`
+	ExpiresAt *time.Time      `json:"exp,omitempty"`
+	NotBefore *time.Time      `json:"nbf,omitempty"`
+	Subject   *string         `json:"sub,omitempty"`
 }
 
 // BaselineClaims represent JWT invitation claims
@@ -894,17 +895,12 @@ func resolveSubjectAccount(subjectAccountID string, token, vc *string) (*Subject
 		// attempt to parse workgroup id and invitor bpi endpoint from verifiable credential
 		claims := &InviteClaims{} // TODO-- refactor
 		var jwtParser jwt.Parser
-		parsedVC, _, err := jwtParser.ParseUnverified(*vc, claims)
+		_, _, err := jwtParser.ParseUnverified(*vc, claims)
 		if err != nil {
 			return nil, fmt.Errorf("failed to resolve DID-based BPI subject account: %s; failed to parse workgroup ID from verifiable credential; %s", subjectAccountID, err)
 		}
 
-		var organizationID *string
-		if parsedVCClaims, parsedVCClaimsOk := parsedVC.Claims.(jwt.MapClaims); parsedVCClaimsOk {
-			if iss, issOk := parsedVCClaims["iss"].(string); issOk {
-				organizationID = common.StringOrNil(iss)
-			}
-		}
+		organizationID := claims.Issuer
 
 		var bpiEndpoint *string
 		var workgroupID *string
@@ -915,7 +911,6 @@ func resolveSubjectAccount(subjectAccountID string, token, vc *string) (*Subject
 
 		// attempt to resolve subject account using bpi endpoint on organization workgroup metadata
 		if bpiEndpoint != nil && organizationID != nil && workgroupID != nil {
-			// TODO-- change organization struct to include nested metadata definitions
 			bpiURL, err := url.Parse(*bpiEndpoint)
 			if err != nil {
 				return nil, fmt.Errorf("failed to parse BPI endpoint URL; %s", err.Error())
