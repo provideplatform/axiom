@@ -2622,11 +2622,6 @@ func subjectAccountDetailsHandler(c *gin.Context) {
 		return
 	}
 
-	if subjectAccount.SubjectID != nil && *subjectAccount.SubjectID != organizationID.String() {
-		provide.RenderError("forbidden", 403, c)
-		return
-	}
-
 	provide.Render(subjectAccount, 200, c)
 }
 
