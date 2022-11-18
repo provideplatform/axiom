@@ -942,14 +942,18 @@ func resolveSubjectAccount(subjectAccountID string, vc *string) (*SubjectAccount
 				}
 			}
 
-			err = json.Unmarshal(resp.Data, &subjectAccount)
-			if err != nil {
-				return nil, fmt.Errorf("failed to resolve DID-based BPI subject account: %s; failed to parse response; %s", subjectAccountID, err)
+			if resp != nil {
+				err = json.Unmarshal(resp.Data, &subjectAccount)
+				if err != nil {
+					common.Log.Warningf("failed to resolve DID-based BPI subject account: %s; failed to parse response; %s", subjectAccountID, err)
+				}
+
+				if subjectAccount != nil {
+					common.Log.Debugf("resolved DID-based BPI subject account: %s;", subjectAccountID)
+					return subjectAccount, nil
+				}
 			}
 		}
-
-		common.Log.Debugf("resolved DID-based BPI subject account: %s;", subjectAccountID)
-		return subjectAccount, nil
 	}
 
 	return nil, fmt.Errorf("failed to resolve BPI subject account: %s", subjectAccountID)
