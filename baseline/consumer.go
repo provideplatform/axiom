@@ -77,7 +77,7 @@ const natsSubjectAccountRegistrationMaxInFlight = 256
 const natsSubjectAccountRegistrationAckWait = time.Minute * 1
 const natsSubjectAccountRegistrationMaxDeliveries = 10
 
-const natsWorkgroupSyncSubject = "baseline.workgroup.*.registration"
+const natsWorkgroupSyncSubject = "baseline.workgroup.*.sync"
 const natsWorkgroupSyncMaxInFlight = 256
 const natsWorkgroupSyncAckWait = time.Minute * 1
 const natsWorkgroupSyncMaxDeliveries = 10
@@ -161,8 +161,6 @@ func init() {
 	createNatsDispatchInvitationSubscriptions(&waitGroup)
 	createNatsDispatchProtocolMessageSubscriptions(&waitGroup)
 	createNatsSubjectAccountRegistrationSubscriptions(&waitGroup)
-
-	createNatsWorkgroupSyncSubscriptions(&waitGroup)
 }
 
 func createNatsBaselineProxySubscriptions(wg *sync.WaitGroup) {
@@ -285,26 +283,6 @@ func createNatsSubjectAccountRegistrationSubscriptions(wg *sync.WaitGroup) {
 			natsSubjectAccountRegistrationAckWait,
 			natsSubjectAccountRegistrationMaxInFlight,
 			natsSubjectAccountRegistrationMaxDeliveries,
-			nil,
-		)
-
-		if err != nil {
-			common.Log.Panicf("failed to subscribe to NATS stream via subject: %s; %s", natsSubjectAccountRegistrationSubject, err.Error())
-		}
-	}
-}
-
-func createNatsWorkgroupSyncSubscriptions(wg *sync.WaitGroup) {
-	for i := uint64(0); i < natsutil.GetNatsConsumerConcurrency(); i++ {
-		_, err := natsutil.RequireNatsJetstreamSubscription(wg,
-			natsWorkgroupSyncAckWait,
-			natsWorkgroupSyncSubject,
-			natsWorkgroupSyncSubject,
-			natsWorkgroupSyncSubject,
-			consumeWorkgroupSyncRequestMsg,
-			natsWorkgroupSyncAckWait,
-			natsWorkgroupSyncMaxInFlight,
-			natsWorkgroupSyncMaxDeliveries,
 			nil,
 		)
 

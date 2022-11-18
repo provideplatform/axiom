@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
@@ -417,6 +418,27 @@ func (s *SubjectAccount) resolveJWKs() (map[string]*ident.JSONWebKey, error) {
 	}
 
 	return jwks, nil
+}
+
+func (s *SubjectAccount) createNatsWorkgroupSyncSubscriptions(wg *sync.WaitGroup) {
+	subject := strings.Replace(natsWorkgroupSyncSubject, "*", *s.Metadata.WorkgroupID, -1)
+	for i := uint64(0); i < natsutil.GetNatsConsumerConcurrency(); i++ {
+		_, err := natsutil.RequireNatsJetstreamSubscription(wg,
+			natsWorkgroupSyncAckWait,
+			subject,
+			subject,
+			subject,
+			consumeWorkgroupSyncRequestMsg,
+			natsWorkgroupSyncAckWait,
+			natsWorkgroupSyncMaxInFlight,
+			natsWorkgroupSyncMaxDeliveries,
+			nil,
+		)
+
+		if err != nil {
+			common.Log.Panicf("failed to subscribe to NATS stream via subject: %s; %s", natsSubjectAccountRegistrationSubject, err.Error())
+		}
+	}
 }
 
 func (s *SubjectAccount) create(tx *gorm.DB) bool {

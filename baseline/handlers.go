@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -592,6 +593,9 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 	if subjectAccount.create(tx) {
 		SubjectAccounts = append(SubjectAccounts, subjectAccount)
 		SubjectAccountsByID[subjectAccountID] = append(SubjectAccountsByID[subjectAccountID], subjectAccount)
+
+		var waitGroup sync.WaitGroup // HACK!!!
+		subjectAccount.createNatsWorkgroupSyncSubscriptions(&waitGroup)
 
 		err = subjectAccount.startDaemon(subjectAccount.Metadata.OrganizationRefreshToken)
 		if err != nil {
@@ -2696,6 +2700,9 @@ func createSubjectAccountHandler(c *gin.Context) {
 	if subjectAccount.create(tx) {
 		SubjectAccounts = append(SubjectAccounts, subjectAccount)
 		SubjectAccountsByID[subjectAccountID] = append(SubjectAccountsByID[subjectAccountID], subjectAccount)
+
+		var waitGroup sync.WaitGroup // HACK!!!
+		subjectAccount.createNatsWorkgroupSyncSubscriptions(&waitGroup)
 
 		err = subjectAccount.startDaemon(subjectAccount.Metadata.OrganizationRefreshToken)
 		if err != nil {
