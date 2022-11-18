@@ -908,7 +908,7 @@ func resolveSubjectAccount(subjectAccountID string, vc *string) (*SubjectAccount
 		}
 
 		uuid, _ := uuid.NewV4()
-		name := fmt.Sprintf("%s-%s-baseline.workgroup.%s.sync", *subjectAccount.Metadata.OrganizationAddress, uuid.String(), *workgroupID)
+		name := fmt.Sprintf("baseline.workgroup.%s.sync-%s", *workgroupID, uuid.String())
 		conn, err := natsutil.GetNatsConnection(name, *claims.Audience, time.Second*10, vc)
 		if err != nil {
 			return nil, fmt.Errorf("failed to establish NATS connection to invitor messaging endpoint: %s; %s", *claims.Audience, err.Error())
