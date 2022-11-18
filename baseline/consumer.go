@@ -1177,7 +1177,7 @@ func consumeWorkgroupSyncRequestMsg(msg *nats.Msg) {
 	payload, _ := json.Marshal(subjectAccount)
 	err = msg.Respond(payload)
 	if err != nil {
-		common.Log.Warningf("failed to write payload in response to baseline workgroup sync request message on subject: %s", len(msg.Data), msg.Subject)
+		common.Log.Warningf("failed to write payload in response to baseline workgroup sync request message on subject: %s", err.Error())
 		msg.Nak()
 		return
 	}
