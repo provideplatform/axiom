@@ -964,7 +964,7 @@ func resolveSubjectAccount(subjectAccountID string, vc *string) (*SubjectAccount
 				}
 			}
 
-			if resp != nil && err != nil {
+			if resp != nil && err == nil {
 				err = json.Unmarshal(resp.Data, &subjectAccount)
 				if err != nil {
 					common.Log.Warningf("failed to resolve DID-based BPI subject account: %s; failed to parse response; %s", subjectAccountID, err)
