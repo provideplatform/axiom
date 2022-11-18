@@ -47,6 +47,8 @@ const prvdSubjectAccountType = "PRVD"
 const vaultSecretTypeBPISubjectAccount = "bpi_subject_account"
 const vaultSecretTypeSystem = "system"
 
+const requireSyncResponseTimeout = time.Second * 10
+
 var (
 	// SubjectAccounts are the cached BPI subject accounts on the configured instance; in-memory cache available only to instances serving the API
 	SubjectAccounts []*SubjectAccount
@@ -915,15 +917,35 @@ func resolveSubjectAccount(subjectAccountID string, vc *string) (*SubjectAccount
 		}
 		defer conn.Close()
 
+		replyTo := fmt.Sprintf("baseline.workgroup.%s.reply.%s", *workgroupID, uuid.String())
+		sub, err := conn.SubscribeSync(replyTo)
+		if err != nil {
+			return nil, fmt.Errorf("failed to subscribe to reply subject for invitor messaging endpoint: %s; %s", *claims.Audience, err.Error())
+		}
+		defer sub.Unsubscribe()
+		conn.Flush()
+
 		raw, _ := json.Marshal(claims.Baseline)
-		resp, err := conn.Request(fmt.Sprintf("baseline.workgroup.%s.sync", *workgroupID), raw, time.Second*10)
+		err = conn.PublishRequest(fmt.Sprintf("baseline.workgroup.%s.sync", *workgroupID), replyTo, raw)
 		if err != nil {
 			return nil, fmt.Errorf("failed to resolve DID-based BPI subject account: %s; request failed; %s", subjectAccountID, err.Error())
 		}
 
-		err = json.Unmarshal(resp.Data, &subjectAccount)
-		if err != nil {
-			return nil, fmt.Errorf("failed to resolve DID-based BPI subject account: %s; failed to parse response; %s", subjectAccountID, err)
+		startTime := time.Now()
+		for {
+			resp, err := sub.NextMsg(2500 * time.Millisecond)
+			if err != nil {
+				common.Log.Warningf("failed to read reply on subject %s for invitor messaging endpoint: %s; %s", replyTo, *claims.Audience, err.Error())
+				if startTime.Add(requireSyncResponseTimeout).Before(time.Now()) {
+					common.Log.Warningf("failed to read reply on subject %s for invitor messaging endpoint: %s; timed out waiting for response", replyTo, *claims.Audience)
+					break
+				}
+			}
+
+			err = json.Unmarshal(resp.Data, &subjectAccount)
+			if err != nil {
+				return nil, fmt.Errorf("failed to resolve DID-based BPI subject account: %s; failed to parse response; %s", subjectAccountID, err)
+			}
 		}
 
 		common.Log.Debugf("resolved DID-based BPI subject account: %s;", subjectAccountID)
