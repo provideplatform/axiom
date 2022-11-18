@@ -404,6 +404,40 @@ func (w *Workstep) execute(
 		return nil, fmt.Errorf(*w.Errors[0].Message)
 	}
 
+	db := dbconf.DatabaseConnection()
+	constraints := w.listConstraints(db)
+	executionRequirements := make([]*Constraint, 0)
+	finalityRequirements := make([]*Constraint, 0)
+
+	for _, constraint := range constraints {
+		if constraint.ExecutionRequirement {
+			executionRequirements = append(executionRequirements, constraint)
+		}
+
+		if constraint.FinalityRequirement {
+			finalityRequirements = append(finalityRequirements, constraint)
+		}
+	}
+
+	execute := false
+	finality := false
+
+	// for _, constraint := range executionRequirements {
+
+	// }
+
+	// for _, constraint := range finalityRequirements {
+
+	// }
+
+	if execute {
+		// TODO
+	}
+
+	if finality {
+		// TODO
+	}
+
 	hash := gnarkhash.MIMC_BLS12_377.New()
 	var i big.Int
 
@@ -450,7 +484,6 @@ func (w *Workstep) execute(
 	w.Status = common.StringOrNil(workstepStatusRunning)
 	// metadata := w.ParseMetadata()
 
-	db := dbconf.DatabaseConnection()
 	tx := db.Begin()
 	defer tx.RollbackUnlessCommitted()
 

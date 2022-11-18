@@ -77,6 +77,11 @@ const natsSubjectAccountRegistrationMaxInFlight = 256
 const natsSubjectAccountRegistrationAckWait = time.Minute * 1
 const natsSubjectAccountRegistrationMaxDeliveries = 10
 
+const natsWorkgroupSyncSubject = "baseline.workgroup.*.registration"
+const natsWorkgroupSyncMaxInFlight = 256
+const natsWorkgroupSyncAckWait = time.Minute * 1
+const natsWorkgroupSyncMaxDeliveries = 10
+
 const natsBaselineSubject = "baseline"
 const baselineProxyAckWait = time.Second * 30
 
@@ -156,6 +161,8 @@ func init() {
 	createNatsDispatchInvitationSubscriptions(&waitGroup)
 	createNatsDispatchProtocolMessageSubscriptions(&waitGroup)
 	createNatsSubjectAccountRegistrationSubscriptions(&waitGroup)
+
+	createNatsWorkgroupSyncSubscriptions(&waitGroup)
 }
 
 func createNatsBaselineProxySubscriptions(wg *sync.WaitGroup) {
@@ -287,6 +294,26 @@ func createNatsSubjectAccountRegistrationSubscriptions(wg *sync.WaitGroup) {
 	}
 }
 
+func createNatsWorkgroupSyncSubscriptions(wg *sync.WaitGroup) {
+	for i := uint64(0); i < natsutil.GetNatsConsumerConcurrency(); i++ {
+		_, err := natsutil.RequireNatsJetstreamSubscription(wg,
+			natsWorkgroupSyncAckWait,
+			natsWorkgroupSyncSubject,
+			natsWorkgroupSyncSubject,
+			natsWorkgroupSyncSubject,
+			consumeWorkgroupSyncRequestMsg,
+			natsWorkgroupSyncAckWait,
+			natsWorkgroupSyncMaxInFlight,
+			natsWorkgroupSyncMaxDeliveries,
+			nil,
+		)
+
+		if err != nil {
+			common.Log.Panicf("failed to subscribe to NATS stream via subject: %s; %s", natsSubjectAccountRegistrationSubject, err.Error())
+		}
+	}
+}
+
 func consumeBaselineProxyInboundSubscriptionsMsg(msg *nats.Msg) {
 	common.Log.Debugf("consuming %d-byte NATS inbound protocol message on internal subject: %s", len(msg.Data), msg.Subject)
 
@@ -333,7 +360,7 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *nats.Msg) {
 	if orgID, ok := org.Metadata["organization_id"].(string); ok {
 		if workflow != nil {
 			subjectAccountID = common.StringOrNil(subjectAccountIDFactory(orgID, workflow.WorkgroupID.String()))
-			protomsg.subjectAccount, err = resolveSubjectAccount(*subjectAccountID, nil, nil)
+			protomsg.subjectAccount, err = resolveSubjectAccount(*subjectAccountID, nil)
 			if err != nil {
 				common.Log.Warningf("failed to resolve subject account %s during processing of inbound protocol message to recipient: %s", *subjectAccountID, *protomsg.Recipient)
 				return
@@ -609,7 +636,7 @@ func consumeBaselineWorkstepDeploySubscriptionsMsg(msg *nats.Msg) {
 	}
 
 	subjectAccountID := subjectAccountIDFactory(organizationID.String(), workflow.WorkgroupID.String())
-	subjectAccount, err := resolveSubjectAccount(subjectAccountID, nil, nil)
+	subjectAccount, err := resolveSubjectAccount(subjectAccountID, nil)
 	if err != nil {
 		common.Log.Errorf("failed to resolve BPI subject account for workflow: %s; %s", workstep.WorkflowID, err.Error())
 		msg.Nak()
@@ -686,7 +713,7 @@ func consumeBaselineWorkstepFinalizeDeploySubscriptionsMsg(msg *nats.Msg) {
 	}
 
 	subjectAccountID := subjectAccountIDFactory(organizationID.String(), workflow.WorkgroupID.String())
-	subjectAccount, err := resolveSubjectAccount(subjectAccountID, nil, nil)
+	subjectAccount, err := resolveSubjectAccount(subjectAccountID, nil)
 	if err != nil {
 		common.Log.Errorf("failed to resolve BPI subject account for workflow: %s; %s", workstep.WorkflowID, err.Error())
 		msg.Nak()
@@ -811,7 +838,7 @@ func consumeDispatchProtocolMessageSubscriptionsMsg(msg *nats.Msg) {
 	// }
 
 	// subjectAccountID := subjectAccountIDFactory(organizationID.String(), *workgroupID)
-	subjectAccount, err := resolveSubjectAccount(*protomsg.SubjectAccountID, nil, nil) // FIXME... audit this to verify it is sufficiently secure...
+	subjectAccount, err := resolveSubjectAccount(*protomsg.SubjectAccountID, nil) // FIXME... audit this to verify it is sufficiently secure...
 	if err != nil {
 		common.Log.Errorf("failed to resolve BPI subject account for workflow: %s; %s", *protomsg.WorkflowID, err.Error())
 		msg.Nak()
@@ -1113,5 +1140,47 @@ func consumeSubjectAccountRegistrationMsg(msg *nats.Msg) {
 	}
 
 	common.Log.Debugf("broadcast organization registry and interface impl transactions on behalf of organization: %s", *subjectAccount.SubjectID)
+	msg.Ack()
+}
+
+func consumeWorkgroupSyncRequestMsg(msg *nats.Msg) {
+	defer func() {
+		if r := recover(); r != nil {
+			common.Log.Warningf("recovered in baseline workgroup sync request message on subject; %s", r)
+			msg.Nak()
+		}
+	}()
+
+	common.Log.Debugf("consuming %d-byte NATS baseline workgroup sync request message on subject: %s", len(msg.Data), msg.Subject)
+
+	var claims *BaselineClaims
+	err := json.Unmarshal(msg.Data, &claims)
+	if err != nil {
+		common.Log.Warningf("failed to umarshal payload from workgroup sync request message; %s", err.Error())
+		msg.Nak()
+		return
+	}
+
+	if claims.InvitorSubjectAccountID == nil {
+		common.Log.Warning("failed to accept workgroup invitation; no baseline invitor subject account id resolved from claims")
+		msg.Term()
+		return
+	}
+
+	subjectAccount, err := resolveSubjectAccount(*claims.InvitorSubjectAccountID, nil)
+	if err != nil {
+		common.Log.Warningf("failed to resolve subject account for workgroup sync request message; %s", err.Error())
+		msg.Nak()
+		return
+	}
+
+	payload, _ := json.Marshal(subjectAccount)
+	err = msg.Respond(payload)
+	if err != nil {
+		common.Log.Warningf("failed to write payload in response to baseline workgroup sync request message on subject: %s", len(msg.Data), msg.Subject)
+		msg.Nak()
+		return
+	}
+
 	msg.Ack()
 }

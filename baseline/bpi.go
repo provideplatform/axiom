@@ -22,7 +22,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -36,7 +35,6 @@ import (
 	"github.com/olivere/elastic/v7"
 	"github.com/provideplatform/baseline/common"
 	"github.com/provideplatform/baseline/middleware"
-	"github.com/provideplatform/provide-go/api"
 	provide "github.com/provideplatform/provide-go/api"
 	"github.com/provideplatform/provide-go/api/ident"
 	"github.com/provideplatform/provide-go/api/nchain"
@@ -873,7 +871,7 @@ func (s *SubjectAccount) configureSystem(system *middleware.SystemMetadata) erro
 }
 
 // resolveSubjectAccount resolves the BPI subject account for a given subject account id
-func resolveSubjectAccount(subjectAccountID string, token, vc *string) (*SubjectAccount, error) {
+func resolveSubjectAccount(subjectAccountID string, vc *string) (*SubjectAccount, error) {
 	if saccts, ok := SubjectAccountsByID[subjectAccountID]; ok {
 		return saccts[0], nil
 	}
@@ -891,7 +889,7 @@ func resolveSubjectAccount(subjectAccountID string, token, vc *string) (*Subject
 		return subjectAccount, nil
 	}
 
-	if token != nil && vc != nil {
+	if vc != nil {
 		// attempt to parse workgroup id and invitor bpi endpoint from verifiable credential
 		claims := &InviteClaims{} // TODO-- refactor
 		var jwtParser jwt.Parser
@@ -900,59 +898,36 @@ func resolveSubjectAccount(subjectAccountID string, token, vc *string) (*Subject
 			return nil, fmt.Errorf("failed to resolve DID-based BPI subject account: %s; failed to parse workgroup ID from verifiable credential; %s", subjectAccountID, err)
 		}
 
-		organizationID := claims.Issuer
-
-		var bpiEndpoint *string
 		var workgroupID *string
 		if claims.Baseline != nil {
-			bpiEndpoint = claims.Baseline.InvitorBPIEndpoint
 			workgroupID = claims.Baseline.WorkgroupID
 		}
 
-		// attempt to resolve subject account using bpi endpoint on organization workgroup metadata
-		if bpiEndpoint != nil && organizationID != nil && workgroupID != nil {
-			bpiURL, err := url.Parse(*bpiEndpoint)
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse BPI endpoint URL; %s", err.Error())
-			}
-
-			baselineClient := &api.Client{
-				Host:   bpiURL.Host,
-				Scheme: bpiURL.Scheme,
-				Path:   "api/v1",
-				Token:  token,
-			}
-
-			uri := fmt.Sprintf("subjects/%s/accounts/%s", *organizationID, subjectAccountID)
-			status, resp, err := baselineClient.Get(uri, map[string]interface{}{})
-			if err != nil {
-				return nil, fmt.Errorf("failed to get details for subject account: %s; %s", subjectAccountID, err.Error())
-			}
-
-			if status != 200 {
-				msg := fmt.Sprintf("failed to get details for subject account: %s; status: %d", subjectAccountID, status)
-				if resp != nil {
-					rawresp, _ := json.Marshal(resp)
-					msg = fmt.Sprintf("%s; %s", msg, string(rawresp))
-				}
-
-				return nil, fmt.Errorf(msg)
-			}
-
-			raw, _ := json.Marshal(resp)
-			err = json.Unmarshal(raw, &subjectAccount)
-			if err != nil {
-				return nil, fmt.Errorf("failed to unmarshal subject account from response; %s", err.Error())
-			}
-
-			err = subjectAccount.enrich()
-			if err != nil {
-				return nil, fmt.Errorf("failed to enrich BPI subject account: %s; %s", subjectAccountID, err.Error())
-			}
-
-			common.Log.Debugf("resolved DID-based BPI subject account: %s;", subjectAccountID)
-			return subjectAccount, nil
+		if workgroupID == nil {
+			return nil, fmt.Errorf("failed to resolve DID-based BPI subject account: %s; failed to parse workgroup ID from verifiable credential; %s", subjectAccountID, err)
 		}
+
+		uuid, _ := uuid.NewV4()
+		name := fmt.Sprintf("%s-%s-baseline.workgroup.%s.sync", *subjectAccount.Metadata.OrganizationAddress, uuid.String(), *workgroupID)
+		conn, err := natsutil.GetNatsConnection(name, *claims.Audience, time.Second*10, vc)
+		if err != nil {
+			return nil, fmt.Errorf("failed to establish NATS connection to invitor messaging endpoint: %s; %s", *claims.Audience, err.Error())
+		}
+		defer conn.Close()
+
+		raw, _ := json.Marshal(claims.Baseline)
+		resp, err := conn.Request(fmt.Sprintf("baseline.workgroup.%s.sync", *workgroupID), raw, time.Second*10)
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve DID-based BPI subject account: %s; request failed; %s", subjectAccountID, err.Error())
+		}
+
+		err = json.Unmarshal(resp.Data, &subjectAccount)
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve DID-based BPI subject account: %s; failed to parse response; %s", subjectAccountID, err)
+		}
+
+		common.Log.Debugf("resolved DID-based BPI subject account: %s;", subjectAccountID)
+		return subjectAccount, nil
 	}
 
 	return nil, fmt.Errorf("failed to resolve BPI subject account: %s", subjectAccountID)
