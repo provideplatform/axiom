@@ -52,7 +52,7 @@ const workstepStatusPendingDeployment = "pending_deployment"
 // workstep instance statuses
 // FIXME? add 'pending'
 const workstepStatusInit = "init"
-const workstepStatusRunning = "running"
+const workstepStatusExecuting = "executing"
 const workstepStatusCompleted = "completed"
 const workstepStatusCanceled = "canceled"
 const workstepStatusFailed = "failed"
@@ -390,7 +390,7 @@ func (w *Workstep) execute(
 		return nil, fmt.Errorf(*w.Errors[0].Message)
 	}
 
-	if w.Status != nil && *w.Status != workstepStatusInit && *w.Status != workstepStatusRunning {
+	if w.Status != nil && *w.Status != workstepStatusInit && *w.Status != workstepStatusExecuting {
 		w.Errors = append(w.Errors, &provide.Error{
 			Message: common.StringOrNil(fmt.Sprintf("cannot execute workstep with status: %s", *w.Status)),
 		})
@@ -481,7 +481,7 @@ func (w *Workstep) execute(
 		workflowStatusChanged = true
 	}
 
-	w.Status = common.StringOrNil(workstepStatusRunning)
+	w.Status = common.StringOrNil(workstepStatusExecuting)
 	// metadata := w.ParseMetadata()
 
 	tx := db.Begin()
@@ -1084,7 +1084,7 @@ func (w *Workstep) Validate(tx *gorm.DB) bool {
 			*w.Status != workstepStatusDeprecated &&
 			*w.Status != workstepStatusPendingDeployment &&
 			*w.Status != workstepStatusInit &&
-			*w.Status != workstepStatusRunning &&
+			*w.Status != workstepStatusExecuting &&
 			*w.Status != workstepStatusCompleted &&
 			*w.Status != workstepStatusCanceled &&
 			*w.Status != workstepStatusFailed) {

@@ -1998,7 +1998,7 @@ func executeWorkstepHandler(c *gin.Context) {
 		return
 	}
 
-	if workstep.Status != nil && *workstep.Status != workstepStatusInit && *workstep.Status != workstepStatusRunning {
+	if workstep.Status != nil && *workstep.Status != workstepStatusInit && *workstep.Status != workstepStatusExecuting {
 		provide.RenderError("cannot execute workstep", 400, c)
 		return
 	}
