@@ -427,7 +427,7 @@ func (w *Workstep) execute(
 	failedFinalityRequirements := make([]*Constraint, 0)
 
 	for _, constraint := range executionRequirements {
-		err := constraint.evaluate()
+		err := constraint.evaluate(params)
 		if err != nil {
 			failedExecutionRequirements = append(failedExecutionRequirements, constraint)
 		}
