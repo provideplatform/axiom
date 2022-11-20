@@ -1,12 +1,23 @@
 package baseline
 
 import (
+	"errors"
+	"fmt"
+	"strings"
+
 	"github.com/jinzhu/gorm"
 	dbconf "github.com/kthomas/go-db-config"
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideplatform/baseline/common"
 	provide "github.com/provideplatform/provide-go/api"
 )
+
+const constraintOperatorEqual = "=="
+const constraintOperatorLessThan = "<"
+const constraintOperatorLessThanOrEqual = "<="
+const constraintOperatorGreaterThan = ">"
+const constraintOperatorGreaterThanOrEqual = ">="
+const constraintOperandNil = "nil"
 
 // Constraint is a workstep constraint
 type Constraint struct {
@@ -138,4 +149,44 @@ func (c *Constraint) Delete() bool {
 	}
 
 	return rowsAffected > 0
+}
+
+func (c *Constraint) evaluate(params map[string]interface{}) error {
+	if c.Expression == nil {
+		return errors.New("cannot evaluate constraint with nil expression")
+	}
+
+	tokens := make([]string, 0)
+	for _, token := range strings.Fields(*c.Expression) {
+		if len(token) == 0 {
+			continue
+		}
+
+		tokens = append(tokens, token)
+	}
+
+	if len(tokens) != 3 {
+		return errors.New("cannot evaluate malformed constraint; should have exactly two operands and one operator")
+	}
+
+	loperand := tokens[0]
+	operator := tokens[1]
+	roperand := tokens[2]
+
+	common.Log.Debugf("attempting to evaluate constraint %s %s %s", loperand, operator, roperand)
+
+	// TODO-- extract value from field pointed to by `loperand``
+	// val := params[loperand]
+
+	switch operator {
+	case constraintOperatorEqual:
+	case constraintOperatorGreaterThan:
+	case constraintOperatorGreaterThanOrEqual:
+	case constraintOperatorLessThan:
+	case constraintOperatorLessThanOrEqual:
+	default:
+		return fmt.Errorf("cannot evaluate malformed constraint; invalid operator: %s", operator)
+	}
+
+	return nil
 }

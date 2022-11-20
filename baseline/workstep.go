@@ -404,6 +404,10 @@ func (w *Workstep) execute(
 		return nil, fmt.Errorf(*w.Errors[0].Message)
 	}
 
+	var params map[string]interface{}
+	raw, _ := json.Marshal(payload.Object)
+	json.Unmarshal(raw, &params) // HACK
+
 	db := dbconf.DatabaseConnection()
 	constraints := w.listConstraints(db)
 	executionRequirements := make([]*Constraint, 0)
@@ -419,31 +423,41 @@ func (w *Workstep) execute(
 		}
 	}
 
-	execute := false
-	finality := false
+	failedExecutionRequirements := make([]*Constraint, 0)
+	failedFinalityRequirements := make([]*Constraint, 0)
 
-	// for _, constraint := range executionRequirements {
-
-	// }
-
-	// for _, constraint := range finalityRequirements {
-
-	// }
-
-	if execute {
-		// TODO
+	for _, constraint := range executionRequirements {
+		err := constraint.evaluate()
+		if err != nil {
+			failedExecutionRequirements = append(failedExecutionRequirements, constraint)
+		}
 	}
 
-	if finality {
-		// TODO
+	for _, constraint := range finalityRequirements {
+		err := constraint.evaluate(params)
+		if err != nil {
+			failedFinalityRequirements = append(failedFinalityRequirements, constraint)
+		}
+	}
+
+	execute := len(executionRequirements) == 0 || len(failedExecutionRequirements) == 0
+	finality := len(finalityRequirements) == 0 || len(failedFinalityRequirements) == 0
+
+	if !execute {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil(fmt.Sprintf("execution failed due to %d constraint violation(s) on workstep: %s", len(failedExecutionRequirements), w.ID)),
+		})
+		// TODO-- add specific constraint failures to the errors list
+		// for _, failedRequirement := range failedExecutionRequirements {
+		// 	w.Errors = append(w.Errors, &provide.Error{
+		// 		Message: common.StringOrNil(),
+		// 	})
+		// }
+		return nil, fmt.Errorf(*w.Errors[0].Message)
 	}
 
 	hash := gnarkhash.MIMC_BLS12_377.New()
 	var i big.Int
-
-	var params map[string]interface{}
-	raw, _ := json.Marshal(payload.Object)
-	json.Unmarshal(raw, &params) // HACK
 
 	hash.Write(raw)
 	preImage := hash.Sum(nil)
@@ -512,8 +526,14 @@ func (w *Workstep) execute(
 			}
 		}
 		if pc == len(participants) {
-			common.Log.Debugf("completed workstep: %s", w.ID)
-			w.Status = common.StringOrNil(workstepStatusCompleted)
+			if execute && !finality {
+				common.Log.Debugf("workstep execution: %s", w.ID)
+				w.Status = common.StringOrNil(workstepStatusExecuting)
+			} else if finality {
+				common.Log.Debugf("workstep execution completed: %s", w.ID)
+				w.Status = common.StringOrNil(workstepStatusCompleted)
+			}
+
 			tx.Save(&w)
 		}
 
