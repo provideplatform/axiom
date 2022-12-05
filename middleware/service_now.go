@@ -79,12 +79,12 @@ func ServiceNowFactory(params *SystemMetadata) *ServiceNowService {
 
 	var listSchemasPath *string
 	if os.Getenv("SERVICENOW_LIST_SCHEMAS_API_PATH") != "" {
-		listSchemasPath = common.StringOrNil(os.Getenv("SERVICENOW_LIST_SCHEMAS_API_PATH"))
+		listSchemasPath = common.StringOrNil(fmt.Sprintf("%s/%s", path, os.Getenv("SERVICENOW_LIST_SCHEMAS_API_PATH")))
 	}
 
 	var schemaDetailsPath *string
 	if os.Getenv("SERVICENOW_SCHEMA_DETAILS_API_PATH") != "" {
-		schemaDetailsPath = common.StringOrNil(os.Getenv("SERVICENOW_SCHEMA_DETAILS_API_PATH"))
+		schemaDetailsPath = common.StringOrNil(fmt.Sprintf("%s/%s", path, os.Getenv("SERVICENOW_SCHEMA_DETAILS_API_PATH")))
 	}
 
 	var healthcheckPath *string
@@ -95,7 +95,7 @@ func ServiceNowFactory(params *SystemMetadata) *ServiceNowService {
 	return &ServiceNowService{
 		api.Client{
 			Host:     endpoint.Host,
-			Path:     path,
+			Path:     endpoint.Path,
 			Scheme:   endpoint.Scheme,
 			Token:    params.Auth.Token,
 			Username: username,
@@ -138,12 +138,12 @@ func InitServiceNowService(token *string) *ServiceNowService {
 
 	var listSchemasPath *string
 	if os.Getenv("SERVICENOW_LIST_SCHEMAS_API_PATH") != "" {
-		listSchemasPath = common.StringOrNil(os.Getenv("SERVICENOW_LIST_SCHEMAS_API_PATH"))
+		listSchemasPath = common.StringOrNil(fmt.Sprintf("%s/%s", path, os.Getenv("SERVICENOW_LIST_SCHEMAS_API_PATH")))
 	}
 
 	var schemaDetailsPath *string
 	if os.Getenv("SERVICENOW_SCHEMA_DETAILS_API_PATH") != "" {
-		schemaDetailsPath = common.StringOrNil(os.Getenv("SERVICENOW_SCHEMA_DETAILS_API_PATH"))
+		schemaDetailsPath = common.StringOrNil(fmt.Sprintf("%s/%s", path, os.Getenv("SERVICENOW_SCHEMA_DETAILS_API_PATH")))
 	}
 
 	var healthcheckPath *string
