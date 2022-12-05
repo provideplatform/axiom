@@ -192,10 +192,18 @@ func (s *System) persistSecret() bool {
 		return false
 	}
 
+	// HACK!!!
+	if s.metadata == nil {
+		s.metadata = &middleware.SystemMetadata{}
+	}
+
 	s.metadata = &middleware.SystemMetadata{
 		Auth:        s.Auth,
 		EndpointURL: s.EndpointURL,
 		Middleware:  s.Middleware,
+		Name:        s.Name,
+		Path:        s.metadata.Path,
+		Type:        s.Type,
 	}
 
 	raw, err := json.Marshal(s.metadata)
@@ -244,6 +252,7 @@ func (s *System) middlewareFactory() middleware.SOR {
 		EndpointURL: s.EndpointURL,
 		Middleware:  s.Middleware,
 		Name:        s.Name,
+		Path:        s.metadata.Path,
 		Type:        s.Type,
 	})
 }
