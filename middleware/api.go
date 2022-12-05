@@ -34,6 +34,7 @@ type SystemMetadata struct {
 	EndpointURL *string           `sql:"-" json:"endpoint_url"`
 	Middleware  *SystemMiddleware `sql:"-" json:"middleware,omitempty"`
 	Name        *string           `sql:"-" json:"name"`
+	Path        *string           `sql:"-" json:"path"`
 	Type        *string           `sql:"-" json:"type"`
 }
 

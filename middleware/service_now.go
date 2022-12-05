@@ -36,6 +36,7 @@ type ServiceNowService struct {
 	api.Client
 	mutex sync.Mutex
 
+	path              *string
 	listSchemasPath   *string
 	schemaDetailsPath *string
 	healthcheckPath   *string
@@ -69,14 +70,21 @@ func ServiceNowFactory(params *SystemMetadata) *ServiceNowService {
 		password = params.Auth.Password
 	}
 
+	var path string
+	if params.Path != nil {
+		path = *params.Path
+	} else {
+		path = endpoint.Path
+	}
+
 	var listSchemasPath *string
 	if os.Getenv("SERVICENOW_LIST_SCHEMAS_API_PATH") != "" {
-		listSchemasPath = common.StringOrNil(os.Getenv("SERVICENOW_LIST_SCHEMAS_API_PATH"))
+		listSchemasPath = common.StringOrNil(fmt.Sprintf("%s/%s", path, os.Getenv("SERVICENOW_LIST_SCHEMAS_API_PATH")))
 	}
 
 	var schemaDetailsPath *string
 	if os.Getenv("SERVICENOW_SCHEMA_DETAILS_API_PATH") != "" {
-		schemaDetailsPath = common.StringOrNil(os.Getenv("SERVICENOW_SCHEMA_DETAILS_API_PATH"))
+		schemaDetailsPath = common.StringOrNil(fmt.Sprintf("%s/%s", path, os.Getenv("SERVICENOW_SCHEMA_DETAILS_API_PATH")))
 	}
 
 	var healthcheckPath *string
@@ -87,13 +95,14 @@ func ServiceNowFactory(params *SystemMetadata) *ServiceNowService {
 	return &ServiceNowService{
 		api.Client{
 			Host:     endpoint.Host,
-			Path:     endpoint.Path,
+			Path:     path,
 			Scheme:   endpoint.Scheme,
 			Token:    params.Auth.Token,
 			Username: username,
 			Password: password,
 		},
 		sync.Mutex{},
+		common.StringOrNil(path),
 		listSchemasPath,
 		schemaDetailsPath,
 		healthcheckPath,
@@ -129,12 +138,12 @@ func InitServiceNowService(token *string) *ServiceNowService {
 
 	var listSchemasPath *string
 	if os.Getenv("SERVICENOW_LIST_SCHEMAS_API_PATH") != "" {
-		listSchemasPath = common.StringOrNil(os.Getenv("SERVICENOW_LIST_SCHEMAS_API_PATH"))
+		listSchemasPath = common.StringOrNil(fmt.Sprintf("%s/%s", path, os.Getenv("SERVICENOW_LIST_SCHEMAS_API_PATH")))
 	}
 
 	var schemaDetailsPath *string
 	if os.Getenv("SERVICENOW_SCHEMA_DETAILS_API_PATH") != "" {
-		schemaDetailsPath = common.StringOrNil(os.Getenv("SERVICENOW_SCHEMA_DETAILS_API_PATH"))
+		schemaDetailsPath = common.StringOrNil(fmt.Sprintf("%s/%s", path, os.Getenv("SERVICENOW_SCHEMA_DETAILS_API_PATH")))
 	}
 
 	var healthcheckPath *string
@@ -152,6 +161,7 @@ func InitServiceNowService(token *string) *ServiceNowService {
 			Password: common.StringOrNil(password),
 		},
 		sync.Mutex{},
+		common.StringOrNil(path),
 		listSchemasPath,
 		schemaDetailsPath,
 		healthcheckPath,
