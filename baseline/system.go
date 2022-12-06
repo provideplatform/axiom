@@ -119,6 +119,7 @@ func (s *System) enrich() error {
 		s.Auth = s.metadata.Auth
 		s.EndpointURL = s.metadata.EndpointURL
 		s.Middleware = s.metadata.Middleware
+		s.Path = s.metadata.Path
 	}
 
 	return nil
