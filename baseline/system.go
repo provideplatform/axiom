@@ -70,6 +70,7 @@ func SystemFromEphemeralSystemMetadata(metadata *middleware.SystemMetadata) (*Sy
 		EndpointURL: metadata.EndpointURL,
 		Middleware:  metadata.Middleware,
 		Name:        metadata.Name,
+		Path:        metadata.Path,
 		Type:        metadata.Type,
 		metadata:    metadata,
 	}
