@@ -33,6 +33,7 @@ type System struct {
 	Auth        *middleware.SystemAuth       `sql:"-" json:"auth,omitempty"`
 	EndpointURL *string                      `sql:"-" json:"endpoint_url"`
 	Middleware  *middleware.SystemMiddleware `sql:"-" json:"middleware,omitempty"`
+	Path        *string                      `sql:"-" json:"path,omitempty"`
 
 	VaultID  *uuid.UUID `sql:"not null" json:"-"`
 	SecretID *uuid.UUID `sql:"not null" json:"-"`
@@ -202,7 +203,7 @@ func (s *System) persistSecret() bool {
 		EndpointURL: s.EndpointURL,
 		Middleware:  s.Middleware,
 		Name:        s.Name,
-		Path:        s.metadata.Path,
+		Path:        s.Path,
 		Type:        s.Type,
 	}
 
@@ -252,7 +253,7 @@ func (s *System) middlewareFactory() middleware.SOR {
 		EndpointURL: s.EndpointURL,
 		Middleware:  s.Middleware,
 		Name:        s.Name,
-		Path:        s.metadata.Path,
+		Path:        s.Path,
 		Type:        s.Type,
 	})
 }
