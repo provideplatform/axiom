@@ -66,13 +66,14 @@ func (m *ProtocolMessage) index() error {
 
 	payload, _ := json.Marshal(msg)
 
-	common.Indexer.Q(&esutil.Message{
+	err := common.Indexer.Q(&esutil.Message{
 		Header: &esutil.MessageHeader{
 			Index: common.StringOrNil(common.IndexerDocumentIndexBaselineContextInverted),
 		},
 		Payload: payload,
 	})
-	return nil
+
+	return err
 }
 
 func (m *Message) query() (*BaselineContext, error) {
@@ -386,7 +387,12 @@ func (m *ProtocolMessage) baselineInbound() bool {
 		}
 	}
 
-	go m.index()
+	go func() {
+		err := m.index()
+		if err != nil {
+			common.Log.Warningf("failed to index protocol message; %s", err.Error())
+		}
+	}()
 
 	return true
 }

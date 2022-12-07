@@ -411,13 +411,14 @@ func (w *Workflow) index() error {
 
 	payload, _ := json.Marshal(msg)
 
-	common.Indexer.Q(&esutil.Message{
+	err := common.Indexer.Q(&esutil.Message{
 		Header: &esutil.MessageHeader{
 			Index: common.StringOrNil(common.IndexerDocumentIndexBaselineWorkflowPrototypes),
 		},
 		Payload: payload,
 	})
-	return nil
+
+	return err
 }
 
 func (w *Workflow) isPrototype() bool {
