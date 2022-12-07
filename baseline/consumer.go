@@ -818,7 +818,7 @@ func consumeDispatchProtocolMessageSubscriptionsMsg(msg *nats.Msg) {
 	// subjectAccountID := subjectAccountIDFactory(organizationID.String(), *workgroupID)
 	subjectAccount, err := resolveSubjectAccount(*protomsg.SubjectAccountID, nil) // FIXME... audit this to verify it is sufficiently secure...
 	if err != nil {
-		common.Log.Errorf("failed to resolve BPI subject account for workflow: %s; %s", *protomsg.WorkflowID, err.Error())
+		common.Log.Errorf("failed to resolve BPI subject account: %s; %s", *protomsg.SubjectAccountID, err.Error())
 		msg.Nak()
 		return
 	}
