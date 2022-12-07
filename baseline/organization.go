@@ -61,13 +61,27 @@ func (s *SubjectAccount) lookupBaselineOrganizationIssuedVC(address string) *str
 		return nil
 	}
 
+	if s.Metadata.Vault == nil {
+		err := s.requireVault()
+		if err != nil {
+			common.Log.Warningf("failed to require vault; %s", err.Error())
+			return nil
+		}
+	}
+
 	resp, err := vault.FetchSecret(*token, s.Metadata.Vault.ID.String(), *secretID, map[string]interface{}{})
 	if err != nil {
 		common.Log.Warningf("failed to retrieve cached verifiable credential for baseline organization: %s; %s", key, err.Error())
 		return nil
 	}
 
-	return resp.Value
+	decoded, err := hex.DecodeString(*resp.Value)
+	if err != nil {
+		common.Log.Warningf("failed to retrieve cached verifiable credential for baseline organization: %s; failed to decode secret; %s", key, err.Error())
+		return nil
+	}
+
+	return common.StringOrNil(string(decoded))
 }
 
 func (s *SubjectAccount) CacheBaselineOrganizationIssuedVC(address, vc string) error {
@@ -184,9 +198,10 @@ func (s *SubjectAccount) requestBaselineOrganizationIssuedVC(address string) (*s
 	}
 
 	status, resp, err := client.Post("credentials", map[string]interface{}{
-		"address":    *s.Metadata.OrganizationAddress,
-		"public_key": key.PublicKey,
-		"signature":  signresp.Signature,
+		"address":            *s.Metadata.OrganizationAddress,
+		"public_key":         key.PublicKey,
+		"signature":          signresp.Signature,
+		"subject_account_id": *s.ID,
 	})
 	if err != nil {
 		common.Log.Warningf("failed to request verifiable credential from baseline organization: %s; %s", address, err.Error())
@@ -213,7 +228,7 @@ func (s *SubjectAccount) requestBaselineOrganizationIssuedVC(address string) (*s
 		credential = &vc
 	}
 
-	common.Log.Debugf("received requested verifiable credential from counterparty %s", address)
+	common.Log.Debugf("received requested verifiable credential from counterparty %s; credential: %s", address, *credential)
 	return credential, nil
 }
 
@@ -241,14 +256,18 @@ func (s *SubjectAccount) lookupBaselineOrganizationMessagingEndpoint(recipient s
 	if org.MessagingEndpoint == nil {
 		token, err := vendOrganizationAccessToken(s)
 		if err != nil {
-			common.Log.Warningf("failed to retrieve messaging endpoint for baseline organization: %s", recipient)
+			common.Log.Warningf("failed to retrieve messaging endpoint for baseline organization: %s; %s", recipient, err.Error())
 			return nil
 		}
 
 		// HACK! this account creation will go away with new nchain...
-		account, _ := nchain.CreateAccount(*token, map[string]interface{}{
+		account, err := nchain.CreateAccount(*token, map[string]interface{}{
 			"network_id": *s.Metadata.NetworkID,
 		})
+		if err != nil {
+			common.Log.Warningf("failed to retrieve messaging endpoint for baseline organization: %s; %s", recipient, err.Error())
+			return nil
+		}
 
 		resp, err := nchain.ExecuteContract(*token, *s.Metadata.RegistryContractAddress, map[string]interface{}{
 			"account_id": account.ID.String(),
@@ -258,14 +277,14 @@ func (s *SubjectAccount) lookupBaselineOrganizationMessagingEndpoint(recipient s
 		})
 
 		if err != nil {
-			common.Log.Warningf("failed to retrieve messaging endpoint for baseline organization: %s", recipient)
+			common.Log.Warningf("failed to retrieve messaging endpoint for baseline organization: %s; %s", recipient, err.Error())
 			return nil
 		}
 
 		if endpoint, endpointOk := resp.Response.([]interface{})[3].(string); endpointOk && endpoint != "" {
 			endpoint, err := base64.StdEncoding.DecodeString(endpoint)
 			if err != nil {
-				common.Log.Warningf("failed to retrieve messaging endpoint for baseline organization: %s; failed to base64 decode endpoint", recipient)
+				common.Log.Warningf("failed to retrieve on-chain messaging endpoint for baseline organization: %s; ", recipient, err.Error())
 				return nil
 			}
 
@@ -275,7 +294,7 @@ func (s *SubjectAccount) lookupBaselineOrganizationMessagingEndpoint(recipient s
 
 			err = org.Cache()
 			if err != nil {
-				common.Log.Warningf("failed to retrieve messaging endpoint for baseline organization: %s; failed to", recipient)
+				common.Log.Warningf("failed to cache messaging endpoint for baseline organization: %s; %s", recipient, err.Error())
 				return nil
 			}
 		}
