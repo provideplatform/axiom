@@ -421,6 +421,12 @@ func (m *Mapping) sync() error {
 	}
 
 	for _, participant := range workgroup.listParticipants(dbconf.DatabaseConnection()) {
+		if *participant.Participant == *subjectAccount.Metadata.OrganizationAddress {
+			continue
+		}
+
+		// TODO-- DEGRESS OF SEPARATION
+
 		msg := &ProtocolMessage{
 			Opcode: common.StringOrNil(baseline.ProtocolMessageOpcodeSync),
 			Payload: &ProtocolMessagePayload{
