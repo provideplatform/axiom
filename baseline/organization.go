@@ -204,26 +204,28 @@ func (s *SubjectAccount) requestBaselineOrganizationIssuedVC(address string) (*s
 		"subject_account_id": *s.ID,
 	})
 	if err != nil {
-		common.Log.Warningf("failed to request verifiable credential from baseline organization: %s; %s", address, err.Error())
-		return nil, fmt.Errorf("failed to request verifiable credential from baseline organization: %s; %s", address, err.Error())
+		msg := fmt.Sprintf("failed to request verifiable credential from baseline organization: %s; %s", address, err.Error())
+		common.Log.Warningf(msg)
+		return nil, fmt.Errorf(msg)
 	}
 
 	if status != 201 {
-		err := fmt.Sprintf("failed to request verifiable credential from baseline organization: %s; received status code: %d", address, status)
+		msg := fmt.Sprintf("failed to request verifiable credential from baseline organization: %s; received status code: %d", address, status)
 		if status == 422 {
 			rawResp, _ := json.Marshal(resp)
-			err = fmt.Sprintf("%s; %s", err, string(rawResp))
+			msg = fmt.Sprintf("%s; %s", msg, string(rawResp))
 		}
 
-		return nil, fmt.Errorf(err)
+		return nil, fmt.Errorf(msg)
 	}
 
 	var credential *string
 	if vc, ok := resp.(map[string]interface{})["credential"].(string); ok {
 		err = s.CacheBaselineOrganizationIssuedVC(address, vc)
 		if err != nil {
-			common.Log.Warningf("failed to request verifiable credential from baseline organization: %s; failed to cache issued credential; %s", address, err.Error())
-			return nil, fmt.Errorf("failed to request verifiable credential from baseline organization: %s; failed to cache issued credential; %s", address, err.Error())
+			msg := fmt.Sprintf("failed to cache verifiable credential from baseline organization: %s; failed to cache issued credential; %s", address, err.Error())
+			common.Log.Warningf(msg)
+			return nil, fmt.Errorf(msg)
 		}
 		credential = &vc
 	}
