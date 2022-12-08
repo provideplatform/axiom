@@ -854,17 +854,11 @@ func consumeDispatchProtocolMessageSubscriptionsMsg(msg *nats.Msg) {
 		}
 	}
 
-	if jwt == nil {
-		common.Log.Warningf("failed to dispatch protocol message to recipient: %s; no bearer token resolved", *protomsg.Recipient)
-		msg.Nak()
-		return
-	}
-
 	uuid, _ := uuid.NewV4()
 	name := fmt.Sprintf("%s-%s", *subjectAccount.Metadata.OrganizationAddress, uuid.String())
 	conn, err := natsutil.GetNatsConnection(name, *url, time.Second*10, jwt)
 	if err != nil {
-		common.Log.Warningf("failed to establish NATS connection to recipient: %s; %s", *protomsg.Recipient, err.Error())
+		common.Log.Warningf("failed to establish NATS connection to recipient: %s; url: %s; %s", *protomsg.Recipient, *url, err.Error())
 		msg.Nak()
 		return
 	}
@@ -923,7 +917,7 @@ func consumeSubjectAccountRegistrationMsg(msg *nats.Msg) {
 	db := dbconf.DatabaseConnection()
 
 	subjectAccount := FindSubjectAccountByID(subjectAccountID)
-	if subjectAccount == nil || subjectAccount.ID == nil {
+	if subjectAccount == nil {
 		common.Log.Warningf("failed to resolve BPI subject account during BPI subject account registration message handler; BPI subject account id: %s", subjectAccountID)
 		msg.Nak()
 		return
@@ -1111,6 +1105,19 @@ func consumeSubjectAccountRegistrationMsg(msg *nats.Msg) {
 	if err != nil {
 		common.Log.Warningf("organization registry transaction broadcast failed on behalf of organization: %s; org registry contract id: %s; %s", *subjectAccount.SubjectID, *orgRegistryContractID, err.Error())
 		return
+	}
+
+	p := &Participant{
+		Address: subjectAccount.Metadata.OrganizationAddress,
+		BPIEndpoint: subjectAccount.Metadata.OrganizationBPIEndpoint,
+		MessagingEndpoint: subjectAccount.Metadata.OrganizationMessagingEndpoint,
+		Workgroups: make([]*Workgroup, 0),
+		Workflows:  make([]*Workflow, 0),
+		Worksteps:  make([]*Workstep, 0),
+	}
+	err = p.Cache()
+	if err != nil {
+		common.Log.Warningf("failed to cache participant; %s", err.Error())
 	}
 
 	if updateOrgMetadata {
