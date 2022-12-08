@@ -44,6 +44,21 @@ func (s *SubjectAccount) IssueVC(address string, params map[string]interface{}) 
 		return nil, err
 	}
 
+	// FIXME-- sa enrichment is done in so many different places and different times
+	if s.Metadata == nil {
+		err = s.enrich()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if s.Metadata.Vault == nil {
+		err := s.requireVault()
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return IssueVC(*token, *s.Metadata.OrganizationID, s.Metadata.Vault.ID.String(), *s.Metadata.OrganizationMessagingEndpoint, address, params)
 }
 
