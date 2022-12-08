@@ -22,7 +22,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -548,13 +547,13 @@ func (s *SubjectAccount) setDefaultItems() error {
 		s.refreshTokenRaw = s.Metadata.OrganizationRefreshToken
 	}
 
-	if os.Getenv("BASELINE_ORGANIZATION_PROXY_ENDPOINT") != "" {
-		s.Metadata.OrganizationBPIEndpoint = common.StringOrNil(os.Getenv("BASELINE_ORGANIZATION_PROXY_ENDPOINT"))
-	}
+	// if os.Getenv("BASELINE_ORGANIZATION_PROXY_ENDPOINT") != "" {
+	// 	s.Metadata.OrganizationBPIEndpoint = common.StringOrNil(os.Getenv("BASELINE_ORGANIZATION_PROXY_ENDPOINT"))
+	// }
 
-	if os.Getenv("BASELINE_ORGANIZATION_MESSAGING_ENDPOINT") != "" {
-		s.Metadata.OrganizationMessagingEndpoint = common.StringOrNil(os.Getenv("BASELINE_ORGANIZATION_MESSAGING_ENDPOINT"))
-	}
+	// if os.Getenv("BASELINE_ORGANIZATION_MESSAGING_ENDPOINT") != "" {
+	// 	s.Metadata.OrganizationMessagingEndpoint = common.StringOrNil(os.Getenv("BASELINE_ORGANIZATION_MESSAGING_ENDPOINT"))
+	// }
 
 	return nil
 }
