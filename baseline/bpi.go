@@ -756,7 +756,11 @@ func (s *SubjectAccount) findWorkflowPrototypeCandidatesByObjectType(objectType 
 
 func (s *SubjectAccount) parseJWKs() (map[string]*ident.JSONWebKey, error) {
 	if s.Credentials == nil {
-		return nil, fmt.Errorf("failed to resolve credentials for BPI subject account %s", *s.ID)
+		msg := "failed to resolve credentials for BPI subject account"
+		if s.ID != nil {
+			msg = fmt.Sprintf("%s %s", msg, *s.ID)
+		}
+		return nil, errors.New(msg)
 	}
 
 	var creds map[string]interface{}
