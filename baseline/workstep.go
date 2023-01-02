@@ -537,7 +537,7 @@ func (w *Workstep) execute(
 			tx.Save(&w)
 		}
 
-		if *workflow.Status == workflowStatusRunning && w.Cardinality == workflow.WorkstepsCount {
+		if *workflow.Status == workflowStatusRunning && w.Cardinality == workflow.WorkstepsCount && finality {
 			workflow.Status = common.StringOrNil(workflowStatusCompleted)
 			workflowStatusChanged = true
 		}
