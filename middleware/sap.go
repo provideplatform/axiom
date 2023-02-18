@@ -478,6 +478,11 @@ func (s *SAPService) GetSchema(recordType string, params map[string]interface{})
 				}
 			}
 
+			// HACK-- ensure SAP returns null instead of empty strings
+			if idocType := basicType["idoctype"].(string); idocType == "" {
+				return nil, nil
+			}
+
 			schema = map[string]interface{}{
 				"description": basicType["idoctypedescr"],
 				"fields":      fields,

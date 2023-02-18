@@ -446,21 +446,28 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 	}
 
 	if claims.Baseline.WorkgroupID == nil {
-		msg := "failed to accept workgroup invitation; no baseline workgroup identifier claim resolved in VC"
+		msg := "failed to accept workgroup invitation; no workgroup identifier claim resolved in VC"
+		common.Log.Warningf(msg)
+		provide.RenderError(msg, 422, c)
+		return
+	}
+
+	if claims.Baseline.InvitorBPIEndpoint == nil {
+		msg := "failed to accept workgroup invitation; no invitor organization BPI endpoint claim resolved in VC"
 		common.Log.Warningf(msg)
 		provide.RenderError(msg, 422, c)
 		return
 	}
 
 	if claims.Baseline.InvitorOrganizationAddress == nil {
-		msg := "failed to accept workgroup invitation; no baseline invitor organization address claim resolved in VC"
+		msg := "failed to accept workgroup invitation; no invitor organization address claim resolved in VC"
 		common.Log.Warningf(msg)
 		provide.RenderError(msg, 422, c)
 		return
 	}
 
 	if claims.Baseline.InvitorSubjectAccountID == nil {
-		msg := "failed to accept workgroup invitation; no baseline invitor subject account id claim resolved in VC"
+		msg := "failed to accept workgroup invitation; no invitor subject account id claim resolved in VC"
 		common.Log.Warningf(msg)
 		provide.RenderError(msg, 422, c)
 		return
@@ -1471,8 +1478,10 @@ func schemaDetailsHandler(c *gin.Context) {
 			return
 		}
 
-		provide.Render(resp, 200, c)
-		return
+		if resp != nil {
+			provide.Render(resp, 200, c)
+			return
+		}
 	}
 
 	provide.RenderError("not found", 404, c)
