@@ -31,7 +31,6 @@ import (
 	"github.com/jinzhu/gorm"
 	dbconf "github.com/kthomas/go-db-config"
 	natsutil "github.com/kthomas/go-natsutil"
-	"github.com/kthomas/go-pgputil"
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/provideplatform/baseline/common"
 	"github.com/provideplatform/baseline/middleware"
@@ -481,11 +480,11 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 		return
 	}
 
-	invitorSubjectAccount, err := resolveSubjectAccount(*claims.Baseline.InvitorSubjectAccountID, &vcToken)
-	if err != nil {
-		provide.RenderError(err.Error(), 404, c)
-		return
-	}
+	// invitorSubjectAccount, err := resolveSubjectAccount(*claims.Baseline.InvitorSubjectAccountID, &vcToken)
+	// if err != nil {
+	// 	provide.RenderError(err.Error(), 404, c)
+	// 	return
+	// }
 
 	// subjectAccountID := subjectAccountIDFactory(organizationID.String(), identifierUUID.String())
 	// subjectAccount, err := resolveSubjectAccount(subjectAccountID, nil)
@@ -496,43 +495,44 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 	// }
 
 	// parse the token again, this time verifying the signature origin as the named subject account
-	_, err = jwt.Parse(vcToken, func(_jwtToken *jwt.Token) (interface{}, error) {
-		var kid *string
-		if kidhdr, ok := _jwtToken.Header["kid"].(string); ok {
-			kid = &kidhdr
-		}
+	// _, err = jwt.Parse(vcToken, func(_jwtToken *jwt.Token) (interface{}, error) {
+	// 	var kid *string
+	// 	if kidhdr, ok := _jwtToken.Header["kid"].(string); ok {
+	// 		kid = &kidhdr
+	// 	}
 
-		jwks, err := invitorSubjectAccount.parseJWKs()
-		if err != nil {
-			return nil, err
-		}
+	// FIXME-- we probably need to add a .well-known path to the BPI to allow fetching of these creds
+	// 	jwks, err := invitorSubjectAccount.parseJWKs()
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
 
-		jwk := jwks[*kid]
-		if jwk == nil {
-			msg := "failed to resolve a valid JWT verification key"
-			if kid != nil {
-				msg = fmt.Sprintf("%s; invalid kid specified in header: %s", msg, *kid)
-			} else {
-				msg = fmt.Sprintf("%s; no default verification key configured", msg)
-			}
-			return nil, fmt.Errorf(msg)
-		}
+	// 	jwk := jwks[*kid]
+	// 	if jwk == nil {
+	// 		msg := "failed to resolve a valid JWT verification key"
+	// 		if kid != nil {
+	// 			msg = fmt.Sprintf("%s; invalid kid specified in header: %s", msg, *kid)
+	// 		} else {
+	// 			msg = fmt.Sprintf("%s; no default verification key configured", msg)
+	// 		}
+	// 		return nil, fmt.Errorf(msg)
+	// 	}
 
-		publicKey, err := pgputil.DecodeRSAPublicKeyFromPEM([]byte(jwk.PublicKey))
-		if err != nil {
-			common.Log.Warningf("failed to parse JWT public key for BPI subject account %s; %s", *invitorSubjectAccount.ID, err.Error())
-			return nil, fmt.Errorf("failed to parse JWT public key; %s", err.Error())
-		}
+	// 	publicKey, err := pgputil.DecodeRSAPublicKeyFromPEM([]byte(jwk.PublicKey))
+	// 	if err != nil {
+	// 		common.Log.Warningf("failed to parse JWT public key for BPI subject account %s; %s", *invitorSubjectAccount.ID, err.Error())
+	// 		return nil, fmt.Errorf("failed to parse JWT public key; %s", err.Error())
+	// 	}
 
-		common.Log.Debugf("resolved JWK for BPI subject account %s: %s", *invitorSubjectAccount.ID, *kid)
-		return publicKey, nil
-	})
+	// 	common.Log.Debugf("resolved JWK for BPI subject account %s: %s", *invitorSubjectAccount.ID, *kid)
+	// 	return publicKey, nil
+	// })
 
-	if err != nil {
-		msg := fmt.Sprintf("failed to accept workgroup invitation; failed to parse jwt; %s", err.Error())
-		provide.RenderError(msg, 403, c)
-		return
-	}
+	// if err != nil {
+	// 	msg := fmt.Sprintf("failed to accept workgroup invitation; failed to parse jwt; %s", err.Error())
+	// 	provide.RenderError(msg, 403, c)
+	// 	return
+	// }
 
 	// FIXME!!
 	// var registryContractAddress *string
