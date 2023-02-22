@@ -423,7 +423,7 @@ func updateWorkgroupHandler(c *gin.Context) {
 }
 
 func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[string]interface{}) {
-	vcToken := params["token"].(string) // FIXME-- pass as verifiable_credential in params?
+	vcToken := params["verifiable_credential"].(string) // FIXME-- pass as verifiable_credential in params?
 
 	// FIXME-- the use of InviteClaims here could become a bit misleading in the future... consider renaming it...
 	claims := &InviteClaims{}
