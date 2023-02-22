@@ -19,6 +19,7 @@ package baseline
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -832,6 +833,12 @@ func consumeDispatchProtocolMessageSubscriptionsMsg(msg *nats.Msg) {
 	if subjectAccount.Metadata.OrganizationID == nil {
 		common.Log.Error("failed to resolve BPI subject account; organization id required")
 		msg.Nak()
+		return
+	}
+
+	if subjectAccount.Metadata.OrganizationAddress != nil && strings.EqualFold(*subjectAccount.Metadata.OrganizationAddress, *protomsg.Recipient) {
+		common.Log.Debugf("skipping protocol message broadcast recipient matching the originating subject account with address: %s", *protomsg.Recipient)
+		msg.Ack()
 		return
 	}
 

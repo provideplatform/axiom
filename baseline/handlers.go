@@ -2136,6 +2136,11 @@ func issueVerifiableCredentialHandler(c *gin.Context) {
 		return
 	}
 
+	if issueVCRequest.WorkgroupID == nil {
+		provide.RenderError("workgroup_id is required", 422, c)
+		return
+	}
+
 	msg := crypto.Keccak256Hash([]byte(*issueVCRequest.Address))
 	sig, _ := hex.DecodeString(*issueVCRequest.Signature)
 	pubkey, err := crypto.Ecrecover(msg.Bytes(), []byte(sig))
@@ -2165,7 +2170,16 @@ func issueVerifiableCredentialHandler(c *gin.Context) {
 		return
 	}
 
-	credential, err := IssueVC(*issueVCRequest.Address, "", "", "", "", map[string]interface{}{}) // FIXME!!!
+	subjectAccountID := subjectAccountIDFactory(issueVCRequest.OrganizationID.String(), issueVCRequest.WorkgroupID.String())
+	subjectAccount, err := resolveSubjectAccount(subjectAccountID, nil)
+	if err != nil {
+		msg := fmt.Sprintf("failed to resolve issuing subject account: %s; %s", subjectAccountID, err.Error())
+		common.Log.Warning(msg)
+		provide.RenderError(msg, 422, c)
+		return
+	}
+
+	credential, err := subjectAccount.IssueVC(*issueVCRequest.Address, map[string]interface{}{})
 
 	if err == nil {
 		provide.Render(&baseline.IssueVerifiableCredentialResponse{
