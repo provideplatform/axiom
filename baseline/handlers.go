@@ -318,8 +318,8 @@ func createWorkgroupHandler(c *gin.Context) {
 		return
 	}
 
-	isAcceptInvite := params["token"] != nil && params["subject_account_params"] != nil
-	isCreateWorkgroup := params["token"] == nil && params["subject_account_params"] == nil
+	isAcceptInvite := params["verifiable_credential"] != nil && params["subject_account_params"] != nil
+	isCreateWorkgroup := params["verifiable_credential"] == nil && params["subject_account_params"] == nil
 
 	if isCreateWorkgroup {
 		token, _ := util.ParseBearerAuthorizationHeader(c.GetHeader("authorization"), nil)
@@ -360,7 +360,7 @@ func createWorkgroupHandler(c *gin.Context) {
 		return
 	}
 
-	provide.RenderError("failed to create workgroup; must provide subject_account_params and token or create workgroup params", 422, c)
+	provide.RenderError("failed to create workgroup; must provide subject_account_params and verifiable_credential or create workgroup params", 422, c)
 }
 
 func updateWorkgroupHandler(c *gin.Context) {
