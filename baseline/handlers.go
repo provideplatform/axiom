@@ -2170,8 +2170,22 @@ func issueVerifiableCredentialHandler(c *gin.Context) {
 		return
 	}
 
-	subjectAccountID := subjectAccountIDFactory(issueVCRequest.OrganizationID.String(), issueVCRequest.WorkgroupID.String())
-	subjectAccount, err := resolveSubjectAccount(subjectAccountID, nil)
+	subjectAccounts := ListSubjectAccountsByWorkgroupID(issueVCRequest.WorkgroupID.String())
+	if len(subjectAccounts) == 0 {
+		msg := fmt.Sprintf("failed to resolve issuing subject account for workgroup: %s", issueVCRequest.WorkgroupID.String())
+		common.Log.Warning(msg)
+		provide.RenderError(msg, 422, c)
+		return
+	}
+	if len(subjectAccounts) > 1 {
+		msg := fmt.Sprintf("failed to resolve issuing subject account for workgroup: %s; subject account resolution is ambiguous in a multi-tenant BPI context", issueVCRequest.WorkgroupID.String())
+		common.Log.Warning(msg)
+		provide.RenderError(msg, 422, c)
+		return
+	}
+
+	subjectAccountID := *subjectAccounts[0].ID
+	subjectAccount, err := resolveSubjectAccount(subjectAccountID, nil) // FIXME-- this is a bit redundant but handles enrichment...
 	if err != nil {
 		msg := fmt.Sprintf("failed to resolve issuing subject account: %s; %s", subjectAccountID, err.Error())
 		common.Log.Warning(msg)

@@ -813,6 +813,25 @@ func ListSubjectAccountsBySubjectID(subjectID string) []*SubjectAccount {
 	return subjectAccounts
 }
 
+// ListSubjectAccountsByWorkgroupID lists BPI subject accounts for the given workgroup id
+func ListSubjectAccountsByWorkgroupID(workgroupID string) []*SubjectAccount {
+	subjectAccounts := make([]*SubjectAccount, 0)
+
+	// HACK!!! this will be very inefficient on multi-tenant BPIs...
+	db := dbconf.DatabaseConnection()
+	subAccts := make([]*SubjectAccount, 0)
+	db.Find(&subjectAccounts)
+
+	for _, subjectAccount := range subAccts {
+		subjectAccount.enrichMetadata()
+		if subjectAccount.Metadata != nil && subjectAccount.Metadata.WorkgroupID != nil && strings.EqualFold(*subjectAccount.Metadata.WorkgroupID, workgroupID) {
+			subjectAccounts = append(subjectAccounts, subjectAccount)
+		}
+	}
+
+	return subjectAccounts
+}
+
 func initSubjectAccounts() {
 	db := dbconf.DatabaseConnection()
 

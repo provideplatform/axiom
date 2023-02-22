@@ -154,7 +154,7 @@ func (s *SubjectAccount) requestBaselineOrganizationIssuedVC(address string) (*s
 	}
 
 	for _, k := range keys {
-		if k.Address != nil && strings.ToLower(*k.Address) == strings.ToLower(*s.Metadata.OrganizationAddress) {
+		if k.Address != nil && strings.EqualFold(strings.ToLower(*k.Address), strings.ToLower(*s.Metadata.OrganizationAddress)) {
 			key = k
 			break
 		}
@@ -184,9 +184,10 @@ func (s *SubjectAccount) requestBaselineOrganizationIssuedVC(address string) (*s
 	}
 
 	status, resp, err := client.Post("credentials", map[string]interface{}{
-		"address":    *s.Metadata.OrganizationAddress,
-		"public_key": key.PublicKey,
-		"signature":  signresp.Signature,
+		"address":      *s.Metadata.OrganizationAddress,
+		"public_key":   key.PublicKey,
+		"signature":    signresp.Signature,
+		"workgroup_id": s.Metadata.WorkgroupID,
 	})
 	if err != nil {
 		common.Log.Warningf("failed to request verifiable credential from baseline organization: %s; %s", address, err.Error())

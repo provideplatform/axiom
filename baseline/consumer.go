@@ -836,7 +836,7 @@ func consumeDispatchProtocolMessageSubscriptionsMsg(msg *nats.Msg) {
 		return
 	}
 
-	if subjectAccount.Metadata.OrganizationAddress != nil && strings.EqualFold(*subjectAccount.Metadata.OrganizationAddress, *protomsg.Recipient) {
+	if subjectAccount.Metadata.OrganizationAddress != nil && strings.EqualFold(strings.ToLower(*subjectAccount.Metadata.OrganizationAddress), strings.ToLower(*protomsg.Recipient)) {
 		common.Log.Debugf("skipping protocol message broadcast recipient matching the originating subject account with address: %s", *protomsg.Recipient)
 		msg.Ack()
 		return
