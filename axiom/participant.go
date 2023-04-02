@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package baseline
+package axiom
 
 import (
 	"encoding/json"
@@ -25,7 +25,7 @@ import (
 	"github.com/kthomas/go-redisutil"
 )
 
-// Participant is a party to a baseline workgroup or workflow context
+// Participant is a party to a axiom workgroup or workflow context
 type Participant struct {
 	Metadata          map[string]interface{} `sql:"-" json:"metadata,omitempty"`
 	BPIEndpoint       *string                `sql:"-" json:"bpi_endpoint,omitempty"`
@@ -38,7 +38,7 @@ type Participant struct {
 	Worksteps  []*Workstep  `sql:"-" json:"worksteps,omitempty"`
 }
 
-// WorkgroupParticipant is a party to a baseline workgroup
+// WorkgroupParticipant is a party to a axiom workgroup
 type WorkgroupParticipant struct {
 	Participant *string     `json:"address"`
 	Proof       *string     `json:"proof"`
@@ -46,7 +46,7 @@ type WorkgroupParticipant struct {
 	WitnessedAt *time.Time  `json:"witnessed_at"`
 }
 
-// WorkflowParticipant is a party to a baseline workflow
+// WorkflowParticipant is a party to a axiom workflow
 type WorkflowParticipant struct {
 	Participant *string     `json:"address"`
 	Proof       *string     `json:"proof"`
@@ -54,7 +54,7 @@ type WorkflowParticipant struct {
 	WitnessedAt *time.Time  `json:"witnessed_at"`
 }
 
-// WorkstepParticipant is a party to a baseline workstep
+// WorkstepParticipant is a party to a axiom workstep
 type WorkstepParticipant struct {
 	Participant *string     `json:"address"`
 	Proof       *string     `json:"proof"`
@@ -67,7 +67,7 @@ func (p *Participant) Cache() error {
 		return errors.New("failed to cache participant with nil address")
 	}
 
-	key := fmt.Sprintf("baseline.organization.%s", *p.Address)
+	key := fmt.Sprintf("axiom.organization.%s", *p.Address)
 	return redisutil.WithRedlock(key, func() error {
 		raw, _ := json.Marshal(p)
 		return redisutil.Set(key, raw, nil)

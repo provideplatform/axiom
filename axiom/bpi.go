@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package baseline
+package axiom
 
 import (
 	"context"
@@ -34,8 +34,8 @@ import (
 	"github.com/kthomas/go-pgputil"
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/olivere/elastic/v7"
-	"github.com/provideplatform/baseline/common"
-	"github.com/provideplatform/baseline/middleware"
+	"github.com/provideplatform/axiom/common"
+	"github.com/provideplatform/axiom/middleware"
 	provide "github.com/provideplatform/provide-go/api"
 	"github.com/provideplatform/provide-go/api/ident"
 	"github.com/provideplatform/provide-go/api/nchain"
@@ -62,19 +62,19 @@ var (
 type InviteClaims struct {
 	jwt.MapClaims
 
-	Baseline *BaselineClaims `json:"baseline"`
-	Kid      *string         `json:"kid,omitempty"` // key fingerprint
-	Audience *string         `json:"aud,omitempty"`
-	ID       *string         `json:"jti,omitempty"`
-	Issuer   *string         `json:"iss,omitempty"`
+	Axiom    *AxiomClaims `json:"axiom"`
+	Kid      *string      `json:"kid,omitempty"` // key fingerprint
+	Audience *string      `json:"aud,omitempty"`
+	ID       *string      `json:"jti,omitempty"`
+	Issuer   *string      `json:"iss,omitempty"`
 	// IssuedAt  *string         `json:"iat,omitempty"`
 	// ExpiresAt *string         `json:"exp,omitempty"`
 	// NotBefore *string         `json:"nbf,omitempty"`
 	Subject *string `json:"sub,omitempty"`
 }
 
-// BaselineClaims represent JWT invitation claims
-type BaselineClaims struct {
+// AxiomClaims represent JWT invitation claims
+type AxiomClaims struct {
 	BPIEndpoint                *string `json:"bpi_endpoint,omitempty"`
 	RegistryContractAddress    *string `json:"registry_contract_address,omitempty"`
 	WorkgroupID                *string `json:"workgroup_id,omitempty"`
@@ -85,7 +85,7 @@ type BaselineClaims struct {
 
 // SendProtocolMessageAPIResponse is returned upon successfully sending a protocol message
 type SendProtocolMessageAPIResponse struct {
-	BaselineID       *uuid.UUID `json:"baseline_id"`
+	AxiomID          *uuid.UUID `json:"axiom_id"`
 	Proof            *string    `json:"proof"`
 	Recipients       []*string  `json:"recipients"`
 	Root             *uuid.UUID `json:"root,omitempty"`
@@ -94,7 +94,7 @@ type SendProtocolMessageAPIResponse struct {
 	WorkgroupID      *uuid.UUID `json:"workgroup_id"`
 }
 
-// SubjectAccount is a baseline BPI Subject Account per the specification
+// SubjectAccount is a axiom BPI Subject Account per the specification
 type SubjectAccount struct {
 	provide.ModelWithDID
 	SubjectID *string    `json:"subject_id"`
@@ -125,13 +125,13 @@ type SubjectAccountMetadata struct {
 	// Counterparties are the default counterparties
 	Counterparties []*Participant `sql:"-" json:"counterparties,omitempty"`
 
-	// NetworkID is the baseline network id
+	// NetworkID is the axiom network id
 	NetworkID *string `json:"network_id,omitempty"`
 
-	// OrganizationAddress is the baseline organization address
+	// OrganizationAddress is the axiom organization address
 	OrganizationAddress *string `json:"organization_address,omitempty"`
 
-	// OrganizationDomain is the baseline organization domain
+	// OrganizationDomain is the axiom organization domain
 	OrganizationDomain *string `json:"organization_domain,omitempty"`
 
 	// OrganizationID is the id of the org
@@ -146,7 +146,7 @@ type SubjectAccountMetadata struct {
 	// OrganizationRefreshToken is the refresh token for the org
 	OrganizationRefreshToken *string `json:"organization_refresh_token,omitempty"`
 
-	// OrganizationWebsocketEndpoint is the configured endpoint for the baseline websocket
+	// OrganizationWebsocketEndpoint is the configured endpoint for the axiom websocket
 	OrganizationWebsocketEndpoint *string `json:"organization_websocket_endpoint,omitempty"`
 
 	// RegistryContractAddress is a contract address
@@ -472,7 +472,7 @@ func (s *SubjectAccount) create(tx *gorm.DB) bool {
 		return false
 	}
 
-	err = s.resolveBaselineContract()
+	err = s.resolveAxiomContract()
 	if err != nil {
 		msg := fmt.Sprintf("failed to resolve registry contract for BPI subject account; %s", err.Error())
 		s.Errors = append(s.Errors, &provide.Error{
@@ -719,7 +719,7 @@ func (s *SubjectAccount) findWorkflowPrototypeCandidatesByObjectType(objectType 
   `, objectType, *s.Metadata.WorkgroupID)
 
 	sq := elastic.NewRawStringQuery(query)
-	result, err := common.ElasticClient.Search().Index(common.IndexerDocumentIndexBaselineWorkflowPrototypes).Query(sq).Do(context.TODO())
+	result, err := common.ElasticClient.Search().Index(common.IndexerDocumentIndexAxiomWorkflowPrototypes).Query(sq).Do(context.TODO())
 	if err != nil {
 		return nil, err
 	}
@@ -739,7 +739,7 @@ func (s *SubjectAccount) findWorkflowPrototypeCandidatesByObjectType(objectType 
 	candidates := make([]*Workflow, 0)
 	for _, proto := range results {
 		if proto.WorkflowID == nil {
-			common.Log.Warningf("malformed workflow prototype exists in %s index", common.IndexerDocumentIndexBaselineWorkflowPrototypes)
+			common.Log.Warningf("malformed workflow prototype exists in %s index", common.IndexerDocumentIndexAxiomWorkflowPrototypes)
 			continue
 		}
 
@@ -787,7 +787,7 @@ func (s *SubjectAccount) parseJWKs() (map[string]*ident.JSONWebKey, error) {
 
 func init() {
 	if len(SubjectAccounts) != 0 {
-		common.Log.Panicf("failed to initialize baseline api; %d unexpected BPI subject accounts resolved during init", len(SubjectAccounts))
+		common.Log.Panicf("failed to initialize axiom api; %d unexpected BPI subject accounts resolved during init", len(SubjectAccounts))
 	}
 
 	SubjectAccountsByID = map[string][]*SubjectAccount{}
@@ -946,8 +946,8 @@ func resolveSubjectAccount(subjectAccountID string, vc *string) (*SubjectAccount
 		}
 
 		var workgroupID *string
-		if claims.Baseline != nil {
-			workgroupID = claims.Baseline.WorkgroupID
+		if claims.Axiom != nil {
+			workgroupID = claims.Axiom.WorkgroupID
 		}
 
 		if workgroupID == nil {
@@ -955,14 +955,14 @@ func resolveSubjectAccount(subjectAccountID string, vc *string) (*SubjectAccount
 		}
 
 		uuid, _ := uuid.NewV4()
-		name := fmt.Sprintf("baseline-workgroup-%s-sync-%s", *workgroupID, uuid.String())
+		name := fmt.Sprintf("axiom-workgroup-%s-sync-%s", *workgroupID, uuid.String())
 		conn, err := natsutil.GetNatsConnection(name, *claims.Audience, time.Second*10, vc)
 		if err != nil {
 			return nil, fmt.Errorf("failed to establish NATS connection to invitor messaging endpoint: %s; %s", *claims.Audience, err.Error())
 		}
 		defer conn.Close()
 
-		replyTo := fmt.Sprintf("baseline.workgroup.%s.reply.%s", *workgroupID, uuid.String())
+		replyTo := fmt.Sprintf("axiom.workgroup.%s.reply.%s", *workgroupID, uuid.String())
 		sub, err := conn.SubscribeSync(replyTo)
 		if err != nil {
 			return nil, fmt.Errorf("failed to subscribe to reply subject for invitor messaging endpoint: %s; %s", *claims.Audience, err.Error())
@@ -970,8 +970,8 @@ func resolveSubjectAccount(subjectAccountID string, vc *string) (*SubjectAccount
 		defer sub.Unsubscribe()
 		conn.Flush()
 
-		raw, _ := json.Marshal(claims.Baseline)
-		err = conn.PublishRequest(fmt.Sprintf("baseline.workgroup.%s.sync", *workgroupID), replyTo, raw)
+		raw, _ := json.Marshal(claims.Axiom)
+		err = conn.PublishRequest(fmt.Sprintf("axiom.workgroup.%s.sync", *workgroupID), replyTo, raw)
 		if err != nil {
 			return nil, fmt.Errorf("failed to resolve DID-based BPI subject account: %s; request failed; %s", subjectAccountID, err.Error())
 		}
@@ -1050,7 +1050,7 @@ func (s *SubjectAccount) requireWorkgroup() error {
 }
 
 func (s *SubjectAccount) resolveWorkgroupParticipants() error {
-	common.Log.Debug("attempting to resolve baseline counterparties for BPI subject account")
+	common.Log.Debug("attempting to resolve axiom counterparties for BPI subject account")
 
 	workgroupID, err := uuid.FromString(*s.Metadata.WorkgroupID)
 	if err != nil {
@@ -1068,7 +1068,7 @@ func (s *SubjectAccount) resolveWorkgroupParticipants() error {
 	db := dbconf.DatabaseConnection()
 
 	go func() {
-		common.Log.Trace("attempting to resolve baseline counterparties")
+		common.Log.Trace("attempting to resolve axiom counterparties")
 
 		token, err := s.authorizeAccessToken()
 		if err != nil {
@@ -1115,7 +1115,7 @@ func (s *SubjectAccount) resolveWorkgroupParticipants() error {
 
 		for _, participant := range counterparties {
 			if participant.Address != nil {
-				exists := lookupBaselineOrganization(*participant.Address) != nil
+				exists := lookupAxiomOrganization(*participant.Address) != nil
 
 				workgroup.addParticipant(*participant.Address, db)
 				err := participant.Cache()
@@ -1124,7 +1124,7 @@ func (s *SubjectAccount) resolveWorkgroupParticipants() error {
 					continue
 				}
 				if !exists {
-					common.Log.Debugf("cached baseline counterparty: %s", *participant.Address)
+					common.Log.Debugf("cached axiom counterparty: %s", *participant.Address)
 				}
 			}
 		}
@@ -1133,10 +1133,10 @@ func (s *SubjectAccount) resolveWorkgroupParticipants() error {
 	return nil
 }
 
-// resolveBaselineContract resolves the configured baseline registry contract for the BPI subject account
-func (s *SubjectAccount) resolveBaselineContract() error {
+// resolveAxiomContract resolves the configured axiom registry contract for the BPI subject account
+func (s *SubjectAccount) resolveAxiomContract() error {
 	if s.Metadata.NetworkID == nil || s.Metadata.OrganizationRefreshToken == nil {
-		return errors.New("unable to resolve baseline contract without configured network id and organization refresh token")
+		return errors.New("unable to resolve axiom contract without configured network id and organization refresh token")
 	}
 
 	capabilities, err := util.ResolveCapabilitiesManifest()
@@ -1144,8 +1144,8 @@ func (s *SubjectAccount) resolveBaselineContract() error {
 		return fmt.Errorf("failed to resolve capabilities manifest; %s", err.Error())
 	}
 
-	if baseline, baselineOk := capabilities["baseline"].(map[string]interface{}); baselineOk {
-		if contracts, contractsOk := baseline["contracts"].([]interface{}); contractsOk {
+	if axiom, axiomOk := capabilities["axiom"].(map[string]interface{}); axiomOk {
+		if contracts, contractsOk := axiom["contracts"].([]interface{}); contractsOk {
 			for _, contract := range contracts {
 				if name, nameOk := contract.(map[string]interface{})["name"].(string); nameOk && strings.ToLower(name) == "orgregistry" {
 					raw, _ := json.Marshal(contract)
@@ -1153,7 +1153,7 @@ func (s *SubjectAccount) resolveBaselineContract() error {
 					if err != nil {
 						return fmt.Errorf("failed to parse registry contract from capabilities; %s", err.Error())
 					} else {
-						common.Log.Debug("resolved baseline registry contract artifact")
+						common.Log.Debug("resolved axiom registry contract artifact")
 					}
 				}
 			}
@@ -1165,7 +1165,7 @@ func (s *SubjectAccount) resolveBaselineContract() error {
 	}
 
 	if s.Metadata.OrganizationID == nil {
-		return errors.New("organization id not set to resolve baseline contract")
+		return errors.New("organization id not set to resolve axiom contract")
 	}
 
 	token, err := ident.CreateToken(*s.Metadata.OrganizationRefreshToken, map[string]interface{}{
@@ -1201,10 +1201,10 @@ func (s *SubjectAccount) resolveBaselineContract() error {
 		if err != nil {
 			return fmt.Errorf("failed to initialize registry contract; %s", err.Error())
 		} else {
-			common.Log.Debugf("resolved baseline organization registry contract: %s", *cntrct.Address)
+			common.Log.Debugf("resolved axiom organization registry contract: %s", *cntrct.Address)
 		}
 	} else {
-		common.Log.Debugf("resolved baseline organization registry contract: %s", *contract.Address)
+		common.Log.Debugf("resolved axiom organization registry contract: %s", *contract.Address)
 	}
 
 	return nil

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package baseline
+package axiom
 
 import (
 	"encoding/json"
@@ -28,7 +28,7 @@ import (
 	"github.com/kthomas/go-natsutil"
 	"github.com/kthomas/go-redisutil"
 	uuid "github.com/kthomas/go.uuid"
-	"github.com/provideplatform/baseline/common"
+	"github.com/provideplatform/axiom/common"
 	provide "github.com/provideplatform/provide-go/api"
 	"github.com/provideplatform/provide-go/api/ident"
 )
@@ -53,7 +53,7 @@ const workflowStatusCompleted = "completed"
 const workflowStatusCanceled = "canceled"
 const workflowStatusFailed = "failed"
 
-// Workflow is a baseline workflow prototype
+// Workflow is a axiom workflow prototype
 type Workflow struct {
 	provide.Model
 	DeployedAt *time.Time       `json:"deployed_at"`
@@ -80,7 +80,7 @@ type WorkflowVersion struct {
 	Version           string    `json:"version"`
 }
 
-// WorkflowInstance is a baseline workflow instance
+// WorkflowInstance is a axiom workflow instance
 type WorkflowInstance struct {
 	Workflow
 	WorkflowID *uuid.UUID          `json:"workflow_id,omitempty"` // references the workflow prototype identifier
@@ -126,28 +126,28 @@ func (w *WorkflowInstance) Cache() error {
 		return errors.New("failed to cache workflow with nil identifier")
 	}
 
-	key := fmt.Sprintf("baseline.workflow.%s", w.ID)
+	key := fmt.Sprintf("axiom.workflow.%s", w.ID)
 	return redisutil.WithRedlock(key, func() error {
 		raw, _ := json.Marshal(w)
 		return redisutil.Set(key, raw, nil)
 	})
 }
 
-// CacheByBaselineID caches a workflow identifier, indexed by baseline id for convenient lookup
-func (w *WorkflowInstance) CacheByBaselineID(baselineID string) error {
+// CacheByAxiomID caches a workflow identifier, indexed by axiom id for convenient lookup
+func (w *WorkflowInstance) CacheByAxiomID(axiomID string) error {
 	if w.ID == uuid.Nil {
 		return errors.New("failed to cache workflow with nil identifier")
 	}
 
-	key := fmt.Sprintf("baseline.id.%s.workflow.identifier", baselineID)
+	key := fmt.Sprintf("axiom.id.%s.workflow.identifier", axiomID)
 	return redisutil.WithRedlock(key, func() error {
-		common.Log.Debugf("mapping baseline id to workflow identifier")
+		common.Log.Debugf("mapping axiom id to workflow identifier")
 		return redisutil.Set(key, w.ID.String(), nil)
 	})
 }
 
-// baselineWorkflowFactory initializes a workflow instance
-func baselineWorkflowFactory(subjectAccount *SubjectAccount, objectType string, workflowID *string) (*WorkflowInstance, error) {
+// axiomWorkflowFactory initializes a workflow instance
+func axiomWorkflowFactory(subjectAccount *SubjectAccount, objectType string, workflowID *string) (*WorkflowInstance, error) {
 	var workflowUUID uuid.UUID
 	var err error
 
@@ -234,13 +234,13 @@ func baselineWorkflowFactory(subjectAccount *SubjectAccount, objectType string, 
 	return FindWorkflowInstanceByID(instance.ID), nil
 }
 
-func LookupBaselineWorkflow(identifier string) *WorkflowInstance {
+func LookupAxiomWorkflow(identifier string) *WorkflowInstance {
 	var workflow *WorkflowInstance
 
-	key := fmt.Sprintf("baseline.workflow.%s", identifier)
+	key := fmt.Sprintf("axiom.workflow.%s", identifier)
 	raw, err := redisutil.Get(key)
 	if err != nil {
-		common.Log.Debugf("no baseline workflow cached for key: %s; %s", key, err.Error())
+		common.Log.Debugf("no axiom workflow cached for key: %s; %s", key, err.Error())
 		return nil
 	}
 
@@ -248,15 +248,15 @@ func LookupBaselineWorkflow(identifier string) *WorkflowInstance {
 	return workflow
 }
 
-func lookupBaselineWorkflowByBaselineID(baselineID string) *WorkflowInstance {
-	key := fmt.Sprintf("baseline.id.%s.workflow.identifier", baselineID)
+func lookupAxiomWorkflowByAxiomID(axiomID string) *WorkflowInstance {
+	key := fmt.Sprintf("axiom.id.%s.workflow.identifier", axiomID)
 	identifier, err := redisutil.Get(key)
 	if err != nil {
-		common.Log.Debugf("no baseline workflow identifier cached for key: %s; %s", key, err.Error())
+		common.Log.Debugf("no axiom workflow identifier cached for key: %s; %s", key, err.Error())
 		return nil
 	}
 
-	return LookupBaselineWorkflow(*identifier)
+	return LookupAxiomWorkflow(*identifier)
 }
 
 func proverParamsFactory(name, identifier string, noteStoreID, nullifierStoreID *string) map[string]interface{} {
@@ -342,7 +342,7 @@ func (w *Workflow) deploy() bool {
 		}
 		payload, _ := json.Marshal(params)
 
-		_, err := natsutil.NatsJetstreamPublish("baseline.workstep.deploy", payload)
+		_, err := natsutil.NatsJetstreamPublish("axiom.workstep.deploy", payload)
 		if err != nil {
 			common.Log.Warningf("failed to deploy workstep; failed to publish deploy message; %s", err.Error())
 			return false
@@ -355,7 +355,7 @@ func (w *Workflow) deploy() bool {
 	}
 	payload, _ := json.Marshal(params)
 
-	_, err := natsutil.NatsJetstreamPublish("baseline.workflow.deploy", payload)
+	_, err := natsutil.NatsJetstreamPublish("axiom.workflow.deploy", payload)
 	if err != nil {
 		common.Log.Warningf("failed to deploy workflow; failed to publish deploy message; %s", err.Error())
 		return false
@@ -413,7 +413,7 @@ func (w *Workflow) index() error {
 
 	common.Indexer.Q(&esutil.Message{
 		Header: &esutil.MessageHeader{
-			Index: common.StringOrNil(common.IndexerDocumentIndexBaselineWorkflowPrototypes),
+			Index: common.StringOrNil(common.IndexerDocumentIndexAxiomWorkflowPrototypes),
 		},
 		Payload: payload,
 	})

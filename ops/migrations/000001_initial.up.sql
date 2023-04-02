@@ -56,13 +56,13 @@
 DO
 $do$
 BEGIN
-   IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE  rolname = 'baseline') THEN
-      CREATE ROLE baseline WITH SUPERUSER LOGIN PASSWORD 'prvdbaseline';
+   IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE  rolname = 'axiom') THEN
+      CREATE ROLE axiom WITH SUPERUSER LOGIN PASSWORD 'prvdaxiom';
    END IF;
 END
 $do$;
 
-SET ROLE baseline;
+SET ROLE axiom;
 
 --
 -- Name: plpgsql; Type: EXTENSION; Schema: -; Owner:
@@ -113,7 +113,7 @@ SET default_tablespace = '';
 SET default_with_oids = false;
 
 --
--- Name: workgroups; Type: TABLE; Schema: public; Owner: baseline
+-- Name: workgroups; Type: TABLE; Schema: public; Owner: axiom
 --
 
 CREATE TABLE public.workgroups (
@@ -128,10 +128,10 @@ CREATE TABLE public.workgroups (
 );
 
 
-ALTER TABLE public.workgroups OWNER TO baseline;
+ALTER TABLE public.workgroups OWNER TO axiom;
 
 --
--- Name: workgroups workgroups_pkey; Type: CONSTRAINT; Schema: public; Owner: baseline
+-- Name: workgroups workgroups_pkey; Type: CONSTRAINT; Schema: public; Owner: axiom
 --
 
 ALTER TABLE ONLY public.workgroups
@@ -148,7 +148,7 @@ ALTER TABLE ONLY public.workgroups_participants
   ADD CONSTRAINT workgroups_participants_workgroup_id_foreign FOREIGN KEY (workgroup_id) REFERENCES public.workgroups(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 --
--- Name: workflows; Type: TABLE; Schema: public; Owner: baseline
+-- Name: workflows; Type: TABLE; Schema: public; Owner: axiom
 --
 
 CREATE TABLE public.workflows (
@@ -168,10 +168,10 @@ CREATE TABLE public.workflows (
 );
 
 
-ALTER TABLE public.workflows OWNER TO baseline;
+ALTER TABLE public.workflows OWNER TO axiom;
 
 --
--- Name: workflows workflows_pkey; Type: CONSTRAINT; Schema: public; Owner: baseline
+-- Name: workflows workflows_pkey; Type: CONSTRAINT; Schema: public; Owner: axiom
 --
 
 ALTER TABLE ONLY public.workflows
@@ -214,7 +214,7 @@ ALTER TABLE ONLY public.workflows_versions
   ADD CONSTRAINT workflows_versions_workflow_id_foreign FOREIGN KEY (workflow_id) REFERENCES public.workflows(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 --
--- Name: worksteps; Type: TABLE; Schema: public; Owner: baseline
+-- Name: worksteps; Type: TABLE; Schema: public; Owner: axiom
 --
 
 CREATE TABLE public.worksteps (
@@ -234,10 +234,10 @@ CREATE TABLE public.worksteps (
 );
 
 
-ALTER TABLE public.worksteps OWNER TO baseline;
+ALTER TABLE public.worksteps OWNER TO axiom;
 
 --
--- Name: worksteps worksteps_pkey; Type: CONSTRAINT; Schema: public; Owner: baseline
+-- Name: worksteps worksteps_pkey; Type: CONSTRAINT; Schema: public; Owner: axiom
 --
 
 ALTER TABLE ONLY public.worksteps

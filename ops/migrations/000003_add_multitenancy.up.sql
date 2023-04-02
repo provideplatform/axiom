@@ -68,6 +68,6 @@ CREATE TABLE subjectaccounts (
     bpiaccountids json DEFAULT '[]'
 );
 
-ALTER TABLE subjectaccounts OWNER TO baseline;
+ALTER TABLE subjectaccounts OWNER TO axiom;
 ALTER TABLE ONLY subjectaccounts ADD CONSTRAINT subjectaccounts_pkey PRIMARY KEY (id);
 CREATE INDEX idx_subjectaccounts_subject_id ON subjectaccounts USING btree (subject_id);

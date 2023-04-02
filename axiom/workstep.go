@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package baseline
+package axiom
 
 import (
 	"encoding/hex"
@@ -33,9 +33,9 @@ import (
 	natsutil "github.com/kthomas/go-natsutil"
 	"github.com/kthomas/go-redisutil"
 	uuid "github.com/kthomas/go.uuid"
-	"github.com/provideplatform/baseline/common"
+	"github.com/provideplatform/axiom/common"
 	provide "github.com/provideplatform/provide-go/api"
-	"github.com/provideplatform/provide-go/api/baseline"
+	"github.com/provideplatform/provide-go/api/axiom"
 	"github.com/provideplatform/provide-go/api/nchain"
 	"github.com/provideplatform/provide-go/api/privacy"
 	"github.com/provideplatform/provide-go/api/vault"
@@ -57,7 +57,7 @@ const workstepStatusCompleted = "completed"
 const workstepStatusCanceled = "canceled"
 const workstepStatusFailed = "failed"
 
-// Workstep is a baseline workstep prototype
+// Workstep is a axiom workstep prototype
 type Workstep struct {
 	provide.Model
 	Name            *string          `json:"name"`
@@ -78,7 +78,7 @@ type Workstep struct {
 	userInputCardinality bool `json:"-"`
 }
 
-// WorkstepInstance is a baseline workstep instance
+// WorkstepInstance is a axiom workstep instance
 type WorkstepInstance struct {
 	Workstep
 	WorkstepID *uuid.UUID `json:"workstep_id,omitempty"` // references the workstep prototype identifier
@@ -132,14 +132,14 @@ func (w *Workstep) Cache() error {
 		return errors.New("failed to cache workstep with nil identifier")
 	}
 
-	key := fmt.Sprintf("baseline.workstep.%s", w.ID)
+	key := fmt.Sprintf("axiom.workstep.%s", w.ID)
 	return redisutil.WithRedlock(key, func() error {
 		raw, _ := json.Marshal(w)
 		return redisutil.Set(key, raw, nil)
 	})
 }
 
-func baselineWorkstepFactory(identifier *string, workflowID *string, prover *privacy.Prover) *WorkstepInstance {
+func axiomWorkstepFactory(identifier *string, workflowID *string, prover *privacy.Prover) *WorkstepInstance {
 	var identifierUUID uuid.UUID
 	if identifier != nil {
 		identifierUUID, _ = uuid.FromString(*identifier)
@@ -166,14 +166,14 @@ func baselineWorkstepFactory(identifier *string, workflowID *string, prover *pri
 	return workstep
 }
 
-// LookupBaselineWorkstep by id
-func LookupBaselineWorkstep(identifier string) *WorkstepInstance {
+// LookupAxiomWorkstep by id
+func LookupAxiomWorkstep(identifier string) *WorkstepInstance {
 	var workstep *WorkstepInstance
 
-	key := fmt.Sprintf("baseline.workstep.%s", identifier)
+	key := fmt.Sprintf("axiom.workstep.%s", identifier)
 	raw, err := redisutil.Get(key)
 	if err != nil {
-		common.Log.Warningf("failed to retrieve cached baseline workstep: %s; %s", key, err.Error())
+		common.Log.Warningf("failed to retrieve cached axiom workstep: %s; %s", key, err.Error())
 		return nil
 	}
 
@@ -368,7 +368,7 @@ func (w *Workstep) deploy(token string, organizationID uuid.UUID) bool {
 			"workstep_id":     w.ID.String(),
 		}
 		payload, _ := json.Marshal(params)
-		_, err := natsutil.NatsJetstreamPublish("baseline.workstep.deploy.finalize", payload)
+		_, err := natsutil.NatsJetstreamPublish("axiom.workstep.deploy.finalize", payload)
 		if err != nil {
 			common.Log.Warningf("failed to deploy workflow; failed to publish finalize deploy message; %s", err.Error())
 			return false
@@ -515,8 +515,8 @@ func (w *Workstep) execute(
 	if success {
 		common.Log.Debugf("executed workstep %s; proof: %s", w.ID, *proof.Proof)
 		w.setParticipantExecutionPayload(token, subjectAccount, proof, payload, db)
-		// FIXME-- this is just inserting executions for the participant running this baseline stack instance...
-		// we need to also make sure the other witnesses are inserted upon processing by way of baseline inbound...
+		// FIXME-- this is just inserting executions for the participant running this axiom stack instance...
+		// we need to also make sure the other witnesses are inserted upon processing by way of axiom inbound...
 
 		pc := 0
 		participants := w.listParticipants(db)
@@ -559,8 +559,8 @@ func (w *Workstep) execute(
 				}
 
 				payload, err := json.Marshal(&ProtocolMessage{
-					// BaselineID:       ,
-					Opcode:    common.StringOrNil(baseline.ProtocolMessageOpcodeBaseline),
+					// AxiomID:       ,
+					Opcode:    common.StringOrNil(axiom.ProtocolMessageOpcodeAxiom),
 					Sender:    subjectAccount.Metadata.OrganizationAddress,
 					Recipient: participant.Participant,
 					// Signature:        m.Signature,
@@ -714,8 +714,8 @@ func (w *Workstep) setParticipantExecutionPayload(
 		token,
 		subjectAccount.VaultID.String(),
 		map[string]interface{}{
-			"description": fmt.Sprintf("baseline workstep execution by participant %s", address),
-			"name":        fmt.Sprintf("baseline.workstep.%s.participant.%s.execution", w.ID, address),
+			"description": fmt.Sprintf("axiom workstep execution by participant %s", address),
+			"name":        fmt.Sprintf("axiom.workstep.%s.participant.%s.execution", w.ID, address),
 			"type":        vaultSecretTypeWorkstepExecution,
 			"value":       hex.EncodeToString(rawWitness),
 		},

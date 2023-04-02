@@ -16,5 +16,5 @@
 # limitations under the License.
 #
 
-pkill baseline_api || true
-pkill baseline_consumer || true
+pkill axiom_api || true
+pkill axiom_consumer || true

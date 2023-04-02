@@ -1,4 +1,4 @@
-package baseline
+package axiom
 
 import (
 	"errors"
@@ -8,7 +8,7 @@ import (
 	"github.com/jinzhu/gorm"
 	dbconf "github.com/kthomas/go-db-config"
 	uuid "github.com/kthomas/go.uuid"
-	"github.com/provideplatform/baseline/common"
+	"github.com/provideplatform/axiom/common"
 	provide "github.com/provideplatform/provide-go/api"
 )
 

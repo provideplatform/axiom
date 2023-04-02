@@ -1,6 +1,6 @@
-# Baseline Protocol Instance (BPI) API & Systems Middleware
+# Axiom Protocol Instance API & Systems Middleware
 
-Production-grade, standards-compliant API and middleware implementation of the Baseline Protocol with support for various systems.
+Production-grade, standards-compliant API and middleware implementation of the Axiom Protocol with support for various systems.
 
 ## Documentation
 

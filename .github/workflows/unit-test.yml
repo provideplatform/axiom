@@ -8,16 +8,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:                                                                                       
-      - name: Checkout baseline
+      - name: Checkout axiom
         uses: actions/checkout@v2
         with:
-          path: 'baseline'
+          path: 'axiom'
       - run: echo "LOG_LEVEL=info" >> $GITHUB_ENV
       - run: echo "DATABASE_HOST=localhost" >> $GITHUB_ENV
-      - run: echo "DATABASE_NAME=baseline_dev" >> $GITHUB_ENV
+      - run: echo "DATABASE_NAME=axiom_dev" >> $GITHUB_ENV
       - run: echo "DATABASE_PORT=5432" >> $GITHUB_ENV
-      - run: echo "DATABASE_USER=baseline" >> $GITHUB_ENV
-      - run: echo "DATABASE_PASSWORD=baseline" >> $GITHUB_ENV
+      - run: echo "DATABASE_USER=axiom" >> $GITHUB_ENV
+      - run: echo "DATABASE_PASSWORD=axiom" >> $GITHUB_ENV
       - run: echo "DATABASE_SUPERUSER=prvd" >> $GITHUB_ENV
       - run: echo "DATABASE_SUPERUSER_PASSWORD=prvdp455" >> $GITHUB_ENV
       - run: echo "DATABASE_SSL_MODE=disable" >> $GITHUB_ENV
@@ -37,12 +37,12 @@ jobs:
           ref: master
           token: ${{ secrets.DEPLOY_GITHUB_PAT }}
       - run: docker-compose -f ./ops/docker-compose-db.yml up -d
-        working-directory: baseline
+        working-directory: axiom
       - run: go mod tidy
-        working-directory: baseline
+        working-directory: axiom
       - run: go mod vendor
-        working-directory: baseline
+        working-directory: axiom
       - run: go test ./... -v -race -timeout 1800s -tags="$TAGS"                                      
-        working-directory: baseline       
-      - run: docker-compose -f baseline/ops/docker-compose-db.yml down
+        working-directory: axiom       
+      - run: docker-compose -f axiom/ops/docker-compose-db.yml down
       - run: docker volume rm ops_prvd-db

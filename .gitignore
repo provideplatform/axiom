@@ -27,8 +27,8 @@ _cgo_export.*
 .bin/
 .gocore-id_rsa
 
-baseline_api
-baseline_consumer
+axiom_api
+axiom_consumer
 
 # Miscellaneous
 .DS_Store

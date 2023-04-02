@@ -35,7 +35,7 @@
  */
 
 --
--- Name: mappings; Type: TABLE; Schema: public; Owner: baseline
+-- Name: mappings; Type: TABLE; Schema: public; Owner: axiom
 --
 
 CREATE TABLE public.mappings (
@@ -48,7 +48,7 @@ CREATE TABLE public.mappings (
     workgroup_id uuid NOT NULL
 );
 
-ALTER TABLE public.mappings OWNER TO baseline;
+ALTER TABLE public.mappings OWNER TO axiom;
 
 ALTER TABLE ONLY public.mappings
     ADD CONSTRAINT mappings_pkey PRIMARY KEY (id);
@@ -69,7 +69,7 @@ CREATE TABLE public.mappingmodels (
     standard text
 );
 
-ALTER TABLE public.mappingmodels OWNER TO baseline;
+ALTER TABLE public.mappingmodels OWNER TO axiom;
 
 ALTER TABLE ONLY public.mappingmodels
     ADD CONSTRAINT mappingmodels_pkey PRIMARY KEY (id);
@@ -92,7 +92,7 @@ CREATE TABLE public.mappingfields (
     is_primary_key bool NOT NULL DEFAULT false
 );
 
-ALTER TABLE public.mappingfields OWNER TO baseline;
+ALTER TABLE public.mappingfields OWNER TO axiom;
 
 ALTER TABLE ONLY public.mappingfields
     ADD CONSTRAINT mappingfields_pkey PRIMARY KEY (id);

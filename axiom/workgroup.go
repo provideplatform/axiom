@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package baseline
+package axiom
 
 import (
 	"encoding/json"
@@ -25,7 +25,7 @@ import (
 	dbconf "github.com/kthomas/go-db-config"
 	"github.com/kthomas/go-redisutil"
 	uuid "github.com/kthomas/go.uuid"
-	"github.com/provideplatform/baseline/common"
+	"github.com/provideplatform/axiom/common"
 	provide "github.com/provideplatform/provide-go/api"
 	"github.com/provideplatform/provide-go/api/ident"
 )
@@ -33,7 +33,7 @@ import (
 const requireCounterpartiesSleepInterval = time.Second * 15
 const requireCounterpartiesTickerInterval = time.Second * 30 // HACK
 
-// Workgroup is a baseline workgroup prototype
+// Workgroup is a axiom workgroup prototype
 type Workgroup struct {
 	provide.Model
 	Participants       []*Participant `sql:"-" json:"participants,omitempty"`
@@ -65,13 +65,13 @@ func init() {
 	redisutil.RequireRedis()
 }
 
-func LookupBaselineWorkgroup(identifier string) *Workgroup {
+func LookupAxiomWorkgroup(identifier string) *Workgroup {
 	var workgroup *Workgroup
 
-	key := fmt.Sprintf("baseline.workgroup.%s", identifier)
+	key := fmt.Sprintf("axiom.workgroup.%s", identifier)
 	raw, err := redisutil.Get(key)
 	if err != nil {
-		common.Log.Debugf("no baseline workgroup cached for key: %s; %s", key, err.Error())
+		common.Log.Debugf("no axiom workgroup cached for key: %s; %s", key, err.Error())
 		return nil
 	}
 

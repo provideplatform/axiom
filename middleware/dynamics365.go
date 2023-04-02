@@ -34,8 +34,8 @@ import (
 	"github.com/provideplatform/provide-go/common"
 )
 
-const defaultServiceBusInboundQueueName = "baseline.inbound"
-const defaultServiceBusOutboundQueueName = "baseline.outbound"
+const defaultServiceBusInboundQueueName = "axiom.inbound"
+const defaultServiceBusOutboundQueueName = "axiom.outbound"
 const defaultServiceBusContextTimeout = 10 * time.Second
 
 const subscribeTickInterval = 500 * time.Millisecond

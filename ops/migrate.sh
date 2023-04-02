@@ -25,7 +25,7 @@ if [[ -z "${DATABASE_HOST}" ]]; then
 fi
 
 if [[ -z "${DATABASE_NAME}" ]]; then
-  DATABASE_NAME=baseline_dev
+  DATABASE_NAME=axiom_dev
 fi
 
 if [[ -z "${DATABASE_PORT}" ]]; then
@@ -33,11 +33,11 @@ if [[ -z "${DATABASE_PORT}" ]]; then
 fi
 
 if [[ -z "${DATABASE_USER}" ]]; then
-  DATABASE_USER=baseline
+  DATABASE_USER=axiom
 fi
 
 if [[ -z "${DATABASE_PASSWORD}" ]]; then
-  DATABASE_PASSWORD=baseline
+  DATABASE_PASSWORD=axiom
 fi
 
 if [[ -z "${DATABASE_SUPERUSER}" ]]; then
@@ -68,4 +68,4 @@ DATABASE_SUPERUSER=$DATABASE_SUPERUSER \
 DATABASE_SUPERUSER_PASSWORD=$DATABASE_SUPERUSER_PASSWORD \
 LOG_LEVEL=$LOG_LEVEL \
 SYSLOG_ENDPOINT=${SYSLOG_ENDPOINT} \
-./.bin/baseline_migrate
+./.bin/axiom_migrate

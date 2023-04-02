@@ -24,7 +24,7 @@ CREATE TABLE public.constraints (
     workstep_id uuid NOT NULL
 );
 
-ALTER TABLE public.constraints OWNER TO baseline;
+ALTER TABLE public.constraints OWNER TO axiom;
 
 ALTER TABLE ONLY public.constraints ADD CONSTRAINT constraints_pkey PRIMARY KEY (id);
 

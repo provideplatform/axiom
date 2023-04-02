@@ -25,8 +25,8 @@ import (
 	"time"
 
 	"github.com/kthomas/go-redisutil"
-	_ "github.com/provideplatform/baseline/baseline" // Baseline package
-	"github.com/provideplatform/baseline/common"
+	_ "github.com/provideplatform/axiom/axiom" // Axiom package
+	"github.com/provideplatform/axiom/common"
 )
 
 const natsStreamingSubscriptionStatusTickerInterval = 5 * time.Second

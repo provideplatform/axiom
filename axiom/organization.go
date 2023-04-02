@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package baseline
+package axiom
 
 import (
 	"encoding/base64"
@@ -26,20 +26,20 @@ import (
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/kthomas/go-redisutil"
-	"github.com/provideplatform/baseline/common"
+	"github.com/provideplatform/axiom/common"
 	"github.com/provideplatform/provide-go/api"
 	"github.com/provideplatform/provide-go/api/ident"
 	"github.com/provideplatform/provide-go/api/nchain"
 	"github.com/provideplatform/provide-go/api/vault"
 )
 
-func lookupBaselineOrganization(address string) *Participant {
+func lookupAxiomOrganization(address string) *Participant {
 	var org *Participant
 
-	key := fmt.Sprintf("baseline.organization.%s", address)
+	key := fmt.Sprintf("axiom.organization.%s", address)
 	raw, err := redisutil.Get(key)
 	if err != nil {
-		common.Log.Warningf("failed to retrieve cached baseline organization: %s; %s", key, err.Error())
+		common.Log.Warningf("failed to retrieve cached axiom organization: %s; %s", key, err.Error())
 		return nil
 	}
 
@@ -47,33 +47,33 @@ func lookupBaselineOrganization(address string) *Participant {
 	return org
 }
 
-func (s *SubjectAccount) lookupBaselineOrganizationIssuedVC(address string) *string {
-	key := fmt.Sprintf("baseline.organization.%s.credential", address)
+func (s *SubjectAccount) lookupAxiomOrganizationIssuedVC(address string) *string {
+	key := fmt.Sprintf("axiom.organization.%s.credential", address)
 	secretID, err := redisutil.Get(key)
 	if err != nil {
-		common.Log.Warningf("failed to retrieve cached verifiable credential for baseline organization: %s; %s", key, err.Error())
+		common.Log.Warningf("failed to retrieve cached verifiable credential for axiom organization: %s; %s", key, err.Error())
 		return nil
 	}
 
 	token, err := vendOrganizationAccessToken(s)
 	if err != nil {
-		common.Log.Warningf("failed to retrieve cached verifiable credential for baseline organization: %s; %s", key, err.Error())
+		common.Log.Warningf("failed to retrieve cached verifiable credential for axiom organization: %s; %s", key, err.Error())
 		return nil
 	}
 
 	resp, err := vault.FetchSecret(*token, s.Metadata.Vault.ID.String(), *secretID, map[string]interface{}{})
 	if err != nil {
-		common.Log.Warningf("failed to retrieve cached verifiable credential for baseline organization: %s; %s", key, err.Error())
+		common.Log.Warningf("failed to retrieve cached verifiable credential for axiom organization: %s; %s", key, err.Error())
 		return nil
 	}
 
 	return resp.Value
 }
 
-func (s *SubjectAccount) CacheBaselineOrganizationIssuedVC(address, vc string) error {
+func (s *SubjectAccount) CacheAxiomOrganizationIssuedVC(address, vc string) error {
 	token, err := vendOrganizationAccessToken(s)
 	if err != nil {
-		common.Log.Warningf("failed to cache verifiable credential for baseline organization: %s; %s", address, err.Error())
+		common.Log.Warningf("failed to cache verifiable credential for axiom organization: %s; %s", address, err.Error())
 		return err
 	}
 
@@ -89,14 +89,14 @@ func (s *SubjectAccount) CacheBaselineOrganizationIssuedVC(address, vc string) e
 		},
 	)
 	if err != nil {
-		common.Log.Warningf("failed to cache verifiable credential for baseline organization: %s; %s", address, err.Error())
+		common.Log.Warningf("failed to cache verifiable credential for axiom organization: %s; %s", address, err.Error())
 		return err
 	}
 
-	key := fmt.Sprintf("baseline.organization.%s.credential", address)
+	key := fmt.Sprintf("axiom.organization.%s.credential", address)
 	err = redisutil.Set(key, resp.ID.String(), nil)
 	if err != nil {
-		common.Log.Warningf("failed to cached verifiable credential for baseline organization: %s; %s", key, err.Error())
+		common.Log.Warningf("failed to cached verifiable credential for axiom organization: %s; %s", key, err.Error())
 		return err
 	}
 
@@ -104,14 +104,14 @@ func (s *SubjectAccount) CacheBaselineOrganizationIssuedVC(address, vc string) e
 }
 
 // request a signed VC from the named counterparty
-func (s *SubjectAccount) requestBaselineOrganizationIssuedVC(address string) (*string, error) {
+func (s *SubjectAccount) requestAxiomOrganizationIssuedVC(address string) (*string, error) {
 	token, err := vendOrganizationAccessToken(s)
 	if err != nil {
-		common.Log.Warningf("failed to request verifiable credential from baseline organization: %s; %s", address, err.Error())
+		common.Log.Warningf("failed to request verifiable credential from axiom organization: %s; %s", address, err.Error())
 		return nil, err
 	}
 
-	apiURLStr := lookupBaselineOrganizationBPIEndpoint(address)
+	apiURLStr := lookupAxiomOrganizationBPIEndpoint(address)
 	if apiURLStr == nil {
 		common.Log.Warningf("failed to lookup recipient API endpoint: %s", address)
 		return nil, fmt.Errorf("failed to lookup recipient API endpoint: %s", address)
@@ -143,14 +143,14 @@ func (s *SubjectAccount) requestBaselineOrganizationIssuedVC(address string) (*s
 		"spec": "secp256k1", // FIXME-- make general
 	})
 	if err != nil {
-		common.Log.Warningf("failed to request verifiable credential from baseline organization: %s; failed to resolve signing key; %s", address, err.Error())
+		common.Log.Warningf("failed to request verifiable credential from axiom organization: %s; failed to resolve signing key; %s", address, err.Error())
 		return nil, err
 	}
 
 	var key *vault.Key
 	if len(keys) == 0 {
-		common.Log.Warningf("failed to request verifiable credential from baseline organization: %s; failed to resolve signing key; %s", address, err.Error())
-		return nil, fmt.Errorf("failed to request verifiable credential from baseline organization: %s; failed to resolve signing key; %s", address, err.Error())
+		common.Log.Warningf("failed to request verifiable credential from axiom organization: %s; failed to resolve signing key; %s", address, err.Error())
+		return nil, fmt.Errorf("failed to request verifiable credential from axiom organization: %s; failed to resolve signing key; %s", address, err.Error())
 	}
 
 	for _, k := range keys {
@@ -161,8 +161,8 @@ func (s *SubjectAccount) requestBaselineOrganizationIssuedVC(address string) (*s
 	}
 
 	if key == nil {
-		common.Log.Warningf("failed to request verifiable credential from baseline organization: %s; failed to resolve signing key", address)
-		return nil, fmt.Errorf("failed to request verifiable credential from baseline organization: %s; failed to resolve signing key", address)
+		common.Log.Warningf("failed to request verifiable credential from axiom organization: %s; failed to resolve signing key", address)
+		return nil, fmt.Errorf("failed to request verifiable credential from axiom organization: %s; failed to resolve signing key", address)
 	}
 
 	signresp, err := vault.SignMessage(
@@ -173,8 +173,8 @@ func (s *SubjectAccount) requestBaselineOrganizationIssuedVC(address string) (*s
 		map[string]interface{}{},
 	)
 	if err != nil {
-		common.Log.Warningf("failed to request verifiable credential for for baseline organization: %s; failed to sign VC issuance request; %s", address, err.Error())
-		return nil, fmt.Errorf("failed to request verifiable credential for for baseline organization: %s; failed to sign VC issuance request; %s", address, err.Error())
+		common.Log.Warningf("failed to request verifiable credential for for axiom organization: %s; failed to sign VC issuance request; %s", address, err.Error())
+		return nil, fmt.Errorf("failed to request verifiable credential for for axiom organization: %s; failed to sign VC issuance request; %s", address, err.Error())
 	}
 
 	client := &api.Client{
@@ -190,20 +190,20 @@ func (s *SubjectAccount) requestBaselineOrganizationIssuedVC(address string) (*s
 		"workgroup_id": s.Metadata.WorkgroupID,
 	})
 	if err != nil {
-		common.Log.Warningf("failed to request verifiable credential from baseline organization: %s; %s", address, err.Error())
-		return nil, fmt.Errorf("failed to request verifiable credential from baseline organization: %s; %s", address, err.Error())
+		common.Log.Warningf("failed to request verifiable credential from axiom organization: %s; %s", address, err.Error())
+		return nil, fmt.Errorf("failed to request verifiable credential from axiom organization: %s; %s", address, err.Error())
 	}
 
 	if status != 201 {
-		return nil, fmt.Errorf("failed to request verifiable credential from baseline organization: %s; received status code: %d", address, status)
+		return nil, fmt.Errorf("failed to request verifiable credential from axiom organization: %s; received status code: %d", address, status)
 	}
 
 	var credential *string
 	if vc, ok := resp.(map[string]interface{})["credential"].(string); ok {
-		err = s.CacheBaselineOrganizationIssuedVC(address, vc)
+		err = s.CacheAxiomOrganizationIssuedVC(address, vc)
 		if err != nil {
-			common.Log.Warningf("failed to request verifiable credential from baseline organization: %s; failed to cache issued credential; %s", address, err.Error())
-			return nil, fmt.Errorf("failed to request verifiable credential from baseline organization: %s; failed to cache issued credential; %s", address, err.Error())
+			common.Log.Warningf("failed to request verifiable credential from axiom organization: %s; failed to cache issued credential; %s", address, err.Error())
+			return nil, fmt.Errorf("failed to request verifiable credential from axiom organization: %s; failed to cache issued credential; %s", address, err.Error())
 		}
 		credential = &vc
 	}
@@ -212,10 +212,10 @@ func (s *SubjectAccount) requestBaselineOrganizationIssuedVC(address string) (*s
 	return credential, nil
 }
 
-func lookupBaselineOrganizationBPIEndpoint(recipient string) *string {
-	org := lookupBaselineOrganization(recipient)
+func lookupAxiomOrganizationBPIEndpoint(recipient string) *string {
+	org := lookupAxiomOrganization(recipient)
 	if org == nil {
-		common.Log.Warningf("failed to retrieve cached API endpoint for baseline organization: %s", recipient)
+		common.Log.Warningf("failed to retrieve cached API endpoint for axiom organization: %s", recipient)
 		return nil
 	}
 
@@ -226,17 +226,17 @@ func lookupBaselineOrganizationBPIEndpoint(recipient string) *string {
 	return org.BPIEndpoint
 }
 
-func (s *SubjectAccount) lookupBaselineOrganizationMessagingEndpoint(recipient string) *string {
-	org := lookupBaselineOrganization(recipient)
+func (s *SubjectAccount) lookupAxiomOrganizationMessagingEndpoint(recipient string) *string {
+	org := lookupAxiomOrganization(recipient)
 	if org == nil {
-		common.Log.Warningf("failed to retrieve cached messaging endpoint for baseline organization: %s", recipient)
+		common.Log.Warningf("failed to retrieve cached messaging endpoint for axiom organization: %s", recipient)
 		return nil
 	}
 
 	if org.MessagingEndpoint == nil {
 		token, err := vendOrganizationAccessToken(s)
 		if err != nil {
-			common.Log.Warningf("failed to retrieve messaging endpoint for baseline organization: %s", recipient)
+			common.Log.Warningf("failed to retrieve messaging endpoint for axiom organization: %s", recipient)
 			return nil
 		}
 
@@ -253,14 +253,14 @@ func (s *SubjectAccount) lookupBaselineOrganizationMessagingEndpoint(recipient s
 		})
 
 		if err != nil {
-			common.Log.Warningf("failed to retrieve messaging endpoint for baseline organization: %s", recipient)
+			common.Log.Warningf("failed to retrieve messaging endpoint for axiom organization: %s", recipient)
 			return nil
 		}
 
 		if endpoint, endpointOk := resp.Response.([]interface{})[3].(string); endpointOk {
 			endpoint, err := base64.StdEncoding.DecodeString(endpoint)
 			if err != nil {
-				common.Log.Warningf("failed to retrieve messaging endpoint for baseline organization: %s; failed to base64 decode endpoint", recipient)
+				common.Log.Warningf("failed to retrieve messaging endpoint for axiom organization: %s; failed to base64 decode endpoint", recipient)
 				return nil
 			}
 			org := &Participant{
@@ -273,7 +273,7 @@ func (s *SubjectAccount) lookupBaselineOrganizationMessagingEndpoint(recipient s
 
 			err = org.Cache()
 			if err != nil {
-				common.Log.Warningf("failed to retrieve messaging endpoint for baseline organization: %s; failed to", recipient)
+				common.Log.Warningf("failed to retrieve messaging endpoint for axiom organization: %s; failed to", recipient)
 				return nil
 			}
 		}

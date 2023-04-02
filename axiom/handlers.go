@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package baseline
+package axiom
 
 import (
 	"bytes"
@@ -32,15 +32,15 @@ import (
 	dbconf "github.com/kthomas/go-db-config"
 	natsutil "github.com/kthomas/go-natsutil"
 	uuid "github.com/kthomas/go.uuid"
-	"github.com/provideplatform/baseline/common"
-	"github.com/provideplatform/baseline/middleware"
-	"github.com/provideplatform/provide-go/api/baseline"
+	"github.com/provideplatform/axiom/common"
+	"github.com/provideplatform/axiom/middleware"
+	"github.com/provideplatform/provide-go/api/axiom"
 	"github.com/provideplatform/provide-go/api/ident"
 	provide "github.com/provideplatform/provide-go/common"
 	"github.com/provideplatform/provide-go/common/util"
 )
 
-// InstallBPIAPI installs public API for interacting with the baseline protocol abstraction
+// InstallBPIAPI installs public API for interacting with the axiom protocol abstraction
 // layer, i.e., with `Subject`, `SubjectContext` and `BPIAccount`
 func InstallBPIAPI(r *gin.Engine) {
 	r.GET("/api/v1/bpi_accounts", listBPIAccountsHandler)
@@ -254,7 +254,7 @@ func sendProtocolMessageHandler(c *gin.Context) {
 
 				// FIXME!! move this logic to its own method...
 				msg := &ProtocolMessage{
-					Opcode: common.StringOrNil(baseline.ProtocolMessageOpcodeSync),
+					Opcode: common.StringOrNil(axiom.ProtocolMessageOpcodeSync),
 					Payload: &ProtocolMessagePayload{
 						Object: message.ProtocolMessage.Payload.Object,
 						Proof:  proof.Proof,
@@ -276,7 +276,7 @@ func sendProtocolMessageHandler(c *gin.Context) {
 			}
 
 			provide.Render(&SendProtocolMessageAPIResponse{
-				BaselineID:       message.BaselineID,
+				AxiomID:          message.AxiomID,
 				Proof:            proof.Proof,
 				Recipients:       recipients,
 				Root:             nil,
@@ -437,42 +437,42 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 		return
 	}
 
-	if claims.Baseline == nil {
-		msg := "failed to accept workgroup invitation; no baseline claim resolved in VC"
+	if claims.Axiom == nil {
+		msg := "failed to accept workgroup invitation; no axiom claim resolved in VC"
 		common.Log.Warningf(msg)
 		provide.RenderError(msg, 422, c)
 		return
 	}
 
-	if claims.Baseline.WorkgroupID == nil {
+	if claims.Axiom.WorkgroupID == nil {
 		msg := "failed to accept workgroup invitation; no workgroup identifier claim resolved in VC"
 		common.Log.Warningf(msg)
 		provide.RenderError(msg, 422, c)
 		return
 	}
 
-	if claims.Baseline.InvitorBPIEndpoint == nil {
+	if claims.Axiom.InvitorBPIEndpoint == nil {
 		msg := "failed to accept workgroup invitation; no invitor organization BPI endpoint claim resolved in VC"
 		common.Log.Warningf(msg)
 		provide.RenderError(msg, 422, c)
 		return
 	}
 
-	if claims.Baseline.InvitorOrganizationAddress == nil {
+	if claims.Axiom.InvitorOrganizationAddress == nil {
 		msg := "failed to accept workgroup invitation; no invitor organization address claim resolved in VC"
 		common.Log.Warningf(msg)
 		provide.RenderError(msg, 422, c)
 		return
 	}
 
-	if claims.Baseline.InvitorSubjectAccountID == nil {
+	if claims.Axiom.InvitorSubjectAccountID == nil {
 		msg := "failed to accept workgroup invitation; no invitor subject account id claim resolved in VC"
 		common.Log.Warningf(msg)
 		provide.RenderError(msg, 422, c)
 		return
 	}
 
-	workgroupID, err := uuid.FromString(*claims.Baseline.WorkgroupID)
+	workgroupID, err := uuid.FromString(*claims.Axiom.WorkgroupID)
 	if err != nil {
 		msg := fmt.Sprintf("failed to accept workgroup invitation; invalid workgroup identifier; %s", err.Error())
 		common.Log.Warningf(msg)
@@ -480,7 +480,7 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 		return
 	}
 
-	// invitorSubjectAccount, err := resolveSubjectAccount(*claims.Baseline.InvitorSubjectAccountID, &vcToken)
+	// invitorSubjectAccount, err := resolveSubjectAccount(*claims.Axiom.InvitorSubjectAccountID, &vcToken)
 	// if err != nil {
 	// 	provide.RenderError(err.Error(), 404, c)
 	// 	return
@@ -536,7 +536,7 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 
 	// FIXME!!
 	// var registryContractAddress *string
-	// if addr, registryContractAddressOk := baselineClaim["registry_contract_address"].(string); registryContractAddressOk {
+	// if addr, registryContractAddressOk := axiomClaim["registry_contract_address"].(string); registryContractAddressOk {
 	// 	registryContractAddress = common.StringOrNil(addr)
 	// } else {
 	// 	msg := fmt.Sprintf("no registry contract address provided by invitor: %s", *invitorAddress)
@@ -553,7 +553,7 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 	// }
 
 	invitor := &Participant{
-		Address:    claims.Baseline.InvitorOrganizationAddress,
+		Address:    claims.Axiom.InvitorOrganizationAddress,
 		Workgroups: make([]*Workgroup, 0),
 		Workflows:  make([]*Workflow, 0),
 		Worksteps:  make([]*Workstep, 0),
@@ -619,7 +619,7 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 			vc = common.StringOrNil(verifiableCredential)
 		}
 		if vc != nil {
-			err = subjectAccount.CacheBaselineOrganizationIssuedVC(*claims.Baseline.InvitorOrganizationAddress, *vc)
+			err = subjectAccount.CacheAxiomOrganizationIssuedVC(*claims.Axiom.InvitorOrganizationAddress, *vc)
 			if err != nil {
 				msg := fmt.Sprintf("failed to cache organization-issued vc; %s", err.Error())
 				common.Log.Warningf(msg)
@@ -653,7 +653,7 @@ func acceptWorkgroupInvite(c *gin.Context, organizationID uuid.UUID, params map[
 	}
 
 	msg := &ProtocolMessage{
-		Opcode: common.StringOrNil(baseline.ProtocolMessageOpcodeJoin),
+		Opcode: common.StringOrNil(axiom.ProtocolMessageOpcodeJoin),
 		Payload: &ProtocolMessagePayload{
 			Object: obj,
 		},
@@ -698,7 +698,7 @@ func listWorkgroupsHandler(c *gin.Context) {
 	token, _ := util.ParseBearerAuthorizationHeader(c.GetHeader("authorization"), nil)
 	resp, err := ident.ListApplications(token.Raw, map[string]interface{}{
 		"rpp":  250, // HACK
-		"type": "baseline",
+		"type": "axiom",
 	})
 
 	if err == nil {
@@ -735,7 +735,7 @@ func workgroupDetailsHandler(c *gin.Context) {
 		return
 	}
 
-	workgroup := LookupBaselineWorkgroup(c.Param("id"))
+	workgroup := LookupAxiomWorkgroup(c.Param("id"))
 
 	if workgroup == nil {
 		workgroupID, err := uuid.FromString(c.Param("id"))
@@ -777,7 +777,7 @@ func workgroupAnalyticsHandler(c *gin.Context) {
 		return
 	}
 
-	workgroup := LookupBaselineWorkgroup(c.Param("id"))
+	workgroup := LookupAxiomWorkgroup(c.Param("id"))
 
 	if workgroup == nil {
 		workgroupID, err := uuid.FromString(c.Param("id"))
@@ -819,7 +819,7 @@ func workgroupAnalyticsHandler(c *gin.Context) {
 }
 
 func createPublicWorkgroupInviteHandler(c *gin.Context) {
-	if common.BaselinePublicWorkgroupID == nil {
+	if common.AxiomPublicWorkgroupID == nil {
 		provide.RenderError("no public workgroup configured", 501, c)
 		return
 	}
@@ -839,7 +839,7 @@ func createPublicWorkgroupInviteHandler(c *gin.Context) {
 		return
 	}
 
-	params := &baseline.PublicWorkgroupInvitationRequest{}
+	params := &axiom.PublicWorkgroupInvitationRequest{}
 	err = json.Unmarshal(buf, &params)
 	if err != nil {
 		provide.RenderError(err.Error(), 422, c)
@@ -2104,7 +2104,7 @@ func workstepDetailsHandler(c *gin.Context) {
 }
 
 func issueVerifiableCredentialHandler(c *gin.Context) {
-	issueVCRequest := &baseline.IssueVerifiableCredentialRequest{}
+	issueVCRequest := &axiom.IssueVerifiableCredentialRequest{}
 
 	buf, err := c.GetRawData()
 	if err != nil {
@@ -2196,7 +2196,7 @@ func issueVerifiableCredentialHandler(c *gin.Context) {
 	credential, err := subjectAccount.IssueVC(*issueVCRequest.Address, map[string]interface{}{})
 
 	if err == nil {
-		provide.Render(&baseline.IssueVerifiableCredentialResponse{
+		provide.Render(&axiom.IssueVerifiableCredentialResponse{
 			VC: credential,
 		}, 201, c)
 	} else {

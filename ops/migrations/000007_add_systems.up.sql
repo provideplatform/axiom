@@ -26,7 +26,7 @@ CREATE TABLE public.systems (
     secret_id uuid NOT NULL
 );
 
-ALTER TABLE public.systems OWNER TO baseline;
+ALTER TABLE public.systems OWNER TO axiom;
 
 ALTER TABLE ONLY public.systems ADD CONSTRAINT systems_pkey PRIMARY KEY (id);
 

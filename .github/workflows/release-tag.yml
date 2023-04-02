@@ -1,4 +1,4 @@
-name: Baseline Release
+name: Axiom Release
 on: 
   push:
     tags:
@@ -20,5 +20,5 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_PAT }}
-          repository: provide/baseline
+          repository: provide/axiom
           tags: "${{ steps.latest_tag.outputs.tags}}, latest"

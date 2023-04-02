@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package baseline
+package axiom
 
 import (
 	"encoding/json"
@@ -24,13 +24,13 @@ import (
 	dbconf "github.com/kthomas/go-db-config"
 	natsutil "github.com/kthomas/go-natsutil"
 	uuid "github.com/kthomas/go.uuid"
-	"github.com/provideplatform/baseline/common"
+	"github.com/provideplatform/axiom/common"
 	provide "github.com/provideplatform/provide-go/api"
-	"github.com/provideplatform/provide-go/api/baseline"
+	"github.com/provideplatform/provide-go/api/axiom"
 	"github.com/provideplatform/provide-go/api/ident"
 )
 
-// Mapping is a baseline mapping prototype
+// Mapping is a axiom mapping prototype
 type Mapping struct {
 	provide.Model
 	Models      []*MappingModel `sql:"-" json:"models"`
@@ -45,7 +45,7 @@ type Mapping struct {
 	WorkgroupID    *uuid.UUID `json:"workgroup_id"`
 }
 
-// MappingModel is a baseline mapping model prototype
+// MappingModel is a axiom mapping model prototype
 type MappingModel struct {
 	provide.Model
 	Description *string `json:"description"`
@@ -58,7 +58,7 @@ type MappingModel struct {
 	Fields     []*MappingField `sql:"-" json:"fields"`
 }
 
-// MappingField is a baseline mapping field prototype
+// MappingField is a axiom mapping field prototype
 type MappingField struct {
 	provide.Model
 	DefaultValue interface{} `json:"default_value,omitempty"`
@@ -422,7 +422,7 @@ func (m *Mapping) sync() error {
 
 	for _, participant := range workgroup.listParticipants(dbconf.DatabaseConnection()) {
 		msg := &ProtocolMessage{
-			Opcode: common.StringOrNil(baseline.ProtocolMessageOpcodeSync),
+			Opcode: common.StringOrNil(axiom.ProtocolMessageOpcodeSync),
 			Payload: &ProtocolMessagePayload{
 				Object: obj,
 				Type:   common.StringOrNil(protomsgPayloadTypeMapping),

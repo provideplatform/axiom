@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package baseline
+package axiom
 
 import (
 	"encoding/base64"
@@ -28,7 +28,7 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/kthomas/go-pgputil"
-	"github.com/provideplatform/baseline/common"
+	"github.com/provideplatform/axiom/common"
 	"github.com/provideplatform/provide-go/api/vault"
 	"golang.org/x/crypto/ssh"
 )
@@ -40,7 +40,7 @@ const defaultCredentialExperationTimeout = time.Hour * 1
 func (s *SubjectAccount) IssueVC(address string, params map[string]interface{}) (*string, error) {
 	token, err := vendOrganizationAccessToken(s)
 	if err != nil {
-		common.Log.Warningf("failed to request verifiable credential for baseline organization: %s; %s", address, err.Error())
+		common.Log.Warningf("failed to request verifiable credential for axiom organization: %s; %s", address, err.Error())
 		return nil, err
 	}
 
@@ -66,12 +66,12 @@ func IssueVC(token, organizationID, vaultID, messagingEndpoint, address string, 
 	issuedAt := time.Now()
 
 	claims := map[string]interface{}{
-		"aud":      messagingEndpoint,
-		"exp":      issuedAt.Add(defaultCredentialExperationTimeout).Unix(),
-		"iat":      issuedAt.Unix(),
-		"iss":      fmt.Sprintf("organization:%s", organizationID),
-		"sub":      address,
-		"baseline": params,
+		"aud":   messagingEndpoint,
+		"exp":   issuedAt.Add(defaultCredentialExperationTimeout).Unix(),
+		"iat":   issuedAt.Unix(),
+		"iss":   fmt.Sprintf("organization:%s", organizationID),
+		"sub":   address,
+		"axiom": params,
 	}
 
 	natsClaims, err := encodeJWTNatsClaims()
@@ -142,9 +142,9 @@ func encodeJWTNatsClaims() (map[string]interface{}, error) {
 	var responsesMax *int
 	var responsesTTL *time.Duration
 
-	// subscribeAllow = append(subscribeAllow, "baseline.>")
-	publishAllow = append(publishAllow, "baseline")
-	publishAllow = append(publishAllow, "baseline.>")
+	// subscribeAllow = append(subscribeAllow, "axiom.>")
+	publishAllow = append(publishAllow, "axiom")
+	publishAllow = append(publishAllow, "axiom.>")
 
 	var publishPermissions map[string]interface{}
 	if len(publishAllow) > 0 || len(publishDeny) > 0 {

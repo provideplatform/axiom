@@ -22,10 +22,10 @@
 #           AWS_SECRET_ACCESS_KEY=abc \
 #           AWS_DEFAULT_REGION=us-east-1 \
 #           AWS_DEFAULT_OUTPUT=json \
-#           ECR_REPOSITORY_NAME=provide/baseline \
-#           ECS_TASK_DEFINITION_FAMILY=baseline \
+#           ECR_REPOSITORY_NAME=provide/axiom \
+#           ECS_TASK_DEFINITION_FAMILY=axiom \
 #           ECS_CLUSTER=production \
-#           ECS_SERVICE_NAME=baseline \
+#           ECS_SERVICE_NAME=axiom \
 #           '$WORKSPACE/ops/ci-process.sh'"
 set -o errexit # set -e
 set -o nounset # set -u

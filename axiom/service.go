@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package baseline
+package axiom
 
 import (
 	"context"
@@ -26,17 +26,17 @@ import (
 	esutil "github.com/kthomas/go-elasticsearchutil"
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/olivere/elastic/v7"
-	"github.com/provideplatform/baseline/common"
-	"github.com/provideplatform/baseline/middleware"
+	"github.com/provideplatform/axiom/common"
+	"github.com/provideplatform/axiom/middleware"
 	provide "github.com/provideplatform/provide-go/api"
 	"github.com/provideplatform/provide-go/api/privacy"
 )
 
 // InvertedIndexMessagePayload document type for indexing an arbitrary
-// `baseline_id` against one or more arbitrary values
+// `axiom_id` against one or more arbitrary values
 type InvertedIndexMessagePayload struct {
-	BaselineID *uuid.UUID    `json:"baseline_id"`
-	Values     []interface{} `json:"values"`
+	AxiomID *uuid.UUID    `json:"axiom_id"`
+	Values  []interface{} `json:"values"`
 }
 
 // WorkflowPrototypeMessagePayload document type for indexing the initial
@@ -50,11 +50,11 @@ type WorkflowPrototypeMessagePayload struct {
 }
 
 func (m *ProtocolMessage) index() error {
-	common.Log.Debugf("attempting to index protocol message payload with baseline id: %s", m.BaselineID)
+	common.Log.Debugf("attempting to index protocol message payload with axiom id: %s", m.AxiomID)
 
 	msg := &InvertedIndexMessagePayload{
-		BaselineID: m.BaselineID,
-		Values:     make([]interface{}, 0),
+		AxiomID: m.AxiomID,
+		Values:  make([]interface{}, 0),
 	}
 
 	// FIXME-- extract the following into a utility function
@@ -68,14 +68,14 @@ func (m *ProtocolMessage) index() error {
 
 	common.Indexer.Q(&esutil.Message{
 		Header: &esutil.MessageHeader{
-			Index: common.StringOrNil(common.IndexerDocumentIndexBaselineContextInverted),
+			Index: common.StringOrNil(common.IndexerDocumentIndexAxiomContextInverted),
 		},
 		Payload: payload,
 	})
 	return nil
 }
 
-func (m *Message) query() (*BaselineContext, error) {
+func (m *Message) query() (*AxiomContext, error) {
 	// FIXME-- extract the following into a utility function
 	values := make([]interface{}, 0)
 	if payload, payloadOk := m.Payload.(map[string]interface{}); payloadOk {
@@ -88,12 +88,12 @@ func (m *Message) query() (*BaselineContext, error) {
 	values = append(values, *m.ID)
 
 	tq := elastic.NewTermsQuery("values", values...) // terms query over the indexed `values` field
-	result, err := common.ElasticClient.Search().Index(common.IndexerDocumentIndexBaselineContextInverted).Query(tq).Do(context.TODO())
+	result, err := common.ElasticClient.Search().Index(common.IndexerDocumentIndexAxiomContextInverted).Query(tq).Do(context.TODO())
 	if err != nil {
 		return nil, err
 	}
 
-	var ctx *BaselineContext
+	var ctx *AxiomContext
 	results := make([]*InvertedIndexMessagePayload, 0)
 
 	for _, hit := range result.Hits.Hits {
@@ -107,9 +107,9 @@ func (m *Message) query() (*BaselineContext, error) {
 	}
 
 	if len(results) > 0 {
-		ctx = lookupBaselineContext(m.BaselineID.String())
+		ctx = lookupAxiomContext(m.AxiomID.String())
 		if ctx == nil {
-			err = fmt.Errorf("failed to lookup baseline context for given baseline id: %s", m.BaselineID.String())
+			err = fmt.Errorf("failed to lookup axiom context for given axiom id: %s", m.AxiomID.String())
 			return nil, err
 		}
 	}
@@ -119,10 +119,10 @@ func (m *Message) query() (*BaselineContext, error) {
 
 // resolveWorkstepContext is a convenience method to resolve the workstep context
 // alongside other relevant items... TODO-- memoize this so it can be reused nicely
-func (m *Message) resolveContext() (middleware.SOR, *BaselineContext, *BaselineRecord, *WorkflowInstance, *WorkstepInstance, error) {
+func (m *Message) resolveContext() (middleware.SOR, *AxiomContext, *AxiomRecord, *WorkflowInstance, *WorkstepInstance, error) {
 	var system middleware.SOR
-	var baselineContext *BaselineContext
-	var baselineRecord *BaselineRecord
+	var axiomContext *AxiomContext
+	var axiomRecord *AxiomRecord
 	var workflow *WorkflowInstance
 	var workstep *WorkstepInstance
 	var err error
@@ -142,15 +142,15 @@ func (m *Message) resolveContext() (middleware.SOR, *BaselineContext, *BaselineR
 		// return nil, nil, nil, nil, nil, fmt.Errorf("failed to resolve system for subject account for mapping type: %s", *m.Type)
 	}
 
-	baselineRecord = lookupBaselineRecordByInternalID(*m.ID)
-	if baselineRecord == nil {
+	axiomRecord = lookupAxiomRecordByInternalID(*m.ID)
+	if axiomRecord == nil {
 		// this is a record we have not seen before...
 		// if certain criteria are met, a new workflow instance will be created.
 		// note that it is also possible that the `id` provided in the message is
 		// associated with an existing workflow instance...
 
-		if m.BaselineID == nil {
-			// no baseline id is provided... attempt to resolve the workflow context using the inverted index
+		if m.AxiomID == nil {
+			// no axiom id is provided... attempt to resolve the workflow context using the inverted index
 			ctx, err := m.query()
 			if err != nil {
 				return nil, nil, nil, nil, nil, fmt.Errorf("failed to resolve workflow context; %s", err.Error())
@@ -159,40 +159,40 @@ func (m *Message) resolveContext() (middleware.SOR, *BaselineContext, *BaselineR
 			if ctx == nil {
 				// we were unable to resolve a lineage for this document linked to any related workflow instances
 				// we will now initialize a new context and workflow instance...
-				baselineContextID, _ := uuid.NewV4()
-				m.BaselineID = &baselineContextID
+				axiomContextID, _ := uuid.NewV4()
+				m.AxiomID = &axiomContextID
 
-				workflow, err = baselineWorkflowFactory(m.subjectAccount, *m.Type, nil)
+				workflow, err = axiomWorkflowFactory(m.subjectAccount, *m.Type, nil)
 				if err != nil {
 					return nil, nil, nil, nil, nil, fmt.Errorf("failed to resolve workflow context; %s", err.Error())
 				}
 				common.Log.Debugf("resolved workflow context: %s", workflow.ID)
 
-				if baselineContext == nil {
-					common.Log.Debugf("initializing new baseline context with baseline id: %s", m.BaselineID)
-					baselineContext = &BaselineContext{
-						ID:         m.BaselineID,
-						BaselineID: m.BaselineID,
-						Records:    make([]*BaselineRecord, 0),
+				if axiomContext == nil {
+					common.Log.Debugf("initializing new axiom context with axiom id: %s", m.AxiomID)
+					axiomContext = &AxiomContext{
+						ID:      m.AxiomID,
+						AxiomID: m.AxiomID,
+						Records: make([]*AxiomRecord, 0),
 					}
 
 					if workflow != nil {
-						baselineContext.Workflow = workflow
-						baselineContext.WorkflowID = &workflow.ID
+						axiomContext.Workflow = workflow
+						axiomContext.WorkflowID = &workflow.ID
 					}
 				}
 
-				if baselineRecord == nil {
-					baselineRecord = &BaselineRecord{
-						BaselineID: m.BaselineID,
-						Context:    baselineContext,
-						ContextID:  baselineContext.ID,
-						Type:       m.Type,
+				if axiomRecord == nil {
+					axiomRecord = &AxiomRecord{
+						AxiomID:   m.AxiomID,
+						Context:   axiomContext,
+						ContextID: axiomContext.ID,
+						Type:      m.Type,
 					}
 
-					err = baselineRecord.cache()
+					err = axiomRecord.cache()
 					if err != nil {
-						return nil, nil, nil, nil, nil, fmt.Errorf("failed to cache baseline record for newly-initialized context: %s; %s", m.BaselineID.String(), err.Error())
+						return nil, nil, nil, nil, nil, fmt.Errorf("failed to cache axiom record for newly-initialized context: %s; %s", m.AxiomID.String(), err.Error())
 					}
 				}
 			} else {
@@ -201,17 +201,17 @@ func (m *Message) resolveContext() (middleware.SOR, *BaselineContext, *BaselineR
 			}
 		} else {
 			// this supports custom applications which are "workflow-aware" and
-			// pass a `baseline_id` as part of the message; most of our supported
+			// pass a `axiom_id` as part of the message; most of our supported
 			// system middleware implementations will never send this in order
 			// to keep those implementations light clients...
-			baselineContext = lookupBaselineContext(m.BaselineID.String())
-			if baselineContext == nil {
-				err = fmt.Errorf("failed to lookup baseline context for given baseline id: %s", m.BaselineID.String())
+			axiomContext = lookupAxiomContext(m.AxiomID.String())
+			if axiomContext == nil {
+				err = fmt.Errorf("failed to lookup axiom context for given axiom id: %s", m.AxiomID.String())
 			}
 
-			workflow = lookupBaselineWorkflowByBaselineID(m.BaselineID.String())
+			workflow = lookupAxiomWorkflowByAxiomID(m.AxiomID.String())
 			if workflow == nil {
-				err = fmt.Errorf("failed to lookup workflow for given baseline id: %s", m.BaselineID.String())
+				err = fmt.Errorf("failed to lookup workflow for given axiom id: %s", m.AxiomID.String())
 			}
 		}
 
@@ -234,12 +234,12 @@ func (m *Message) resolveContext() (middleware.SOR, *BaselineContext, *BaselineR
 		}
 	} else {
 		// we have seen this record before and looked up the context...
-		baselineContext = baselineRecord.Context
-		if baselineContext == nil {
-			err = fmt.Errorf("failed to lookup baseline context for given baseline id: %s", m.BaselineID.String())
+		axiomContext = axiomRecord.Context
+		if axiomContext == nil {
+			err = fmt.Errorf("failed to lookup axiom context for given axiom id: %s", m.AxiomID.String())
 		}
 
-		workflow = baselineRecord.Context.Workflow
+		workflow = axiomRecord.Context.Workflow
 	}
 
 	// we need only the workflow to be non-nil at this point!
@@ -262,10 +262,10 @@ func (m *Message) resolveContext() (middleware.SOR, *BaselineContext, *BaselineR
 		}
 	}
 
-	return system, baselineContext, baselineRecord, workflow, workstep, err
+	return system, axiomContext, axiomRecord, workflow, workstep, err
 }
 
-func (m *ProtocolMessage) baselineInbound() bool {
+func (m *ProtocolMessage) axiomInbound() bool {
 	// FIXME-- this check should never be needed here
 	if m.subjectAccount == nil {
 		common.Log.Warning("subject account not resolved for inbound protocol message")
@@ -273,80 +273,80 @@ func (m *ProtocolMessage) baselineInbound() bool {
 	}
 
 	// FIXME-- use resolveContext() instead...
-	var baselineContext *BaselineContext
+	var axiomContext *AxiomContext
 
-	baselineRecord := lookupBaselineRecord(m.BaselineID.String())
-	if baselineRecord == nil {
+	axiomRecord := lookupAxiomRecord(m.AxiomID.String())
+	if axiomRecord == nil {
 		var workflow *WorkflowInstance
 		var err error
 
 		if m.WorkflowID != nil {
-			workflow = LookupBaselineWorkflow(m.WorkflowID.String())
+			workflow = LookupAxiomWorkflow(m.WorkflowID.String())
 		}
 
-		if m.BaselineID != nil {
-			baselineContext = lookupBaselineContext(m.BaselineID.String())
+		if m.AxiomID != nil {
+			axiomContext = lookupAxiomContext(m.AxiomID.String())
 
 			if workflow == nil {
-				workflow = lookupBaselineWorkflowByBaselineID(m.BaselineID.String())
-				if workflow == nil && baselineContext != nil {
-					workflow = baselineContext.Workflow
+				workflow = lookupAxiomWorkflowByAxiomID(m.AxiomID.String())
+				if workflow == nil && axiomContext != nil {
+					workflow = axiomContext.Workflow
 				}
 			}
 		}
 
 		if workflow == nil {
-			common.Log.Debugf("initializing baseline workflow: %s", *m.WorkflowID)
+			common.Log.Debugf("initializing axiom workflow: %s", *m.WorkflowID)
 
 			var workflowID *string
 			if m.WorkflowID != nil {
 				workflowID = common.StringOrNil(m.WorkflowID.String())
 			}
 
-			workflow, err = baselineWorkflowFactory(m.subjectAccount, *m.Type, workflowID)
+			workflow, err = axiomWorkflowFactory(m.subjectAccount, *m.Type, workflowID)
 			if err != nil {
-				common.Log.Warningf("failed to initialize baseline workflow: %s", *m.WorkflowID)
+				common.Log.Warningf("failed to initialize axiom workflow: %s", *m.WorkflowID)
 				return false
 			}
 
 			workflow.Worksteps = make([]*WorkstepInstance, 0)
 		}
 
-		if baselineContext == nil {
-			common.Log.Debug("initializing new baseline context...")
+		if axiomContext == nil {
+			common.Log.Debug("initializing new axiom context...")
 
-			baselineContextID, _ := uuid.NewV4()
-			baselineContext = &BaselineContext{
-				ID:         &baselineContextID,
-				BaselineID: m.BaselineID,
-				Records:    make([]*BaselineRecord, 0),
+			axiomContextID, _ := uuid.NewV4()
+			axiomContext = &AxiomContext{
+				ID:      &axiomContextID,
+				AxiomID: m.AxiomID,
+				Records: make([]*AxiomRecord, 0),
 			}
 
 			if workflow != nil {
-				baselineContext.Workflow = workflow
-				baselineContext.WorkflowID = &workflow.ID
+				axiomContext.Workflow = workflow
+				axiomContext.WorkflowID = &workflow.ID
 			}
 		}
 
-		baselineRecord = &BaselineRecord{
-			BaselineID: m.BaselineID,
-			ContextID:  baselineContext.ID,
-			Type:       m.Type,
-			Context:    baselineContext,
+		axiomRecord = &AxiomRecord{
+			AxiomID:   m.AxiomID,
+			ContextID: axiomContext.ID,
+			Type:      m.Type,
+			Context:   axiomContext,
 		}
 
-		err = baselineRecord.cache()
+		err = axiomRecord.cache()
 		if err != nil {
 			common.Log.Warning(err.Error())
 			return false
 		}
 
-		common.Log.Debugf("inbound baseline protocol message initialized baseline record; baseline id: %s; workflow id: %s; type: %s", m.BaselineID.String(), m.WorkflowID.String(), *m.Type)
+		common.Log.Debugf("inbound axiom protocol message initialized axiom record; axiom id: %s; workflow id: %s; type: %s", m.AxiomID.String(), m.WorkflowID.String(), *m.Type)
 	}
 
 	err := m.verify(true)
 	if err != nil {
-		common.Log.Warningf("failed to verify inbound baseline protocol message; invalid state transition; %s", err.Error())
+		common.Log.Warningf("failed to verify inbound axiom protocol message; invalid state transition; %s", err.Error())
 		return false
 	}
 
@@ -356,15 +356,15 @@ func (m *ProtocolMessage) baselineInbound() bool {
 		return false
 	}
 
-	if baselineRecord.ID == nil {
-		// TODO -- map baseline record id -> internal record id (i.e, this is currently done but lazily on outbound message)
+	if axiomRecord.ID == nil {
+		// TODO -- map axiom record id -> internal record id (i.e, this is currently done but lazily on outbound message)
 		resp, err := system.CreateObject(map[string]interface{}{
-			"baseline_id": baselineRecord.BaselineID.String(),
-			"payload":     m.Payload.Object,
-			"type":        m.Type,
+			"axiom_id": axiomRecord.AxiomID.String(),
+			"payload":  m.Payload.Object,
+			"type":     m.Type,
 		})
 		if err != nil {
-			common.Log.Warningf("failed to create business object during inbound baseline; %s", err.Error())
+			common.Log.Warningf("failed to create business object during inbound axiom; %s", err.Error())
 			return false
 		}
 		common.Log.Debugf("received response from internal system of record; %s", resp)
@@ -372,16 +372,16 @@ func (m *ProtocolMessage) baselineInbound() bool {
 		const defaultIDField = "id"
 
 		if id, idOk := resp.(map[string]interface{})[defaultIDField].(string); idOk {
-			baselineRecord.ID = common.StringOrNil(id)
-			baselineRecord.cache()
+			axiomRecord.ID = common.StringOrNil(id)
+			axiomRecord.cache()
 		} else {
-			common.Log.Warning("failed to create business object during inbound baseline; no id present in response")
+			common.Log.Warning("failed to create business object during inbound axiom; no id present in response")
 			return false
 		}
 	} else {
-		err := system.UpdateObject(*baselineRecord.ID, m.Payload.Object)
+		err := system.UpdateObject(*axiomRecord.ID, m.Payload.Object)
 		if err != nil {
-			common.Log.Warningf("failed to create business object during inbound baseline; %s", err.Error())
+			common.Log.Warningf("failed to create business object during inbound axiom; %s", err.Error())
 			return false
 		}
 	}
@@ -394,9 +394,9 @@ func (m *ProtocolMessage) baselineInbound() bool {
 // prove generates a zk proof using the underlying message
 // TODO-- this is deprecated and currently unused; it should likely be removed
 func (m *Message) prove() error {
-	baselineRecord := lookupBaselineRecordByInternalID(*m.ID)
-	if baselineRecord == nil {
-		common.Log.Debugf("no baseline record resolved for internal identifier: %s", *m.ID)
+	axiomRecord := lookupAxiomRecordByInternalID(*m.ID)
+	if axiomRecord == nil {
+		common.Log.Debugf("no axiom record resolved for internal identifier: %s", *m.ID)
 	}
 
 	token, err := vendOrganizationAccessToken(m.subjectAccount)
@@ -404,11 +404,11 @@ func (m *Message) prove() error {
 		return nil
 	}
 
-	index := len(baselineRecord.Context.Workflow.Worksteps) - 1
-	if index < 0 || index >= len(baselineRecord.Context.Workflow.Worksteps) {
+	index := len(axiomRecord.Context.Workflow.Worksteps) - 1
+	if index < 0 || index >= len(axiomRecord.Context.Workflow.Worksteps) {
 		return fmt.Errorf("failed to resolve workstep/prover at index: %d; index out of range", index)
 	}
-	prover := baselineRecord.Context.Workflow.Worksteps[index].Prover
+	prover := axiomRecord.Context.Workflow.Worksteps[index].Prover
 
 	resp, err := privacy.Prove(*token, prover.ID.String(), map[string]interface{}{
 		"witness": m.ProtocolMessage.Payload.Witness,
@@ -426,9 +426,9 @@ func (m *Message) prove() error {
 // verify the underlying protocol message, optionally storing
 // the proof for the associated workstep
 func (m *ProtocolMessage) verify(store bool) error {
-	baselineRecord := lookupBaselineRecord(m.BaselineID.String())
-	if baselineRecord == nil {
-		common.Log.Debugf("no baseline record cached for baseline record id: %s", m.BaselineID.String())
+	axiomRecord := lookupAxiomRecord(m.AxiomID.String())
+	if axiomRecord == nil {
+		common.Log.Debugf("no axiom record cached for axiom record id: %s", m.AxiomID.String())
 	}
 
 	token, err := vendOrganizationAccessToken(m.subjectAccount)
@@ -436,11 +436,11 @@ func (m *ProtocolMessage) verify(store bool) error {
 		return nil
 	}
 
-	index := len(baselineRecord.Context.Workflow.Worksteps) - 1
-	if index < 0 || index >= len(baselineRecord.Context.Workflow.Worksteps) {
+	index := len(axiomRecord.Context.Workflow.Worksteps) - 1
+	if index < 0 || index >= len(axiomRecord.Context.Workflow.Worksteps) {
 		return fmt.Errorf("failed to resolve workstep/prover at index: %d; index out of range", index)
 	}
-	prover := baselineRecord.Context.Workflow.Worksteps[index].Prover
+	prover := axiomRecord.Context.Workflow.Worksteps[index].Prover
 
 	resp, err := privacy.Verify(*token, prover.ID.String(), map[string]interface{}{
 		"store":   store,

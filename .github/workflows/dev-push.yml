@@ -1,4 +1,4 @@
-name: Baseline (dev)
+name: Axiom (dev)
 on:
   push:
     branches:
@@ -21,31 +21,31 @@ jobs:
           path: 'ident'
           ref: dev
           token: ${{ secrets.DEPLOY_GITHUB_PAT }}             
-      - name: Checkout baseline
+      - name: Checkout axiom
         uses: actions/checkout@v2
         with:
-          path: 'baseline'
-      - run: docker-compose -f ./ops/docker-compose.yml build --no-cache baseline-api
-        working-directory: baseline
+          path: 'axiom'
+      - run: docker-compose -f ./ops/docker-compose.yml build --no-cache axiom-api
+        working-directory: axiom
       - run: docker-compose -f ./ops/docker-compose.yml up -d
-        working-directory: baseline
+        working-directory: axiom
       - run: TAGS=integration ./ops/run_local_tests_long.sh
-        working-directory: baseline
+        working-directory: axiom
       - run: docker-compose -f ./ops/docker-compose.yml logs
-        working-directory: baseline
+        working-directory: axiom
       - run: docker-compose -f ./ops/docker-compose.yml down
-        working-directory: baseline
+        working-directory: axiom
       - run: docker volume rm ops_prvd-db
-        working-directory: baseline   
+        working-directory: axiom   
       - name: Push Docker Image
         if: success()
         uses: docker/build-push-action@v1
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_PAT }}
-          repository: provide/baseline
+          repository: provide/axiom
           tags: dev
-          path: 'baseline'
+          path: 'axiom'
       - name: Send Slack Notification
         if: failure()  
         uses: act10ns/slack@v1

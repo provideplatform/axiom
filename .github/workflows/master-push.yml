@@ -1,4 +1,4 @@
-name: Baseline
+name: Axiom
 on: 
   push:
     branches:
@@ -22,31 +22,31 @@ jobs:
           path: 'ident'
           ref: master
           token: ${{ secrets.DEPLOY_GITHUB_PAT }}
-      - name: Checkout baseline
+      - name: Checkout axiom
         uses: actions/checkout@v2
         with:
-          path: 'baseline'
-      - run: docker-compose -f ./ops/docker-compose.yml build --no-cache baseline-api
-        working-directory: baseline
+          path: 'axiom'
+      - run: docker-compose -f ./ops/docker-compose.yml build --no-cache axiom-api
+        working-directory: axiom
       - run: docker-compose -f ./ops/docker-compose.yml up -d
-        working-directory: baseline
+        working-directory: axiom
       - run: TAGS=integration ./ops/run_local_tests_long.sh
-        working-directory: baseline
+        working-directory: axiom
       - run: docker-compose -f ./ops/docker-compose.yml logs
-        working-directory: baseline
+        working-directory: axiom
       - run: docker-compose -f ./ops/docker-compose.yml down
-        working-directory: baseline
+        working-directory: axiom
       - run: docker volume rm ops_prvd-db
-        working-directory: baseline
+        working-directory: axiom
       - name: Push Docker Image
         if: success()
         uses: docker/build-push-action@v1
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_PAT }}
-          repository: provide/baseline
+          repository: provide/axiom
           tags: "latest"
-          path: 'baseline'
+          path: 'axiom'
       - name: Send Slack Notification
         if: failure()  
         uses: act10ns/slack@v1
@@ -67,10 +67,10 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.PRODUCTION_AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: ${{ secrets.PRODUCTION_AWS_DEFAULT_REGION }}
           AWS_DEFAULT_OUTPUT: json
-          ECR_REPOSITORY_NAME: provide/baseline
-          ECS_TASK_DEFINITION_FAMILY: baseline
+          ECR_REPOSITORY_NAME: provide/axiom
+          ECS_TASK_DEFINITION_FAMILY: axiom
           ECS_CLUSTER: production
-          ECS_SERVICE_NAME: baseline
+          ECS_SERVICE_NAME: axiom
           RUN_INTEGRATION_SUITE: false
         run: |
           chmod +x "${GITHUB_WORKSPACE}/ops/ci-process.sh"
@@ -89,10 +89,10 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.PRODUCTION_AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: ${{ secrets.PRODUCTION_AWS_DEFAULT_REGION }}
           AWS_DEFAULT_OUTPUT: json
-          ECR_REPOSITORY_NAME: provide/baseline
-          ECS_TASK_DEFINITION_FAMILY: baseline-consumer
+          ECR_REPOSITORY_NAME: provide/axiom
+          ECS_TASK_DEFINITION_FAMILY: axiom-consumer
           ECS_CLUSTER: production
-          ECS_SERVICE_NAME: baseline-consumer
+          ECS_SERVICE_NAME: axiom-consumer
           RUN_INTEGRATION_SUITE: false
         run: |
           chmod +x "${GITHUB_WORKSPACE}/ops/ci-process.sh"

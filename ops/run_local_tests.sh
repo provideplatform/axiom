@@ -32,15 +32,15 @@ if [[ -z "${DATABASE_HOST}" ]]; then
 fi
 
 if [[ -z "${DATABASE_NAME}" ]]; then
-  DATABASE_NAME=baseline_dev
+  DATABASE_NAME=axiom_dev
 fi
 
 if [[ -z "${DATABASE_USER}" ]]; then
-  DATABASE_USER=baseline
+  DATABASE_USER=axiom
 fi
 
 if [[ -z "${DATABASE_PASSWORD}" ]]; then
-  DATABASE_PASSWORD=baseline
+  DATABASE_PASSWORD=axiom
 fi
 
 if [[ -z "${DATABASE_SUPERUSER}" ]]; then

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package baseline
+package axiom
 
 import (
 	"encoding/json"
@@ -27,64 +27,64 @@ import (
 	natsutil "github.com/kthomas/go-natsutil"
 	uuid "github.com/kthomas/go.uuid"
 	"github.com/nats-io/nats.go"
-	"github.com/provideplatform/baseline/common"
+	"github.com/provideplatform/axiom/common"
 	"github.com/provideplatform/provide-go/api"
-	"github.com/provideplatform/provide-go/api/baseline"
+	"github.com/provideplatform/provide-go/api/axiom"
 	"github.com/provideplatform/provide-go/api/ident"
 	"github.com/provideplatform/provide-go/api/nchain"
 	"github.com/provideplatform/provide-go/api/privacy"
 	"github.com/provideplatform/provide-go/api/vault"
 )
 
-const defaultNatsStream = "baseline"
+const defaultNatsStream = "axiom"
 
 const protomsgPayloadTypeMapping = "mapping"
 const protomsgPayloadTypeProof = "proof"
 const protomsgPayloadTypeProver = "prover"
 const protomsgPayloadTypeWorkflow = "workflow"
 
-const natsDispatchInvitationSubject = "baseline.invitation.outbound"
+const natsDispatchInvitationSubject = "axiom.invitation.outbound"
 const natsDispatchInvitationMaxInFlight = 2048
 const dispatchInvitationAckWait = time.Second * 30
 const natsDispatchInvitationMaxDeliveries = 10
 
-const natsBaselineWorkflowDeployMessageSubject = "baseline.workflow.deploy"
-const natsBaselineWorkflowDeployMessageMaxInFlight = 2048
-const baselineWorkflowDeployMessageAckWait = time.Second * 5
-const natsBaselineWorkflowDeployMessageMaxDeliveries = 500
+const natsAxiomWorkflowDeployMessageSubject = "axiom.workflow.deploy"
+const natsAxiomWorkflowDeployMessageMaxInFlight = 2048
+const axiomWorkflowDeployMessageAckWait = time.Second * 5
+const natsAxiomWorkflowDeployMessageMaxDeliveries = 500
 
-const natsBaselineWorkstepDeployMessageSubject = "baseline.workstep.deploy"
-const natsBaselineWorkstepDeployMessageMaxInFlight = 2048
-const baselineWorkstepDeployMessageAckWait = time.Second * 30
-const natsBaselineWorkstepDeployMessageMaxDeliveries = 10
+const natsAxiomWorkstepDeployMessageSubject = "axiom.workstep.deploy"
+const natsAxiomWorkstepDeployMessageMaxInFlight = 2048
+const axiomWorkstepDeployMessageAckWait = time.Second * 30
+const natsAxiomWorkstepDeployMessageMaxDeliveries = 10
 
-const natsBaselineWorkstepFinalizeDeployMessageSubject = "baseline.workstep.deploy.finalize"
-const natsBaselineWorkstepFinalizeDeployMessageMaxInFlight = 2048
-const baselineWorkstepFinalizeDeployMessageAckWait = time.Second * 5
-const natsBaselineWorkstepFinalizeDeployMessageMaxDeliveries = 1000
+const natsAxiomWorkstepFinalizeDeployMessageSubject = "axiom.workstep.deploy.finalize"
+const natsAxiomWorkstepFinalizeDeployMessageMaxInFlight = 2048
+const axiomWorkstepFinalizeDeployMessageAckWait = time.Second * 5
+const natsAxiomWorkstepFinalizeDeployMessageMaxDeliveries = 1000
 
-const natsDispatchProtocolMessageSubject = "baseline.protocolmessage.outbound"
+const natsDispatchProtocolMessageSubject = "axiom.protocolmessage.outbound"
 const natsDispatchProtocolMessageMaxInFlight = 2048
 const dispatchProtocolMessageAckWait = time.Second * 30
 const natsDispatchProtocolMessageMaxDeliveries = 10
 
-const natsBaselineProxyInboundSubject = "baseline.inbound"
-const natsBaselineProxyInboundMaxInFlight = 2048
-const baselineProxyInboundAckWait = time.Second * 30
-const natsBaselineProxyInboundMaxDeliveries = 10
+const natsAxiomProxyInboundSubject = "axiom.inbound"
+const natsAxiomProxyInboundMaxInFlight = 2048
+const axiomProxyInboundAckWait = time.Second * 30
+const natsAxiomProxyInboundMaxDeliveries = 10
 
-const natsSubjectAccountRegistrationSubject = "baseline.subject-account.registration"
+const natsSubjectAccountRegistrationSubject = "axiom.subject-account.registration"
 const natsSubjectAccountRegistrationMaxInFlight = 256
 const natsSubjectAccountRegistrationAckWait = time.Minute * 1
 const natsSubjectAccountRegistrationMaxDeliveries = 10
 
-const natsWorkgroupSyncSubject = "baseline.workgroup.*.sync"
+const natsWorkgroupSyncSubject = "axiom.workgroup.*.sync"
 const natsWorkgroupSyncMaxInFlight = 256
 const natsWorkgroupSyncAckWait = time.Minute * 1
 const natsWorkgroupSyncMaxDeliveries = 10
 
-const natsBaselineSubject = "baseline"
-const baselineProxyAckWait = time.Second * 30
+const natsAxiomSubject = "axiom"
+const axiomProxyAckWait = time.Second * 30
 
 // const organizationRegistrationTimeout = int64(natsOrganizationRegistrationAckWait * 10)
 const organizationRegistrationMethod = "registerOrg"
@@ -97,7 +97,7 @@ const contractTypeOrgRegistry = "organization-registry"
 // Message is a proxy-internal wrapper for protocol message handling
 type Message struct {
 	ID              *string          `sql:"-" json:"id,omitempty"`
-	BaselineID      *uuid.UUID       `sql:"-" json:"baseline_id,omitempty"` // optional; when included, can be used to map outbound message just-in-time
+	AxiomID         *uuid.UUID       `sql:"-" json:"axiom_id,omitempty"` // optional; when included, can be used to map outbound message just-in-time
 	Errors          []*api.Error     `sql:"-" json:"errors,omitempty"`
 	MessageID       *string          `sql:"-" json:"message_id,omitempty"`
 	Payload         interface{}      `sql:"-" json:"payload,omitempty"`
@@ -107,22 +107,22 @@ type Message struct {
 	Type            *string          `sql:"-" json:"type,omitempty"`
 	WorkgroupID     *uuid.UUID       `sql:"-" json:"workgroup_id,omitempty"`
 
-	// HACK -- convenience ptr ... for access during baselineOutbound()
+	// HACK -- convenience ptr ... for access during axiomOutbound()
 	subjectAccount *SubjectAccount `sql:"-" json:"-"`
 	//token          *string         `sql:"-" json:"-"`
 }
 
-// ProtocolMessage is a baseline protocol message
-// see https://github.com/ethereum-oasis/baseline/blob/master/core/types/src/protocol.ts
+// ProtocolMessage is a axiom protocol message
+// see https://github.com/ethereum-oasis/axiom/blob/master/core/types/src/protocol.ts
 type ProtocolMessage struct {
-	BaselineID *uuid.UUID              `sql:"-" json:"baseline_id,omitempty"`
-	Opcode     *string                 `sql:"-" json:"opcode,omitempty"`
-	Sender     *string                 `sql:"-" json:"sender,omitempty"`
-	Recipient  *string                 `sql:"-" json:"recipient,omitempty"`
-	Shield     *string                 `sql:"-" json:"shield,omitempty"`
-	Signature  *string                 `sql:"-" json:"signature,omitempty"`
-	Type       *string                 `sql:"-" json:"type,omitempty"`
-	Payload    *ProtocolMessagePayload `sql:"-" json:"payload,omitempty"`
+	AxiomID   *uuid.UUID              `sql:"-" json:"axiom_id,omitempty"`
+	Opcode    *string                 `sql:"-" json:"opcode,omitempty"`
+	Sender    *string                 `sql:"-" json:"sender,omitempty"`
+	Recipient *string                 `sql:"-" json:"recipient,omitempty"`
+	Shield    *string                 `sql:"-" json:"shield,omitempty"`
+	Signature *string                 `sql:"-" json:"signature,omitempty"`
+	Type      *string                 `sql:"-" json:"type,omitempty"`
+	Payload   *ProtocolMessagePayload `sql:"-" json:"payload,omitempty"`
 
 	SubjectAccountID *string `sql:"-" json:"subject_account_id,omitempty"`
 
@@ -130,11 +130,11 @@ type ProtocolMessage struct {
 	WorkflowID  *uuid.UUID `sql:"-" json:"workflow_id,omitempty"`
 	WorkstepID  *uuid.UUID `sql:"-" json:"workstep_id,omitempty"`
 
-	// HACK -- convenience ptr ... for access during baselineInbound()
+	// HACK -- convenience ptr ... for access during axiomInbound()
 	subjectAccount *SubjectAccount `sql:"-" json:"-"`
 }
 
-// ProtocolMessagePayload is a baseline protocol message payload
+// ProtocolMessagePayload is a axiom protocol message payload
 type ProtocolMessagePayload struct {
 	Object  map[string]interface{} `sql:"-" json:"object,omitempty"`
 	Proof   *string                `sql:"-" json:"proof,omitempty"`
@@ -144,7 +144,7 @@ type ProtocolMessagePayload struct {
 
 func init() {
 	if !common.ConsumeNATSStreamingSubscriptions {
-		common.Log.Debug("baseline package consumer configured to skip NATS streaming subscription setup")
+		common.Log.Debug("axiom package consumer configured to skip NATS streaming subscription setup")
 		return
 	}
 
@@ -155,34 +155,34 @@ func init() {
 		fmt.Sprintf("%s.>", defaultNatsStream),
 	})
 
-	createNatsBaselineProxySubscriptions(&waitGroup)
-	createNatsBaselineWorkflowDeploySubscriptions(&waitGroup)
-	createNatsBaselineWorkstepDeploySubscriptions(&waitGroup)
-	createNatsBaselineWorkstepFinalizeDeploySubscriptions(&waitGroup)
+	createNatsAxiomProxySubscriptions(&waitGroup)
+	createNatsAxiomWorkflowDeploySubscriptions(&waitGroup)
+	createNatsAxiomWorkstepDeploySubscriptions(&waitGroup)
+	createNatsAxiomWorkstepFinalizeDeploySubscriptions(&waitGroup)
 	createNatsDispatchInvitationSubscriptions(&waitGroup)
 	createNatsDispatchProtocolMessageSubscriptions(&waitGroup)
 	createNatsSubjectAccountRegistrationSubscriptions(&waitGroup)
 }
 
-func createNatsBaselineProxySubscriptions(wg *sync.WaitGroup) {
+func createNatsAxiomProxySubscriptions(wg *sync.WaitGroup) {
 	for i := uint64(0); i < natsutil.GetNatsConsumerConcurrency(); i++ {
 		natsutil.RequireNatsJetstreamSubscription(wg,
-			baselineProxyInboundAckWait,
-			natsBaselineProxyInboundSubject,
-			natsBaselineProxyInboundSubject,
-			natsBaselineProxyInboundSubject,
-			consumeBaselineProxyInboundSubscriptionsMsg,
-			baselineProxyAckWait,
-			natsBaselineProxyInboundMaxInFlight,
-			natsBaselineProxyInboundMaxDeliveries,
+			axiomProxyInboundAckWait,
+			natsAxiomProxyInboundSubject,
+			natsAxiomProxyInboundSubject,
+			natsAxiomProxyInboundSubject,
+			consumeAxiomProxyInboundSubscriptionsMsg,
+			axiomProxyAckWait,
+			natsAxiomProxyInboundMaxInFlight,
+			natsAxiomProxyInboundMaxDeliveries,
 			nil,
 		)
 	}
 
 	conn, _ := natsutil.GetSharedNatsConnection(nil)
-	conn.Subscribe(natsBaselineSubject, func(msg *nats.Msg) {
+	conn.Subscribe(natsAxiomSubject, func(msg *nats.Msg) {
 		common.Log.Debugf("consuming %d-byte NATS inbound protocol message on subject: %s", len(msg.Data), msg.Subject)
-		_, err := natsutil.NatsJetstreamPublish(natsBaselineProxyInboundSubject, msg.Data)
+		_, err := natsutil.NatsJetstreamPublish(natsAxiomProxyInboundSubject, msg.Data)
 		if err != nil {
 			common.Log.Warningf("failed to publish inbound protocol message to local jetstream consumers; %s", err.Error())
 			msg.Nak()
@@ -193,49 +193,49 @@ func createNatsBaselineProxySubscriptions(wg *sync.WaitGroup) {
 	})
 }
 
-func createNatsBaselineWorkflowDeploySubscriptions(wg *sync.WaitGroup) {
+func createNatsAxiomWorkflowDeploySubscriptions(wg *sync.WaitGroup) {
 	for i := uint64(0); i < natsutil.GetNatsConsumerConcurrency(); i++ {
 		natsutil.RequireNatsJetstreamSubscription(wg,
-			baselineWorkflowDeployMessageAckWait,
-			natsBaselineWorkflowDeployMessageSubject,
-			natsBaselineWorkflowDeployMessageSubject,
-			natsBaselineWorkflowDeployMessageSubject,
-			consumeBaselineWorkflowFinalizeDeploySubscriptionsMsg,
-			baselineWorkflowDeployMessageAckWait,
-			natsBaselineWorkflowDeployMessageMaxInFlight,
-			natsBaselineWorkflowDeployMessageMaxDeliveries,
+			axiomWorkflowDeployMessageAckWait,
+			natsAxiomWorkflowDeployMessageSubject,
+			natsAxiomWorkflowDeployMessageSubject,
+			natsAxiomWorkflowDeployMessageSubject,
+			consumeAxiomWorkflowFinalizeDeploySubscriptionsMsg,
+			axiomWorkflowDeployMessageAckWait,
+			natsAxiomWorkflowDeployMessageMaxInFlight,
+			natsAxiomWorkflowDeployMessageMaxDeliveries,
 			nil,
 		)
 	}
 }
 
-func createNatsBaselineWorkstepDeploySubscriptions(wg *sync.WaitGroup) {
+func createNatsAxiomWorkstepDeploySubscriptions(wg *sync.WaitGroup) {
 	for i := uint64(0); i < natsutil.GetNatsConsumerConcurrency(); i++ {
 		natsutil.RequireNatsJetstreamSubscription(wg,
-			baselineWorkstepDeployMessageAckWait,
-			natsBaselineWorkstepDeployMessageSubject,
-			natsBaselineWorkstepDeployMessageSubject,
-			natsBaselineWorkstepDeployMessageSubject,
-			consumeBaselineWorkstepDeploySubscriptionsMsg,
-			baselineWorkstepDeployMessageAckWait,
-			natsBaselineWorkstepDeployMessageMaxInFlight,
-			natsBaselineWorkstepDeployMessageMaxDeliveries,
+			axiomWorkstepDeployMessageAckWait,
+			natsAxiomWorkstepDeployMessageSubject,
+			natsAxiomWorkstepDeployMessageSubject,
+			natsAxiomWorkstepDeployMessageSubject,
+			consumeAxiomWorkstepDeploySubscriptionsMsg,
+			axiomWorkstepDeployMessageAckWait,
+			natsAxiomWorkstepDeployMessageMaxInFlight,
+			natsAxiomWorkstepDeployMessageMaxDeliveries,
 			nil,
 		)
 	}
 }
 
-func createNatsBaselineWorkstepFinalizeDeploySubscriptions(wg *sync.WaitGroup) {
+func createNatsAxiomWorkstepFinalizeDeploySubscriptions(wg *sync.WaitGroup) {
 	for i := uint64(0); i < natsutil.GetNatsConsumerConcurrency(); i++ {
 		natsutil.RequireNatsJetstreamSubscription(wg,
-			baselineWorkstepFinalizeDeployMessageAckWait,
-			natsBaselineWorkstepFinalizeDeployMessageSubject,
-			natsBaselineWorkstepFinalizeDeployMessageSubject,
-			natsBaselineWorkstepFinalizeDeployMessageSubject,
-			consumeBaselineWorkstepFinalizeDeploySubscriptionsMsg,
-			baselineWorkstepFinalizeDeployMessageAckWait,
-			natsBaselineWorkstepFinalizeDeployMessageMaxInFlight,
-			natsBaselineWorkstepFinalizeDeployMessageMaxDeliveries,
+			axiomWorkstepFinalizeDeployMessageAckWait,
+			natsAxiomWorkstepFinalizeDeployMessageSubject,
+			natsAxiomWorkstepFinalizeDeployMessageSubject,
+			natsAxiomWorkstepFinalizeDeployMessageSubject,
+			consumeAxiomWorkstepFinalizeDeploySubscriptionsMsg,
+			axiomWorkstepFinalizeDeployMessageAckWait,
+			natsAxiomWorkstepFinalizeDeployMessageMaxInFlight,
+			natsAxiomWorkstepFinalizeDeployMessageMaxDeliveries,
 			nil,
 		)
 	}
@@ -293,7 +293,7 @@ func createNatsSubjectAccountRegistrationSubscriptions(wg *sync.WaitGroup) {
 	}
 }
 
-func consumeBaselineProxyInboundSubscriptionsMsg(msg *nats.Msg) {
+func consumeAxiomProxyInboundSubscriptionsMsg(msg *nats.Msg) {
 	common.Log.Debugf("consuming %d-byte NATS inbound protocol message on internal subject: %s", len(msg.Data), msg.Subject)
 
 	protomsg := &ProtocolMessage{}
@@ -320,7 +320,7 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *nats.Msg) {
 	var workflow *Workflow
 	var subjectAccountID *string
 
-	org := lookupBaselineOrganization(*protomsg.Recipient)
+	org := lookupAxiomOrganization(*protomsg.Recipient)
 	if org != nil || org.Metadata == nil {
 		common.Log.Warning("failed to resolve recipient organization for inbound protocol message")
 		msg.Nak()
@@ -356,7 +356,7 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *nats.Msg) {
 	}
 
 	switch *protomsg.Opcode {
-	case baseline.ProtocolMessageOpcodeBaseline:
+	case axiom.ProtocolMessageOpcodeAxiom:
 		if protomsg.WorkgroupID == nil {
 			common.Log.Warningf("inbound protocol message specified invalid workgroup identifier; %s", err.Error())
 			msg.Term()
@@ -387,23 +387,23 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *nats.Msg) {
 			return
 		}
 
-		success := protomsg.baselineInbound()
+		success := protomsg.axiomInbound()
 		if !success {
-			common.Log.Warning("failed to baseline inbound protocol message")
+			common.Log.Warning("failed to axiom inbound protocol message")
 			return
 		}
 
-	case baseline.ProtocolMessageOpcodeJoin:
+	case axiom.ProtocolMessageOpcodeJoin:
 		common.Log.Warningf("JOIN opcode not yet implemented")
 		// const payload = JSON.parse(msg.payload.toString());
 		// const messagingEndpoint = await this.resolveMessagingEndpoint(payload.address);
 		// if (!messagingEndpoint || !payload.address || !payload.verifiable_credential) {
-		//   return Promise.reject('failed to handle baseline JOIN protocol message');
+		//   return Promise.reject('failed to handle axiom JOIN protocol message');
 		// }
 		// this.workgroupCounterparties.push(payload.address);
 		// this.natsBearerTokens[messagingEndpoint] = payload.verifiable_credential;
 
-		// const prover = JSON.parse(JSON.stringify(this.baselineCircuit));
+		// const prover = JSON.parse(JSON.stringify(this.axiomCircuit));
 		// prover.proving_scheme = prover.provingScheme;
 		// prover.verifier_contract = prover.verifierContract;
 		// delete prover.verifierContract;
@@ -420,7 +420,7 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *nats.Msg) {
 		//   payload: prover,
 		// });
 
-	case baseline.ProtocolMessageOpcodeSync:
+	case axiom.ProtocolMessageOpcodeSync:
 		token, err := vendOrganizationAccessToken(protomsg.subjectAccount)
 		if err != nil {
 			common.Log.Warningf("failed to handle inbound sync protocol message; %s", err.Error())
@@ -500,10 +500,10 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *nats.Msg) {
 				return
 			}
 
-			if protomsg.BaselineID != nil {
-				err = workflow.CacheByBaselineID(protomsg.BaselineID.String())
+			if protomsg.AxiomID != nil {
+				err = workflow.CacheByAxiomID(protomsg.AxiomID.String())
 				if err != nil {
-					common.Log.Warningf("failed to handle inbound sync protocol message; failed to cache workflow identifier by baseline id; %s", err.Error())
+					common.Log.Warningf("failed to handle inbound sync protocol message; failed to cache workflow identifier by axiom id; %s", err.Error())
 					msg.Nak()
 					return
 				}
@@ -524,21 +524,21 @@ func consumeBaselineProxyInboundSubscriptionsMsg(msg *nats.Msg) {
 	msg.Ack()
 }
 
-func consumeBaselineWorkflowFinalizeDeploySubscriptionsMsg(msg *nats.Msg) {
-	common.Log.Debugf("consuming %d-byte NATS baseline workflow deploy message on subject: %s", len(msg.Data), msg.Subject)
+func consumeAxiomWorkflowFinalizeDeploySubscriptionsMsg(msg *nats.Msg) {
+	common.Log.Debugf("consuming %d-byte NATS axiom workflow deploy message on subject: %s", len(msg.Data), msg.Subject)
 
 	var params map[string]interface{}
 
 	err := json.Unmarshal(msg.Data, &params)
 	if err != nil {
-		common.Log.Warningf("failed to umarshal baseline workflow deploy message; %s", err.Error())
+		common.Log.Warningf("failed to umarshal axiom workflow deploy message; %s", err.Error())
 		msg.Nak()
 		return
 	}
 
 	workflowID, err := uuid.FromString(params["workflow_id"].(string))
 	if err != nil {
-		common.Log.Warningf("failed to parse baseline workflow id; %s", err.Error())
+		common.Log.Warningf("failed to parse axiom workflow id; %s", err.Error())
 		msg.Nak()
 		return
 	}
@@ -574,14 +574,14 @@ func consumeBaselineWorkflowFinalizeDeploySubscriptionsMsg(msg *nats.Msg) {
 	}
 }
 
-func consumeBaselineWorkstepDeploySubscriptionsMsg(msg *nats.Msg) {
-	common.Log.Debugf("consuming %d-byte NATS baseline workstep deploy message on subject: %s", len(msg.Data), msg.Subject)
+func consumeAxiomWorkstepDeploySubscriptionsMsg(msg *nats.Msg) {
+	common.Log.Debugf("consuming %d-byte NATS axiom workstep deploy message on subject: %s", len(msg.Data), msg.Subject)
 
 	var params map[string]interface{}
 
 	err := json.Unmarshal(msg.Data, &params)
 	if err != nil {
-		common.Log.Warningf("failed to umarshal baseline workstep deploy message; %s", err.Error())
+		common.Log.Warningf("failed to umarshal axiom workstep deploy message; %s", err.Error())
 		msg.Nak()
 		return
 	}
@@ -595,21 +595,21 @@ func consumeBaselineWorkstepDeploySubscriptionsMsg(msg *nats.Msg) {
 
 	workstepID, err := uuid.FromString(params["workstep_id"].(string))
 	if err != nil {
-		common.Log.Warningf("failed to parse baseline workstep id; %s", err.Error())
+		common.Log.Warningf("failed to parse axiom workstep id; %s", err.Error())
 		msg.Nak()
 		return
 	}
 
 	workstep := FindWorkstepByID(workstepID)
 	if workstep == nil {
-		common.Log.Warningf("failed to resolve baseline workstep: %s", workstepID)
+		common.Log.Warningf("failed to resolve axiom workstep: %s", workstepID)
 		msg.Nak()
 		return
 	}
 
 	workflow := FindWorkflowByID(*workstep.WorkflowID)
 	if workflow == nil {
-		common.Log.Errorf("failed to resolve baseline workflow: %s", workstep.WorkflowID)
+		common.Log.Errorf("failed to resolve axiom workflow: %s", workstep.WorkflowID)
 		msg.Nak()
 		return
 	}
@@ -651,14 +651,14 @@ func consumeBaselineWorkstepDeploySubscriptionsMsg(msg *nats.Msg) {
 	}
 }
 
-func consumeBaselineWorkstepFinalizeDeploySubscriptionsMsg(msg *nats.Msg) {
-	common.Log.Debugf("consuming %d-byte NATS baseline workstep finalize deploy message on subject: %s", len(msg.Data), msg.Subject)
+func consumeAxiomWorkstepFinalizeDeploySubscriptionsMsg(msg *nats.Msg) {
+	common.Log.Debugf("consuming %d-byte NATS axiom workstep finalize deploy message on subject: %s", len(msg.Data), msg.Subject)
 
 	var params map[string]interface{}
 
 	err := json.Unmarshal(msg.Data, &params)
 	if err != nil {
-		common.Log.Warningf("failed to umarshal baseline workstep finalize deploy message; %s", err.Error())
+		common.Log.Warningf("failed to umarshal axiom workstep finalize deploy message; %s", err.Error())
 		msg.Nak()
 		return
 	}
@@ -672,21 +672,21 @@ func consumeBaselineWorkstepFinalizeDeploySubscriptionsMsg(msg *nats.Msg) {
 
 	workstepID, err := uuid.FromString(params["workstep_id"].(string))
 	if err != nil {
-		common.Log.Warningf("failed to parse baseline workstep id; %s", err.Error())
+		common.Log.Warningf("failed to parse axiom workstep id; %s", err.Error())
 		msg.Nak()
 		return
 	}
 
 	workstep := FindWorkstepByID(workstepID)
 	if workstep == nil {
-		common.Log.Warningf("failed to resolve baseline workstep: %s", workstepID)
+		common.Log.Warningf("failed to resolve axiom workstep: %s", workstepID)
 		msg.Nak()
 		return
 	}
 
 	workflow := FindWorkflowByID(*workstep.WorkflowID)
 	if workflow == nil {
-		common.Log.Warningf("failed to resolve baseline workflow: %s", workstep.WorkflowID)
+		common.Log.Warningf("failed to resolve axiom workflow: %s", workstep.WorkflowID)
 		msg.Nak()
 		return
 	}
@@ -751,7 +751,7 @@ func consumeDispatchProtocolMessageSubscriptionsMsg(msg *nats.Msg) {
 	var params map[string]interface{}
 	err := json.Unmarshal(msg.Data, &params)
 	if err != nil {
-		common.Log.Warningf("failed to umarshal baseline workstep finalize deploy message; %s", err.Error())
+		common.Log.Warningf("failed to umarshal axiom workstep finalize deploy message; %s", err.Error())
 		msg.Nak()
 		return
 	}
@@ -788,7 +788,7 @@ func consumeDispatchProtocolMessageSubscriptionsMsg(msg *nats.Msg) {
 	if protomsg.WorkgroupID != nil {
 		workgroup = FindWorkgroupByID(*protomsg.WorkgroupID)
 		if workgroup == nil {
-			common.Log.Warningf("failed to resolve baseline workgroup: %s", protomsg.WorkgroupID)
+			common.Log.Warningf("failed to resolve axiom workgroup: %s", protomsg.WorkgroupID)
 			msg.Nak()
 			return
 		}
@@ -797,7 +797,7 @@ func consumeDispatchProtocolMessageSubscriptionsMsg(msg *nats.Msg) {
 	if protomsg.WorkflowID != nil {
 		workflow = FindWorkflowByID(*protomsg.WorkflowID)
 		if workflow == nil {
-			common.Log.Warningf("failed to resolve baseline workflow: %s", protomsg.WorkflowID)
+			common.Log.Warningf("failed to resolve axiom workflow: %s", protomsg.WorkflowID)
 			msg.Nak()
 			return
 		}
@@ -842,16 +842,16 @@ func consumeDispatchProtocolMessageSubscriptionsMsg(msg *nats.Msg) {
 		return
 	}
 
-	url := subjectAccount.lookupBaselineOrganizationMessagingEndpoint(*protomsg.Recipient)
+	url := subjectAccount.lookupAxiomOrganizationMessagingEndpoint(*protomsg.Recipient)
 	if url == nil {
 		common.Log.Warningf("failed to lookup recipient messaging endpoint: %s", *protomsg.Recipient)
 		return
 	}
 
-	jwt := subjectAccount.lookupBaselineOrganizationIssuedVC(*protomsg.Recipient)
+	jwt := subjectAccount.lookupAxiomOrganizationIssuedVC(*protomsg.Recipient)
 	if jwt == nil {
 		// request a VC from the counterparty
-		jwt, err = subjectAccount.requestBaselineOrganizationIssuedVC(*protomsg.Recipient)
+		jwt, err = subjectAccount.requestAxiomOrganizationIssuedVC(*protomsg.Recipient)
 		if err != nil {
 			subjectAccount.resolveWorkgroupParticipants() // HACK-- this should not re-resolve all counterparties...
 
@@ -878,10 +878,10 @@ func consumeDispatchProtocolMessageSubscriptionsMsg(msg *nats.Msg) {
 
 	defer conn.Close()
 
-	err = conn.Publish(natsBaselineSubject, msg.Data)
+	err = conn.Publish(natsAxiomSubject, msg.Data)
 	if err != nil {
 		// clear cached endpoint so it will be re-fetched...
-		// counterparty := lookupBaselineOrganization(*protomsg.Recipient)
+		// counterparty := lookupAxiomOrganization(*protomsg.Recipient)
 		// counterparty.MessagingEndpoint = nil
 		// counterparty.Cache()
 
@@ -1131,14 +1131,14 @@ func consumeSubjectAccountRegistrationMsg(msg *nats.Msg) {
 func consumeWorkgroupSyncRequestMsg(msg *nats.Msg) {
 	defer func() {
 		if r := recover(); r != nil {
-			common.Log.Warningf("recovered in baseline workgroup sync request message on subject; %s", r)
+			common.Log.Warningf("recovered in axiom workgroup sync request message on subject; %s", r)
 			msg.Nak()
 		}
 	}()
 
-	common.Log.Debugf("consuming %d-byte NATS baseline workgroup sync request message on subject: %s", len(msg.Data), msg.Subject)
+	common.Log.Debugf("consuming %d-byte NATS axiom workgroup sync request message on subject: %s", len(msg.Data), msg.Subject)
 
-	var claims *BaselineClaims
+	var claims *AxiomClaims
 	err := json.Unmarshal(msg.Data, &claims)
 	if err != nil {
 		common.Log.Warningf("failed to umarshal payload from workgroup sync request message; %s", err.Error())
@@ -1147,7 +1147,7 @@ func consumeWorkgroupSyncRequestMsg(msg *nats.Msg) {
 	}
 
 	if claims.InvitorSubjectAccountID == nil {
-		common.Log.Warning("failed to accept workgroup invitation; no baseline invitor subject account id resolved from claims")
+		common.Log.Warning("failed to accept workgroup invitation; no axiom invitor subject account id resolved from claims")
 		msg.Term()
 		return
 	}
@@ -1162,7 +1162,7 @@ func consumeWorkgroupSyncRequestMsg(msg *nats.Msg) {
 	payload, _ := json.Marshal(subjectAccount)
 	err = msg.Respond(payload)
 	if err != nil {
-		common.Log.Warningf("failed to write payload in response to baseline workgroup sync request message on subject: %s", err.Error())
+		common.Log.Warningf("failed to write payload in response to axiom workgroup sync request message on subject: %s", err.Error())
 		msg.Nak()
 		return
 	}

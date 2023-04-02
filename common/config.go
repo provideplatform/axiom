@@ -36,15 +36,15 @@ import (
 const IndexerDocumentTypeInvertedIndexContext = "inverted_index_context"
 const IndexerDocumentTypeWorkflowPrototype = "workflow_prototype"
 
-const IndexerDocumentIndexBaselineContextInverted = "baseline.context.inverted"
-const IndexerDocumentIndexBaselineWorkflowPrototypes = "baseline.workflow.prototypes"
+const IndexerDocumentIndexAxiomContextInverted = "axiom.context.inverted"
+const IndexerDocumentIndexAxiomWorkflowPrototypes = "axiom.workflow.prototypes"
 
 var (
-	// BaselinePublicWorkgroupID is the configured public workgroup id, if any
-	BaselinePublicWorkgroupID *string
+	// AxiomPublicWorkgroupID is the configured public workgroup id, if any
+	AxiomPublicWorkgroupID *string
 
-	// BaselinePublicWorkgroupRefreshToken is an optional refresh token credential for a public workgroup
-	BaselinePublicWorkgroupRefreshToken *string
+	// AxiomPublicWorkgroupRefreshToken is an optional refresh token credential for a public workgroup
+	AxiomPublicWorkgroupRefreshToken *string
 
 	// ConsumeNATSStreamingSubscriptions is a flag the indicates if the ident instance is running in API or consumer mode
 	ConsumeNATSStreamingSubscriptions bool
@@ -73,7 +73,7 @@ var (
 
 func init() {
 	requireLogger()
-	requireBaselinePublicWorkgroup()
+	requireAxiomPublicWorkgroup()
 	requireElastic()
 	requireVault()
 
@@ -97,19 +97,19 @@ func requireElastic() {
 		Log.Panicf("failed to require elasticsearch client; %s", err.Error())
 	}
 
-	exists, _ := ElasticClient.IndexExists(IndexerDocumentIndexBaselineContextInverted).Do(context.Background())
+	exists, _ := ElasticClient.IndexExists(IndexerDocumentIndexAxiomContextInverted).Do(context.Background())
 	if !exists {
-		_, err := ElasticClient.CreateIndex(IndexerDocumentIndexBaselineContextInverted).Do(context.Background())
+		_, err := ElasticClient.CreateIndex(IndexerDocumentIndexAxiomContextInverted).Do(context.Background())
 		if err != nil {
-			Log.Panicf("failed to create elasticsearch index %s; %s", IndexerDocumentIndexBaselineContextInverted, err.Error())
+			Log.Panicf("failed to create elasticsearch index %s; %s", IndexerDocumentIndexAxiomContextInverted, err.Error())
 		}
 	}
 
-	exists, _ = ElasticClient.IndexExists(IndexerDocumentIndexBaselineWorkflowPrototypes).Do(context.Background())
+	exists, _ = ElasticClient.IndexExists(IndexerDocumentIndexAxiomWorkflowPrototypes).Do(context.Background())
 	if !exists {
-		_, err := ElasticClient.CreateIndex(IndexerDocumentIndexBaselineWorkflowPrototypes).Do(context.Background())
+		_, err := ElasticClient.CreateIndex(IndexerDocumentIndexAxiomWorkflowPrototypes).Do(context.Background())
 		if err != nil {
-			Log.Panicf("failed to create elasticsearch index %s; %s", IndexerDocumentIndexBaselineWorkflowPrototypes, err.Error())
+			Log.Panicf("failed to create elasticsearch index %s; %s", IndexerDocumentIndexAxiomWorkflowPrototypes, err.Error())
 		}
 
 	}
@@ -135,39 +135,39 @@ func requireLogger() {
 		endpoint = &endpt
 	}
 
-	Log = logger.NewLogger("baseline", lvl, endpoint)
+	Log = logger.NewLogger("axiom", lvl, endpoint)
 }
 
-func requireBaselinePublicWorkgroup() {
+func requireAxiomPublicWorkgroup() {
 	if os.Getenv("BASELINE_PUBLIC_WORKGROUP_REFRESH_TOKEN") == "" {
 		Log.Debugf("BASELINE_PUBLIC_WORKGROUP_REFRESH_TOKEN not provided; no public workgroup configured")
 		return
 	}
 
-	BaselinePublicWorkgroupRefreshToken = common.StringOrNil(os.Getenv("BASELINE_PUBLIC_WORKGROUP_REFRESH_TOKEN"))
+	AxiomPublicWorkgroupRefreshToken = common.StringOrNil(os.Getenv("BASELINE_PUBLIC_WORKGROUP_REFRESH_TOKEN"))
 
 	var claims jwt.MapClaims
 	var jwtParser jwt.Parser
-	_, _, err := jwtParser.ParseUnverified(*BaselinePublicWorkgroupRefreshToken, claims)
+	_, _, err := jwtParser.ParseUnverified(*AxiomPublicWorkgroupRefreshToken, claims)
 	if err != nil {
 		common.Log.Panicf("failed to parse JWT; %s", err.Error())
 	}
 
-	if baseline, baselineOk := claims["baseline"].(map[string]interface{}); baselineOk {
-		if id, identifierOk := baseline["workgroup_id"].(string); identifierOk {
-			BaselinePublicWorkgroupID = common.StringOrNil(id)
+	if axiom, axiomOk := claims["axiom"].(map[string]interface{}); axiomOk {
+		if id, identifierOk := axiom["workgroup_id"].(string); identifierOk {
+			AxiomPublicWorkgroupID = common.StringOrNil(id)
 		}
 	} else if prvd, prvdOk := claims["prvd"].(map[string]interface{}); prvdOk {
 		if id, identifierOk := prvd["application_id"].(string); identifierOk {
-			BaselinePublicWorkgroupID = common.StringOrNil(id)
+			AxiomPublicWorkgroupID = common.StringOrNil(id)
 		}
 	}
 
-	if BaselinePublicWorkgroupID != nil {
+	if AxiomPublicWorkgroupID != nil {
 		common.Log.Panicf("failed to parse public workgroup id from configured VC; %s", err.Error())
 	}
 
-	common.Log.Debugf("configured public workgroup: %s", *BaselinePublicWorkgroupID)
+	common.Log.Debugf("configured public workgroup: %s", *AxiomPublicWorkgroupID)
 }
 
 func requireVault() {

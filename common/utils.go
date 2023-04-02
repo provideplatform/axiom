@@ -43,7 +43,7 @@ func PanicIfEmpty(val string, msg string) {
 
 // RefreshPublicWorkgroupAccessToken is a convenience function to authorize a new access token
 func RefreshPublicWorkgroupAccessToken() (*string, error) {
-	token, err := ident.CreateToken(*BaselinePublicWorkgroupRefreshToken, map[string]interface{}{
+	token, err := ident.CreateToken(*AxiomPublicWorkgroupRefreshToken, map[string]interface{}{
 		"grant_type": "refresh_token",
 	})
 

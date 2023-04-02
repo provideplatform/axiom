@@ -28,9 +28,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/kthomas/go-redisutil"
 
-	"github.com/provideplatform/baseline/baseline"
-	"github.com/provideplatform/baseline/common"
-	"github.com/provideplatform/baseline/stats"
+	"github.com/provideplatform/axiom/axiom"
+	"github.com/provideplatform/axiom/common"
+	"github.com/provideplatform/axiom/stats"
 	identcommon "github.com/provideplatform/ident/common"
 	"github.com/provideplatform/ident/token"
 
@@ -66,7 +66,7 @@ func init() {
 }
 
 func main() {
-	common.Log.Debugf("starting baseline API...")
+	common.Log.Debugf("starting axiom API...")
 	installSignalHandlers()
 
 	runAPI()
@@ -101,12 +101,12 @@ func main() {
 		}
 	}
 
-	common.Log.Debug("exiting baseline API")
+	common.Log.Debug("exiting axiom API")
 	cancelF()
 }
 
 func installSignalHandlers() {
-	common.Log.Debug("installing signal handlers for baseline API")
+	common.Log.Debug("installing signal handlers for axiom API")
 	sigs = make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	shutdownCtx, cancelF = context.WithCancel(context.Background())
@@ -114,7 +114,7 @@ func installSignalHandlers() {
 
 func shutdown() {
 	if atomic.AddUint32(&closing, 1) == 1 {
-		common.Log.Debug("shutting down baseline API")
+		common.Log.Debug("shutting down axiom API")
 		common.Indexer.Stop()
 		cancelF()
 	}
@@ -127,22 +127,22 @@ func runAPI() {
 	r.Use(provide.CORSMiddleware())
 
 	r.GET("/status", statusHandler)
-	baseline.InstallCredentialsAPI(r)
+	axiom.InstallCredentialsAPI(r)
 
-	// public config and baseline workgroup APIs...
-	baseline.InstallPublicWorkgroupAPI(r)
+	// public config and axiom workgroup APIs...
+	axiom.InstallPublicWorkgroupAPI(r)
 
 	r.Use(token.AuthMiddleware())
 	r.Use(identcommon.AccountingMiddleware())
 	r.Use(identcommon.RateLimitingMiddleware())
 
-	baseline.InstallBPIAPI(r)
-	baseline.InstallMappingsAPI(r)
-	baseline.InstallSystemsAPI(r)
-	baseline.InstallSchemasAPI(r)
-	baseline.InstallWorkflowsAPI(r)
-	baseline.InstallWorkgroupsAPI(r)
-	baseline.InstallWorkstepsAPI(r)
+	axiom.InstallBPIAPI(r)
+	axiom.InstallMappingsAPI(r)
+	axiom.InstallSystemsAPI(r)
+	axiom.InstallSchemasAPI(r)
+	axiom.InstallWorkflowsAPI(r)
+	axiom.InstallWorkgroupsAPI(r)
+	axiom.InstallWorkstepsAPI(r)
 	stats.InstallStatsAPI(r)
 
 	srv = &http.Server{

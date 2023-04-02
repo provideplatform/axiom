@@ -42,11 +42,11 @@ if [[ -z "${DATABASE_HOST}" ]]; then
 fi
 
 if [[ -z "${DATABASE_NAME}" ]]; then
-  DATABASE_NAME=baseline_dev
+  DATABASE_NAME=axiom_dev
 fi
 
 if [[ -z "${DATABASE_USER}" ]]; then
-  DATABASE_USER=baseline-api
+  DATABASE_USER=axiom-api
 fi
 
 if [[ -z "${DATABASE_PASSWORD}" ]]; then
@@ -123,4 +123,4 @@ REDIS_HOSTS=$REDIS_HOSTS \
 REDIS_DB_INDEX=$REDIS_DB_INDEX \
 REDIS_LOG_LEVEL=$REDIS_LOG_LEVEL \
 SYSLOG_ENDPOINT=$SYSLOG_ENDPOINT \
-./.bin/baseline_consumer
+./.bin/axiom_consumer

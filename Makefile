@@ -7,9 +7,9 @@ clean:
 
 build: clean mod
 	go fmt ./...
-	CGO_ENABLED=0 go build -v -o ./.bin/baseline_api ./cmd/api
-	CGO_ENABLED=0 go build -v -o ./.bin/baseline_consumer ./cmd/consumer
-	CGO_ENABLED=0 go build -v -o ./.bin/baseline_migrate ./cmd/migrate
+	CGO_ENABLED=0 go build -v -o ./.bin/axiom_api ./cmd/api
+	CGO_ENABLED=0 go build -v -o ./.bin/axiom_consumer ./cmd/consumer
+	CGO_ENABLED=0 go build -v -o ./.bin/axiom_migrate ./cmd/migrate
 
 ecs_deploy:
 	./ops/ecs_deploy.sh
@@ -21,8 +21,8 @@ lint:
 	./ops/lint.sh
 
 migrate: mod
-	rm -rf ./.bin/baseline_migrate 2>/dev/null || true
-	go build -v -o ./.bin/baseline_migrate ./cmd/migrate
+	rm -rf ./.bin/axiom_migrate 2>/dev/null || true
+	go build -v -o ./.bin/axiom_migrate ./cmd/migrate
 	./ops/migrate.sh
 
 mod:
