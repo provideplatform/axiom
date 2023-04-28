@@ -139,12 +139,12 @@ func requireLogger() {
 }
 
 func requireAxiomPublicWorkgroup() {
-	if os.Getenv("BASELINE_PUBLIC_WORKGROUP_REFRESH_TOKEN") == "" {
-		Log.Debugf("BASELINE_PUBLIC_WORKGROUP_REFRESH_TOKEN not provided; no public workgroup configured")
+	if os.Getenv("AXIOM_PUBLIC_WORKGROUP_REFRESH_TOKEN") == "" {
+		Log.Debugf("AXIOM_PUBLIC_WORKGROUP_REFRESH_TOKEN not provided; no public workgroup configured")
 		return
 	}
 
-	AxiomPublicWorkgroupRefreshToken = common.StringOrNil(os.Getenv("BASELINE_PUBLIC_WORKGROUP_REFRESH_TOKEN"))
+	AxiomPublicWorkgroupRefreshToken = common.StringOrNil(os.Getenv("AXIOM_PUBLIC_WORKGROUP_REFRESH_TOKEN"))
 
 	var claims jwt.MapClaims
 	var jwtParser jwt.Parser
