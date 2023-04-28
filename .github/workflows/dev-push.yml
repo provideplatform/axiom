@@ -25,7 +25,7 @@ jobs:
         uses: actions/checkout@v2
         with:
           path: 'axiom'
-      - run: docker-compose -f ./ops/docker-compose.yml build --no-cache axiom
+      - run: docker-compose -f ./ops/docker-compose.yml build --no-cache axiom-api
         working-directory: axiom
       - run: docker-compose -f ./ops/docker-compose.yml up -d
         working-directory: axiom
