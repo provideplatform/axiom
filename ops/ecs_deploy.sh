@@ -80,14 +80,14 @@ setup_deployment_tools()
 docker_build()
 {
     echo 'Docker build...'
-    sudo docker build -t provide/axiom-api .
+    sudo docker build -t provide/axiom .
 
     echo 'Docker tag...'
-    sudo docker tag provide/axiom-api:latest "${AWS_ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/provide/axiom-api:${buildRef}"
+    sudo docker tag provide/axiom:latest "${AWS_ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/provide/axiom:${buildRef}"
 
     echo 'Docker push...'
     $(aws ecr get-login --no-include-email --region us-east-1)
-    sudo docker push "${AWS_ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/provide/axiom-api:${buildRef}"
+    sudo docker push "${AWS_ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/provide/axiom:${buildRef}"
 }
 
 ecs_deploy()
@@ -96,7 +96,7 @@ ecs_deploy()
     MUNGED_FILE=ecs-task-definition-UPDATED.json
 
     echo 'Listing images...'
-    ECR_IMAGE_DIGEST=$(aws ecr list-images --repository-name provide/axiom-api | jq '.imageIds[0].imageDigest')
+    ECR_IMAGE_DIGEST=$(aws ecr list-images --repository-name provide/axiom | jq '.imageIds[0].imageDigest')
 
     echo 'Describing images...'
     ECR_IMAGE=$(aws ecr describe-images --repository-name "${ECR_REPOSITORY_NAME}" --image-ids imageDigest="${ECR_IMAGE_DIGEST}" | jq '.')
@@ -106,7 +106,7 @@ ecs_deploy()
 
     echo 'Manipulating task defintion...'
     echo $ECS_TASK_DEFINITION > $DEFINITION_FILE
-    sed -E "s/axiom-api:[a-zA-Z0-9\.-]+/axiom-api:${buildRef}/g" "./${DEFINITION_FILE}" > "./${MUNGED_FILE}"
+    sed -E "s/axiom:[a-zA-Z0-9\.-]+/axiom:${buildRef}/g" "./${DEFINITION_FILE}" > "./${MUNGED_FILE}"
 
     echo 'Registering task-definition...'
     ECS_TASK_DEFINITION_ID=$(aws ecs register-task-definition --family "${ECS_TASK_DEFINITION_FAMILY}" --cli-input-json "file://${MUNGED_FILE}" | jq '.taskDefinition.taskDefinitionArn' | sed -E 's/.*\/(.*)"$/\1/')
