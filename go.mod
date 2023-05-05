@@ -11,12 +11,11 @@ require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/ethereum/go-ethereum v1.9.25
 	github.com/form3tech-oss/jwt-go v3.2.3+incompatible // indirect
-	github.com/gin-gonic/gin v1.7.0
+	github.com/gin-gonic/gin v1.9.0
 	github.com/golang-migrate/migrate v3.5.4+incompatible
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/jinzhu/gorm v1.9.16
 	github.com/klauspost/compress v1.13.1 // indirect
-	github.com/kr/pretty v0.2.0 // indirect
 	github.com/kthomas/go-db-config v0.0.0-20200612131637-ec0436a9685e
 	github.com/kthomas/go-elasticsearchutil v0.0.0-20221012142803-5c77f026b016
 	github.com/kthomas/go-logger v0.0.0-20210526080020-a63672d0724c
@@ -31,6 +30,6 @@ require (
 	github.com/onsi/gomega v1.11.0
 	github.com/provideplatform/ident v0.9.10-0.20210903195520-28bcb83ac5d6
 	github.com/provideplatform/provide-go v0.0.0-20230428162942-5f35d1798982
-	golang.org/x/crypto v0.0.0-20220321153916-2c7772ba3064
+	golang.org/x/crypto v0.5.0
 	nhooyr.io/websocket v1.8.7 // indirect
 )
