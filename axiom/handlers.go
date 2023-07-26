@@ -126,6 +126,7 @@ func InstallWorkstepsAPI(r *gin.Engine) {
 	r.POST("/api/v1/workflows/:id/worksteps", createWorkstepHandler)
 	r.PUT("/api/v1/workflows/:id/worksteps/:workstepId", updateWorkstepHandler)
 	r.DELETE("/api/v1/workflows/:id/worksteps/:workstepId", deleteWorkstepHandler)
+	r.POST("/api/v1/workflows/:id/worksteps/:workstepId/verify", verifyWorkstepHandler)
 
 	r.GET("/api/v1/workflows/:id/worksteps/:workstepId/constraints", listWorkstepConstraintsHandler)
 	r.POST("/api/v1/workflows/:id/worksteps/:workstepId/constraints", createWorkstepConstraintHandler)
@@ -2035,6 +2036,83 @@ func executeWorkstepHandler(c *gin.Context) {
 
 	if proof != nil {
 		provide.Render(proof, 201, c)
+	} else if len(workstep.Errors) > 0 {
+		obj := map[string]interface{}{}
+		obj["errors"] = workstep.Errors
+		provide.Render(obj, 422, c)
+	} else {
+		provide.RenderError("internal persistence error", 500, c)
+	}
+}
+
+func verifyWorkstepHandler(c *gin.Context) {
+	organizationID := util.AuthorizedSubjectID(c, "organization")
+	if organizationID == nil {
+		provide.RenderError("unauthorized", 401, c)
+		return
+	}
+
+	buf, err := c.GetRawData()
+	if err != nil {
+		provide.RenderError(err.Error(), 400, c)
+		return
+	}
+
+	workflowID, err := uuid.FromString(c.Param("id"))
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	workflow := FindWorkflowByID(workflowID)
+	if workflow == nil {
+		provide.RenderError("not found", 404, c)
+		return
+	}
+
+	workstepID, err := uuid.FromString(c.Param("workstepId"))
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	workstep := FindWorkstepByID(workstepID)
+	if workstep == nil {
+		provide.RenderError("not found", 404, c)
+		return
+	} else if workstep.WorkflowID == nil || workstep.WorkflowID.String() != workflowID.String() {
+		provide.RenderError("forbidden", 403, c)
+		return
+	}
+
+	if workstep.Status != nil && *workstep.Status != workstepStatusCompleted {
+		provide.RenderError("cannot verify workstep", 400, c)
+		return
+	}
+
+	subjectAccountID := subjectAccountIDFactory(organizationID.String(), workflow.WorkgroupID.String())
+	subjectAccount, err := resolveSubjectAccount(subjectAccountID, nil)
+	if err != nil {
+		provide.RenderError(err.Error(), 403, c)
+		return
+	}
+
+	var payload *ProtocolMessagePayload
+	err = json.Unmarshal(buf, &payload)
+	if err != nil {
+		provide.RenderError(err.Error(), 422, c)
+		return
+	}
+
+	token, _ := util.ParseBearerAuthorizationHeader(c.GetHeader("authorization"), nil)
+	resp, err := workstep.verify(subjectAccount, token.Raw, payload)
+	if err != nil {
+		provide.RenderError(fmt.Sprintf("cannot execute workstep; %s", err.Error()), 422, c)
+		return
+	}
+
+	if resp != nil {
+		provide.Render(resp, 200, c)
 	} else if len(workstep.Errors) > 0 {
 		obj := map[string]interface{}{}
 		obj["errors"] = workstep.Errors

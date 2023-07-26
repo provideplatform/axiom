@@ -588,6 +588,70 @@ func (w *Workstep) execute(
 	return proof, nil
 }
 
+func (w *Workstep) verify(
+	subjectAccount *SubjectAccount,
+	token string,
+	payload *ProtocolMessagePayload,
+) (*privacy.VerificationResponse, error) {
+	if w.isPrototype() {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil("cannot verify workstep prototype"),
+		})
+		return nil, fmt.Errorf(*w.Errors[0].Message)
+	}
+
+	if w.Status != nil && *w.Status != workflowStatusCompleted {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil(fmt.Sprintf("cannot verify workstep with status: %s", *w.Status)),
+		})
+		return nil, fmt.Errorf(*w.Errors[0].Message)
+	}
+
+	if w.ProverID == nil {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil("cannot verify workstep without prover id"),
+		})
+		return nil, fmt.Errorf(*w.Errors[0].Message)
+	}
+
+	var params map[string]interface{}
+	raw, _ := json.Marshal(payload.Object)
+	json.Unmarshal(raw, &params) // HACK
+
+	hash := gnarkhash.MIMC_BLS12_377.New()
+	var i big.Int
+
+	hash.Write(raw)
+	preImage := hash.Sum(nil)
+	preImageStr := i.SetBytes(preImage).String()
+
+	_hash := gnarkhash.MIMC_BLS12_377.New()
+	_hash.Write(preImage)
+	hashStr := i.SetBytes(_hash.Sum(nil)).String()
+
+	resp, err := privacy.Verify(token, w.ProverID.String(), map[string]interface{}{
+		"witness": map[string]interface{}{
+			"Preimage": preImageStr,
+			"Hash":     hashStr,
+		},
+	})
+	if err != nil {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil(fmt.Sprintf("failed to verify workstep; %s", err.Error())),
+		})
+		return nil, fmt.Errorf(*w.Errors[0].Message)
+	}
+
+	if resp.Errors != nil && len(resp.Errors) > 0 {
+		w.Errors = append(w.Errors, &provide.Error{
+			Message: common.StringOrNil(fmt.Sprintf("failed to verify workstep; %s", *resp.Errors[0].Message)),
+		})
+		return nil, fmt.Errorf(*w.Errors[0].Message)
+	}
+
+	return resp, nil
+}
+
 func (w *Workstep) finalizeDeploy(token string) bool {
 	if w.Status != nil && *w.Status != workstepStatusPendingDeployment {
 		w.Errors = append(w.Errors, &provide.Error{
