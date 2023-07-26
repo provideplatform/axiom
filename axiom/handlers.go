@@ -2104,6 +2104,16 @@ func verifyWorkstepHandler(c *gin.Context) {
 		return
 	}
 
+	if payload.Proof == nil {
+		provide.RenderError("proof required for verification", 422, c)
+		return
+	}
+
+	if payload.Witness == nil {
+		provide.RenderError("witness required for verification", 422, c)
+		return
+	}
+
 	token, _ := util.ParseBearerAuthorizationHeader(c.GetHeader("authorization"), nil)
 	resp, err := workstep.verify(subjectAccount, token.Raw, payload)
 	if err != nil {

@@ -630,6 +630,7 @@ func (w *Workstep) verify(
 	hashStr := i.SetBytes(_hash.Sum(nil)).String()
 
 	resp, err := privacy.Verify(token, w.ProverID.String(), map[string]interface{}{
+		"proof": payload.Proof,
 		"witness": map[string]interface{}{
 			"Preimage": preImageStr,
 			"Hash":     hashStr,
