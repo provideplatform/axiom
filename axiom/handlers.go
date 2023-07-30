@@ -2117,7 +2117,7 @@ func verifyWorkstepHandler(c *gin.Context) {
 	token, _ := util.ParseBearerAuthorizationHeader(c.GetHeader("authorization"), nil)
 	resp, err := workstep.verify(subjectAccount, token.Raw, payload)
 	if err != nil {
-		provide.RenderError(fmt.Sprintf("cannot execute workstep; %s", err.Error()), 422, c)
+		provide.RenderError(fmt.Sprintf("cannot verify workstep; %s", err.Error()), 422, c)
 		return
 	}
 
