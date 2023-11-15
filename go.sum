@@ -414,8 +414,8 @@ github.com/prometheus/tsdb v0.6.2-0.20190402121629-4f204dcbc150/go.mod h1:qhTCs0
 github.com/provideplatform/ident v0.9.10-0.20210903195520-28bcb83ac5d6 h1:/yGxRvW9G36tk+DDCdmMDcrCfc5YfLJxUCZc84J8QQU=
 github.com/provideplatform/ident v0.9.10-0.20210903195520-28bcb83ac5d6/go.mod h1:s+hRD5W4u66saaYadkmL9hGyirrtmcwojL5XhZ7imHk=
 github.com/provideplatform/provide-go v0.0.0-20210624064849-d7328258f0d8/go.mod h1:q0/Q8KaZxYg84rdwBIIE7ZwHluzM5zw7zJJoJOqAbzg=
-github.com/provideplatform/provide-go v0.0.0-20231115013605-60e44b8f3e2f h1:9k1cBj5a4fvjz10AobvJa4YVZVanY+3yVDcIFr9zPLI=
-github.com/provideplatform/provide-go v0.0.0-20231115013605-60e44b8f3e2f/go.mod h1:3XKCmsPvXOLfHQhMwmJGwK7CD/OqW2Y4HMJVfvkBIys=
+github.com/provideplatform/provide-go v0.0.0-20231115025119-a525faf20a39 h1:YErkLzJ72G6OTADphFO6XGJ6BeF5SyNyulYQSlqdIEY=
+github.com/provideplatform/provide-go v0.0.0-20231115025119-a525faf20a39/go.mod h1:3XKCmsPvXOLfHQhMwmJGwK7CD/OqW2Y4HMJVfvkBIys=
 github.com/rjeczalik/notify v0.9.1/go.mod h1:rKwnCoCGeuQnwBtTSPL9Dad03Vh2n40ePRrjvIXnJho=
 github.com/rs/cors v0.0.0-20160617231935-a62a804a8a00/go.mod h1:gFx+x8UowdsKA9AchylcLynDq+nNFfI8FkUZdN/jGCU=
 github.com/rs/xhandler v0.0.0-20160618193221-ed27b6fd6521/go.mod h1:RvLn4FgxWubrpZHtQLnOf6EwhN2hEMusxZOhcW9H3UQ=
